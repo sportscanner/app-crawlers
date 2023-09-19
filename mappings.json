@@ -1,30 +1,30 @@
-{
-    "0": {
+[
+    {
         "name": "John Orwell Sports Centre",
         "encoded_alias": "john-orwell"
     },
-    "1": {
+    {
         "name": "Whitechapel Sports Centre",
         "encoded_alias": "whitechapel-sports-centre"
     },
-    "2": {
+    {
         "name": "Kensington Leisure Centre",
         "encoded_alias": "kensington-leisure-centre"
     },
-    "3": {
+    {
         "name": "Poplar Leisure Centre",
         "encoded_alias": "poplar-baths-leisure-centre"
     },
-    "4": {
+    {
         "name": "Swiss Cottage Leisure Centre",
         "encoded_alias": "swiss-cottage-leisure-centre"
     },
-    "5": {
+    {
         "name": "Finsbury Leisure Centre",
         "encoded_alias": "finsbury-leisure-centre"
     },
-    "6": {
+    {
         "name": "Britannia Leisure Centre",
         "encoded_alias": "britannia-leisure-centre"
-    } 
-}
+    }
+]
