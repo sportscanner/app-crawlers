@@ -1,7 +1,7 @@
-jsonschema==4.19.0
+aiohttp==3.8.5
+jsonschema==4.19.1
 loguru==0.7.2
 pandas==2.0.2
-Requests==2.31.0
 setuptools==67.8.0
 stqdm==0.0.5
 streamlit==1.23.1
