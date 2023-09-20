@@ -1,4 +1,5 @@
 import sys
+from time import time
 
 import jsonschema
 from loguru import logger as logging
@@ -16,3 +17,16 @@ def validate_json_schema(data):
         logging.error("JSON data is not valid according to the schema:")
         logging.error(e)
         return False
+
+
+def timeit(func):
+    # This function shows the execution time of
+    # the function object passed
+    def wrap_func(*args, **kwargs):
+        tic = time()
+        result = func(*args, **kwargs)
+        tac = time()
+        logging.info(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
+        return result
+
+    return wrap_func
