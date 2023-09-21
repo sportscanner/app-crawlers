@@ -9,6 +9,7 @@ health:
 
 freeze:
 	@pip install pipreqs
+	@export PYTHONIOENCODING=utf-8
 	@pipreqs . --savepath "requirements.txt" --force
 
 setup: health
@@ -16,7 +17,7 @@ setup: health
 	@$(support-libs)
 
 run: setup
-	@python main.py
+	@python -m streamlit run shuttlebot/webapp/app.py
 
 format:
 	@isort -r shuttlebot/ *.py

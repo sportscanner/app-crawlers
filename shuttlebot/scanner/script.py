@@ -37,52 +37,66 @@ def apply_slots_preference_filter(
     return available_timebound_slots
 
 
+def dataframe_display_transformations(available_slots_with_preferences):
+    transformed_dataframe = (
+        pd.DataFrame(available_slots_with_preferences)
+        .sort_values(by=["date", "parsed_start_time"], ascending=True)
+        .drop(
+            columns=["parsed_start_time", "parsed_end_time", "category", "price"],
+            axis=1,
+        )
+    )
+
+    # Chain the transformations to format the 'date' column
+    transformed_dataframe["date"] = pd.to_datetime(
+        transformed_dataframe["date"]
+    ).dt.strftime("%Y-%m-%d (%A)")
+
+    return transformed_dataframe
+
+
 def filter_and_transform_to_dataframe(AGGREGATED_SLOTS, start_time, end_time):
     # Combine the results from all the executions
-    _avaialble_slots_with_preferences = apply_slots_preference_filter(
+    available_slots_with_preferences = apply_slots_preference_filter(
         AGGREGATED_SLOTS,
         start_time_preference=start_time,
         end_time_preference=end_time,
     )
 
     try:
-        if not _avaialble_slots_with_preferences:
-            raise ValueError("_avaialble_slots_with_preferences is empty")
+        if not available_slots_with_preferences:
+            raise ValueError("Available slots - with preferences filter, is empty")
 
-        _to_dataframe = (
-            pd.DataFrame(_avaialble_slots_with_preferences)
-            .sort_values(by=["date", "parsed_start_time"], ascending=True)
-            .drop(
-                columns=["parsed_start_time", "parsed_end_time", "category", "price"],
-                axis=1,
-            )
-        )
-
-        # Chain the transformations to format the 'date' column
-        _to_dataframe["date"] = pd.to_datetime(_to_dataframe["date"]).dt.strftime(
-            "%Y-%m-%d (%A)"
-        )
+        transformed_dataframe = dataframe_display_transformations(
+            available_slots_with_preferences
+        )  # keeps required columns and field formattings
 
     except ValueError:
         # Handle the case where filtered_results is an empty list
         logging.warning("No slots available after applying selected filters")
-        _to_dataframe = (
+        transformed_dataframe = (
             pd.DataFrame()
         )  # Create an empty DataFrame or take alternative actions
 
-    return _to_dataframe.reset_index(drop=True)
+    return transformed_dataframe.reset_index(drop=True)
 
 
-def slots_scanner(dates, start_time, end_time):
-    # GLOBAL: Read the JSON file
+def slots_scanner(sports_centre_lists, dates, start_time, end_time):
+    AGGREGATED_SLOTS = aggregate_api_responses(sports_centre_lists, dates)
+    slots_dataframe = filter_and_transform_to_dataframe(
+        AGGREGATED_SLOTS, start_time, end_time
+    )
+    return slots_dataframe
+
+
+def get_mappings():
     with open(f"./{config.MAPPINGS}", "r") as file:
         sports_centre_lists = json.load(file)
         if validate_json_schema(sports_centre_lists):
-            AGGREGATED_SLOTS = aggregate_api_responses(sports_centre_lists, dates)
-            slots_dataframe = filter_and_transform_to_dataframe(
-                AGGREGATED_SLOTS, start_time, end_time
-            )
-            return slots_dataframe
+            return sports_centre_lists
+        else:
+            logging.error("JSON schema is invalid for mappings")
+            return None
 
 
 def main():
@@ -92,7 +106,7 @@ def main():
     start_time, end_time = config.START_TIME, config.END_TIME
 
     metadata(dates, start_time, end_time)
-    slots_scanner(dates, start_time, end_time)
+    slots_scanner(get_mappings(), dates, start_time, end_time)
 
 
 if __name__ == "__main__":
