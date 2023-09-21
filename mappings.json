@@ -1,30 +1,70 @@
-{
-    "0": {
+[
+    {
         "name": "John Orwell Sports Centre",
         "encoded_alias": "john-orwell"
     },
-    "1": {
+    {
         "name": "Whitechapel Sports Centre",
         "encoded_alias": "whitechapel-sports-centre"
     },
-    "2": {
-        "name": "Kensington Leisure Centre",
-        "encoded_alias": "kensington-leisure-centre"
-    },
-    "3": {
-        "name": "Poplar Leisure Centre",
-        "encoded_alias": "poplar-baths-leisure-centre"
-    },
-    "4": {
+    {
         "name": "Swiss Cottage Leisure Centre",
         "encoded_alias": "swiss-cottage-leisure-centre"
     },
-    "5": {
+    {
+        "name": "Kensington Leisure Centre",
+        "encoded_alias": "kensington-leisure-centre"
+    },
+    {
+        "name": "Poplar Leisure Centre",
+        "encoded_alias": "poplar-baths-leisure-centre"
+    },
+    {
         "name": "Finsbury Leisure Centre",
         "encoded_alias": "finsbury-leisure-centre"
     },
-    "6": {
+    {
         "name": "Britannia Leisure Centre",
         "encoded_alias": "britannia-leisure-centre"
-    } 
-}
+    },
+    {
+        "name": "Mile End Park Leisure Centre",
+        "encoded_alias": "mile-end-park-leisure-centre"
+    },
+    {
+        "name": "Queensbridge Sports And Community",
+        "encoded_alias": "queensbridge-sport-and-community-centre"
+    },
+    {
+        "name": "Kings Hall Leisure Centre",
+        "encoded_alias": "kings-hall-leisure-centre"
+    },
+    {
+        "name": "Clissold Leisure Centre",
+        "encoded_alias": "clissold-leisure-centre"
+    },
+    {
+        "name": "Talacre Community Sports Centre",
+        "encoded_alias": "talacre-community-sports-centre"
+    },
+    {
+        "name": "Leytonstone Leisure Centre",
+        "encoded_alias": "leytonstone-leisure-centre"
+    },
+    {
+        "name": "Walthamstow Leisure Centre",
+        "encoded_alias": "walthamstow-leisure-centre"
+    },
+    {
+        "name": "Crystal Palace National Sports Centre",
+        "encoded_alias": "crystal-palace-national-sports-centre"
+    },
+    {
+        "name": "Phoenix Fitness Centre",
+        "encoded_alias": "phoenix-fitness-centre-and-janet-adegoke-swimming-pool"
+    },
+    {
+        "name": "Waltham Forest Feel Good Centre",
+        "encoded_alias": "waltham-forest-feel-good-centre"
+    }
+]
