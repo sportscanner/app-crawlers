@@ -9,16 +9,16 @@ health:
 
 freeze:
 	@pip install pipreqs
+	@export PYTHONIOENCODING=utf-8
 	@pipreqs . --savepath "requirements.txt" --force
 
 setup: health
 	@pip install -r requirements.txt
 	@$(support-libs)
-	@playwright install chromium
 
 run: setup
-	@python main.py
+	@python -m streamlit run shuttlebot/webapp/app.py
 
 format:
-	@isort -r src/ tests/ *.py
-	@black src/ tests/
+	@isort -r shuttlebot/ *.py
+	@black shuttlebot/
