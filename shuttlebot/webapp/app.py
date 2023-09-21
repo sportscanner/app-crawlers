@@ -1,72 +1,52 @@
 # ---PIP PACKAGES---#
 import datetime
-import itertools
-import json
-import time
 from datetime import date, timedelta
 
 import pandas as pd
 import streamlit as st
-from script import (
-    api_requests_to_fetch_slots,
-    filter_and_transform_results,
-    main,
-    metadata,
-    reset_results_cache,
-)
-from stqdm import stqdm
 
-# Page specific settings: title/description/icons etc
-page_title = "`Better Org.` Badminton slots finder"
+from shuttlebot.scanner.script import get_mappings, slots_scanner
+from shuttlebot.webapp.utils import hide_streamlit_brandings, icon
+
+# -- Page specific settings: title/description/icons etc --
+page_title = "Shuttle Bot"
 layout = "wide"
 st.set_page_config(
-    page_title=page_title, layout=layout, initial_sidebar_state="collapsed"
+    page_title=page_title,
+    page_icon="🏸",
+    layout=layout,
+    initial_sidebar_state="collapsed",
 )
-st.title(f"{page_title}")
+
+st.title(f"🏸{page_title}")
 
 st.markdown(
     """
-    ###### This webapp helps parse through all Better Org. badminton courts in London to find ideal slots for the upcoming `6` days
-    Author: `Yasir`
+    ##### Find badminton slots for upcoming week, 50x faster
+    Currently supports `Better Org.` badminton courts (in London)
     """
 )
+hide_streamlit_brandings()
 
-# generic streamlit configuration to hide brandings
-hide_st_style = """<style>
-                    #MainMenu {visibility : hidden;}
-                    footer {visibility : hidden;}
-                    header {visibility : hidden;}
-                    .stMultiSelect [data-baseweb=select] span{
-                        max-width: 250px;
-                        font-size: 0.6rem;
-                    }
-                </style>
-                """
-hide_sidebar_hamburger = """
-                        <style>
-                            [data-testid="collapsedControl"] {
-                                display: none
-                            }
-                        </style>
-                        """
-st.markdown(hide_st_style, unsafe_allow_html=True)
-st.markdown(
-    hide_sidebar_hamburger,
-    unsafe_allow_html=True,
-)
+## ---------------------------------
 
 today = date.today()
 raw_dates = [today + timedelta(days=i) for i in range(6)]
 dates = [date.strftime("%Y-%m-%d") for date in raw_dates]
 
-# GLOBAL: Read the JSON file
-with open("./mappings.json", "r") as file:
-    json_data = json.load(file)
 
+# GLOBAL: Read the JSON file
+@st.cache_data
+def cached_mappings():
+    json_data = get_mappings()
+    return json_data
+
+
+json_data = cached_mappings()
 options = st.multiselect(
     "Pick your preferred playing locations",
-    [x["name"] for x in list(json_data.values())],
-    [x["name"] for x in list(json_data.values())][:4],
+    [x["name"] for x in json_data],
+    [x["name"] for x in json_data][:4],
 )
 
 start_time_filter, end_time_filter = st.columns(2)
@@ -80,21 +60,15 @@ if st.button("Find me badminton slots"):
     # st.info(options)
     sports_centre_lists = [
         _sports_centre
-        for _sports_centre in list(json_data.values())
+        for _sports_centre in json_data
         if _sports_centre["name"] in options
     ]
-    parameter_sets = [(x, y) for x, y in itertools.product(sports_centre_lists, dates)]
-    # st.json(sports_centre_lists)
-    # st.info(f"{dates} - Starting time: {start_time_filter_input} - Ending time: {end_time_filter_input}")
 
-    for sports_centre, date in stqdm(
-        parameter_sets, desc="This is a slow task, grab a coffee"
-    ):
-        api_requests_to_fetch_slots(sports_centre, date)
-
-    slots_dataframe = filter_and_transform_results(
-        start_time=start_time_filter_input.strftime("%H:%M"),
-        end_time=end_time_filter_input.strftime("%H:%M"),
-    )
-    reset_results_cache()
+    with st.spinner("No need to grab a coffee, we should be done quickly"):
+        slots_dataframe = slots_scanner(
+            sports_centre_lists,
+            dates,
+            start_time=start_time_filter_input.strftime("%H:%M"),
+            end_time=end_time_filter_input.strftime("%H:%M"),
+        )
     st.table(slots_dataframe)
