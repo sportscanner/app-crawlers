@@ -1,0 +1,143 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/Welcome1",
+    "definitions": {
+        "Welcome1": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Datum"
+                    }
+                }
+            },
+            "required": [
+                "data"
+            ],
+            "title": "Welcome1"
+        },
+        "Datum": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "starts_at": {
+                    "$ref": "#/definitions/SAt"
+                },
+                "ends_at": {
+                    "$ref": "#/definitions/SAt"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "price": {
+                    "$ref": "#/definitions/Price"
+                },
+                "composite_key": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "booking": {
+                    "type": "null"
+                },
+                "action_to_show": {
+                    "$ref": "#/definitions/ActionToShow"
+                },
+                "category_slug": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string",
+                    "format": "date"
+                },
+                "venue_slug": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "spaces": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "allows_anonymous_bookings": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "action_to_show",
+                "allows_anonymous_bookings",
+                "booking",
+                "category_slug",
+                "composite_key",
+                "date",
+                "duration",
+                "ends_at",
+                "location",
+                "name",
+                "price",
+                "spaces",
+                "starts_at",
+                "timestamp",
+                "venue_slug"
+            ],
+            "title": "Datum"
+        },
+        "ActionToShow": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "reason",
+                "status"
+            ],
+            "title": "ActionToShow"
+        },
+        "SAt": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "format_12_hour": {
+                    "type": "string"
+                },
+                "format_24_hour": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "format_12_hour",
+                "format_24_hour"
+            ],
+            "title": "SAt"
+        },
+        "Price": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "is_estimated": {
+                    "type": "boolean"
+                },
+                "formatted_amount": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "formatted_amount",
+                "is_estimated"
+            ],
+            "title": "Price"
+        }
+    }
+}
