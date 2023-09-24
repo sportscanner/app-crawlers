@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-
+import asyncio
 
 def parse_api_response(api_response):
     parsed_api_response = []
@@ -47,3 +47,7 @@ def parse_api_response(api_response):
                 )
 
     return parsed_api_response
+
+async def simulate_api_call():
+    value = await asyncio.sleep(1, result= {"data": "to be filled in"}) # TODO
+    return value
