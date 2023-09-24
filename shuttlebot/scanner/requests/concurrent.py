@@ -35,6 +35,7 @@ async def aggregate_concurrent_api_calls(sports_centre_lists, dates):
             if response.status == 200:
                 # Read the response content as text
                 data = await response.text()
+                logging.debug(data)
                 response_dict = json.loads(data)
                 api_response = response_dict.get("data")
                 parsed_api_response = (
