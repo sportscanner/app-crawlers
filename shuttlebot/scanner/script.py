@@ -7,7 +7,11 @@ from loguru import logger as logging
 
 from shuttlebot import config
 from shuttlebot.scanner.requests.concurrent import aggregate_api_responses
-from shuttlebot.scanner.utils import timeit, validate_json_schema
+from shuttlebot.scanner.utils import (
+    find_consecutive_slots,
+    timeit,
+    validate_json_schema,
+)
 
 
 def metadata(dates, start_time, end_time):
@@ -34,35 +38,32 @@ def apply_slots_preference_filter(
     logging.success(
         f"Available slots after filtering: {len(available_timebound_slots)}"
     )
+
     return available_timebound_slots
 
 
 def dataframe_display_transformations(available_slots_with_preferences):
     transformed_dataframe = (
         pd.DataFrame(available_slots_with_preferences)
-        .sort_values(by=["date", "parsed_start_time"], ascending=True)
-        .drop(
-            columns=["parsed_start_time", "parsed_end_time", "category", "price"],
-            axis=1,
+        .sort_values(by=["date", "parsed_start_time"], ascending=True)[
+            ["date", "formatted_time", "name"]
+        ]  # selecting columns in pandas
+        .rename(
+            columns={"formatted_time": "Slot time", "name": "Venue", "date": "Date"}
         )
     )
 
     # Chain the transformations to format the 'date' column
-    transformed_dataframe["date"] = pd.to_datetime(
-        transformed_dataframe["date"]
+    transformed_dataframe["Date"] = pd.to_datetime(
+        transformed_dataframe["Date"]
     ).dt.strftime("%Y-%m-%d (%A)")
 
     return transformed_dataframe
 
 
-def filter_and_transform_to_dataframe(AGGREGATED_SLOTS, start_time, end_time):
-    # Combine the results from all the executions
-    available_slots_with_preferences = apply_slots_preference_filter(
-        AGGREGATED_SLOTS,
-        start_time_preference=start_time,
-        end_time_preference=end_time,
-    )
-
+def filter_and_transform_to_dataframe(
+    available_slots_with_preferences, start_time, end_time
+):
     try:
         if not available_slots_with_preferences:
             raise ValueError("Available slots - with preferences filter, is empty")
@@ -70,7 +71,6 @@ def filter_and_transform_to_dataframe(AGGREGATED_SLOTS, start_time, end_time):
         transformed_dataframe = dataframe_display_transformations(
             available_slots_with_preferences
         )  # keeps required columns and field formattings
-
     except ValueError:
         # Handle the case where filtered_results is an empty list
         logging.warning("No slots available after applying selected filters")
@@ -83,10 +83,15 @@ def filter_and_transform_to_dataframe(AGGREGATED_SLOTS, start_time, end_time):
 
 def slots_scanner(sports_centre_lists, dates, start_time, end_time):
     AGGREGATED_SLOTS = aggregate_api_responses(sports_centre_lists, dates)
-    slots_dataframe = filter_and_transform_to_dataframe(
-        AGGREGATED_SLOTS, start_time, end_time
+    available_slots_with_preferences = apply_slots_preference_filter(
+        AGGREGATED_SLOTS,
+        start_time_preference=start_time,
+        end_time_preference=end_time,
     )
-    return slots_dataframe
+    slots_dataframe = filter_and_transform_to_dataframe(
+        available_slots_with_preferences, start_time, end_time
+    )
+    return slots_dataframe, available_slots_with_preferences
 
 
 def get_mappings():
