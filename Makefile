@@ -9,8 +9,7 @@ health:
 
 freeze:
 	@pip install pipreqs
-	@export PYTHONIOENCODING=utf-8
-	@pipreqs . --savepath "requirements.txt" --force
+	@pipreqs . --savepath "requirements.txt" --force --encoding=utf-8
 
 setup: health
 	@pip install -r requirements.txt

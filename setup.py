@@ -17,7 +17,7 @@ setup(
     package_dir={"": "src"},
     include_package_data=True,
     # Requirements
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=install_requires,
     classifiers=[
         "Natural Language :: English",
