@@ -23,8 +23,7 @@ st.set_page_config(
     page_title=page_title,
     page_icon="🏸",
     layout=layout,
-    initial_sidebar_state="collapsed",
-    theme="light",  # Set the theme to light mode
+    initial_sidebar_state="collapsed"
 )
 hide_streamlit_brandings()
 custom_css_carousal()
@@ -52,7 +51,7 @@ options = st.multiselect(
     "Pick your preferred playing locations",
     [x["name"] for x in json_data],
     [x["name"] for x in json_data][
-    :DEFAULT_MAPPINGS_SELECTION
+        :DEFAULT_MAPPINGS_SELECTION
     ],  # default select first "n" centres from mappings file
 )
 
