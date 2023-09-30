@@ -1,5 +1,5 @@
 aiohttp==3.8.5
-jsonschema==4.19.1
+jsonschema==4.17.3
 loguru==0.7.2
 pandas==2.0.2
 setuptools==67.8.0
