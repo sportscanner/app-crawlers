@@ -1,12 +1,6 @@
-name: Linting using flake8
+name: Lint code using flake8
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push]
 
 jobs:
   lint:
