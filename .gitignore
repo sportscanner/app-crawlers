@@ -6,7 +6,7 @@ snorlax/.DS_Store
 *.egg-info
 dist/
 build/
-debugging/
+experimental/
 
 # iPython Notebook files
 .ipynb_checkpoints/
