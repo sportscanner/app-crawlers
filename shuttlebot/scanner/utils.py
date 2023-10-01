@@ -1,5 +1,4 @@
 import itertools
-import sys
 from datetime import date, datetime, time
 from time import time as timer
 
@@ -77,7 +76,8 @@ data_list = [
 def find_consecutive_slots(
     sports_centre_lists: list, dates: list, slots: list, consecutive_count: int
 ) -> list:
-    """Finds consecutive overlapping slots i.e. end time of one slot overlaps with start time of another"""
+    """Finds consecutive overlapping slots i.e.
+    end time of one slot overlaps with start time of another"""
     consecutive_slots_list = []
     parameter_sets = [(x, y) for x, y in itertools.product(dates, sports_centre_lists)]
 

@@ -1,6 +1,4 @@
-import json
-import logging
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 
 def align_api_responses(api_response):
@@ -22,7 +20,8 @@ def parse_api_response(response_block):
         "venue": response_block["venue_slug"],
         "name": response_block["venue_name"],
         "date": datetime.strptime(str(response_block["date"]), "%Y-%m-%d").date(),
-        "formatted_time": f"{response_block['starts_at']['format_24_hour']} - {response_block['ends_at']['format_24_hour']}",
+        "formatted_time": f"{response_block['starts_at']['format_24_hour']}"
+        f" - {response_block['ends_at']['format_24_hour']}",
         "parsed_start_time": datetime.strptime(
             response_block["starts_at"]["format_24_hour"], "%H:%M"
         ).time(),

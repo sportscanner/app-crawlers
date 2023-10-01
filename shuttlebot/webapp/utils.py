@@ -65,6 +65,23 @@ def custom_css_carousal():
             border-radius: 10px; /* Adjust the radius as needed */
             word-wrap: break-word; /* Enable word wrapping */
         }}
+        .carousel-item {{
+            background-color: #FAFAFA;
+            white-space: pre-wrap;
+        }}
+        .red-text {{
+            color: #e74c3c;
+        }}
+        .name {{
+            white-space: pre-wrap;
+        }}
+        .date {{
+            white-space: pre-wrap;
+            font-weight: strong;
+        }}
+        .starting-slots {{
+            white-space: pre-wrap;
+        }}
         </style>
         """
     st.markdown(
@@ -91,7 +108,7 @@ def get_carousal_card_items(
                     f"<div style='white-space: pre-wrap;'><span style='color:#e74c3c'>{consecutive_slots_input} consecutive slots</span></div>"
                     f"<div style='white-space: pre-wrap;'>{groupings_for_consecutive_slots[group_id][0]['name']}</div>"
                     f"<div style='white-space: pre-wrap;'><strong>{groupings_for_consecutive_slots[group_id][0]['date'].strftime('%Y-%m-%d (%A)')}</strong></div><br>"
-                    f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>",
+                    f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>"
                 )
             )
         flag = False
