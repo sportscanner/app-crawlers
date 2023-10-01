@@ -1,7 +1,4 @@
-define support-libs
-	@pip install black
-	@pip install isort
-endef
+SUPPORT_LIBS := black isort flake8 autopep8
 
 health:
 	@make --version
@@ -13,11 +10,13 @@ freeze:
 
 setup: health
 	@pip install -r requirements.txt
-	@$(support-libs)
+	@pip install $(SUPPORT_LIBS)
+
+format:
+	@isort -rc shuttlebot/ *.py
+	@autopep8 --in-place --recursive shuttlebot/
+	@black shuttlebot/
+	@flake8 .
 
 run: setup
 	@python -m streamlit run shuttlebot/webapp/app.py
-
-format:
-	@isort -r shuttlebot/ *.py
-	@black shuttlebot/

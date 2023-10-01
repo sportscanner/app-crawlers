@@ -1,4 +1,3 @@
-import itertools
 import json
 from datetime import date, datetime, timedelta
 
@@ -7,11 +6,7 @@ from loguru import logger as logging
 
 from shuttlebot import config
 from shuttlebot.scanner.requests.concurrent import aggregate_api_responses
-from shuttlebot.scanner.utils import (
-    find_consecutive_slots,
-    timeit,
-    validate_json_schema,
-)
+from shuttlebot.scanner.utils import validate_json_schema
 
 
 def metadata(dates, start_time, end_time):

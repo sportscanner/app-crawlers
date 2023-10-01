@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import aiohttp
 import pandas as pd
@@ -15,8 +15,8 @@ from shuttlebot.scanner.utils import timeit
 
 def create_async_tasks(session, parameter_sets):
     tasks = []
-    for sports_centre, date in parameter_sets:
-        url, headers, _ = generate_api_call_params(sports_centre, date)
+    for sports_centre, fetch_date in parameter_sets:
+        url, headers, _ = generate_api_call_params(sports_centre, fetch_date)
         logging.debug(url)
         tasks.append(asyncio.create_task(session.get(url, headers=headers, ssl=False)))
 

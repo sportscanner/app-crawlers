@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("requirements.txt") as f:
     install_requires = f.read().strip().split("\n")
@@ -6,8 +6,8 @@ with open("requirements.txt") as f:
 setup(
     name="shuttlebot",
     version="0.1.0",
-    description="Webapp that helps badminton players in London find consecutively available badminton slots for the "
-                "upcoming week",
+    description="Webapp that helps badminton players in London find "
+                "consecutively available badminton slots for the upcoming week",
     author="Yasir Khalid",
     author_email="yasir_khalid@outlook.com",
     url="https://github.com/yasir-khalid/badminton-slots-scanner",

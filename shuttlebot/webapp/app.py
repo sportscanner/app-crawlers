@@ -1,7 +1,6 @@
 # ---PIP PACKAGES---#
-import json
 import time as pytime
-from datetime import date, datetime, time, timedelta
+from datetime import date, time, timedelta
 
 import pandas as pd
 import streamlit as st
@@ -13,7 +12,6 @@ from shuttlebot.webapp.utils import (
     custom_css_carousal,
     get_carousal_card_items,
     hide_streamlit_brandings,
-    icon,
 )
 
 # -- Page specific settings: title/description/icons etc --
@@ -23,7 +21,7 @@ st.set_page_config(
     page_title=page_title,
     page_icon="🏸",
     layout=layout,
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 hide_streamlit_brandings()
 custom_css_carousal()
@@ -106,7 +104,8 @@ if st.button("Find me badminton slots"):
         st.markdown(
             f"""
             <div class="horizontal-scroll">
-                {" ".join(f'<div class="card" style="background-color: {bg_color};">{text}</div>' for bg_color, text in carousel_items)}
+                {" ".join(f'<div class="card" style="background-color: '
+                          f'{bg_color};">{text}</div>' for bg_color, text in carousel_items)}
             </div>
             """,
             unsafe_allow_html=True,  # Render the HTML content
