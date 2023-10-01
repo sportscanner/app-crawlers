@@ -38,8 +38,7 @@ def hide_streamlit_branding():
                             """
     st.markdown(hide_st_style, unsafe_allow_html=True)
     st.markdown(
-        hide_sidebar_hamburger,
-        unsafe_allow_html=True,
+        hide_sidebar_hamburger, unsafe_allow_html=True,
     )
 
 
@@ -65,11 +64,10 @@ def custom_css_carousal():
             border-radius: 10px; /* Adjust the radius as needed */
             word-wrap: break-word; /* Enable word wrapping */
         }}
-        </style>
+        {"</style>"}
         """
     st.markdown(
-        css_style,
-        unsafe_allow_html=True,  # Render the HTML content
+        css_style, unsafe_allow_html=True,  # Render the HTML content
     )
 
 
