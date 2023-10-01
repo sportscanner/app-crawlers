@@ -11,7 +11,7 @@ from shuttlebot.webapp.config import DEFAULT_MAPPINGS_SELECTION
 from shuttlebot.webapp.utils import (
     custom_css_carousal,
     get_carousal_card_items,
-    hide_streamlit_brandings,
+    hide_streamlit_branding,
 )
 
 # -- Page specific settings: title/description/icons etc --
@@ -23,7 +23,7 @@ st.set_page_config(
     layout=layout,
     initial_sidebar_state="collapsed",
 )
-hide_streamlit_brandings()
+hide_streamlit_branding()
 custom_css_carousal()
 
 st.title(f"🏸{page_title}")
