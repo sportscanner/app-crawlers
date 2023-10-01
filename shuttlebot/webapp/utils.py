@@ -9,7 +9,7 @@ def icon(emoji: str):
     )
 
 
-def hide_streamlit_brandings():
+def hide_streamlit_branding():
     # generic streamlit configuration to hide brandings
     hide_st_style = """<style>
                         #MainMenu {visibility : hidden;}
@@ -44,7 +44,7 @@ def hide_streamlit_brandings():
 
 
 def custom_css_carousal():
-    css_style = f"""
+    css_style = """
         <style>
         .horizontal-scroll {{
             display: flex;
@@ -64,23 +64,6 @@ def custom_css_carousal():
             min-width: 200px;
             border-radius: 10px; /* Adjust the radius as needed */
             word-wrap: break-word; /* Enable word wrapping */
-        }}
-        .carousel-item {{
-            background-color: #FAFAFA;
-            white-space: pre-wrap;
-        }}
-        .red-text {{
-            color: #e74c3c;
-        }}
-        .name {{
-            white-space: pre-wrap;
-        }}
-        .date {{
-            white-space: pre-wrap;
-            font-weight: strong;
-        }}
-        .starting-slots {{
-            white-space: pre-wrap;
         }}
         </style>
         """
@@ -102,21 +85,33 @@ def get_carousal_card_items(
                     j["parsed_start_time"].strftime("%H:%M")
                 )
 
+            carousel_card_elements = {
+                "heading": None,
+                "venue": None,
+                "date": groupings_for_consecutive_slots[group_id][0]["date"].strftime(
+                    "%Y-%m-%d (%A)"
+                ),
+            }
             carousel_items.append(
                 (
                     "#FAFAFA",
-                    f"<div style='white-space: pre-wrap;'><span style='color:#e74c3c'>{consecutive_slots_input} consecutive slots</span></div>"
-                    f"<div style='white-space: pre-wrap;'>{groupings_for_consecutive_slots[group_id][0]['name']}</div>"
-                    f"<div style='white-space: pre-wrap;'><strong>{groupings_for_consecutive_slots[group_id][0]['date'].strftime('%Y-%m-%d (%A)')}</strong></div><br>"
-                    f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>"
+                    f"<div style='white-space: pre-wrap;'><span style='color:#e74c3c'>"  # Line 1
+                    f"{consecutive_slots_input} consecutive slots</span></div>"
+                    f"<div style='white-space: pre-wrap;'>"
+                    f"{groupings_for_consecutive_slots[group_id][0]['name']}</div>"  # Line 2
+                    f"<div style='white-space: pre-wrap;'><strong>"  # Line 3
+                    f"{carousel_card_elements['date']}</strong></div><br>"
+                    f"<div style='white-space: pre-wrap;'>Slots starting at"  # Line 4
+                    f" {', '.join(gather_slots_starting_times)}</div>",
                 )
             )
         flag = False
     else:
         carousel_items.append(
             (
-                "#f3f2f1",
-                f"<div style='white-space: pre-wrap;'>Selected centres do not have {consecutive_slots_input} consecutive slots</div>",
+                "#F3F2F1",
+                f"<div style='white-space: pre-wrap;'>Selected centres do not have "
+                f"{consecutive_slots_input} consecutive slots</div>",
             )
         )
         flag = True
