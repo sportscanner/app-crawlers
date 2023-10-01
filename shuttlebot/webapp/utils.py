@@ -44,7 +44,7 @@ def hide_streamlit_branding():
 
 
 def custom_css_carousal():
-    css_style = """
+    css_style = f"""
         <style>
         .horizontal-scroll {{
             display: flex;
