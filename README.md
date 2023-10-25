@@ -2,6 +2,7 @@
 # Shuttlebot - badminton slots finder
 
 [Shuttlebot](https://shuttle-bot.onrender.com/) is a webapp that helps badminton players in London find consecutively available badminton slots for the upcoming week, during specific time frames and locations.
+<img width="1128" alt="image" src="https://github.com/yasir-khalid/shuttlebot/assets/29762458/f3c86ebd-eeb8-4146-a6e9-46eb32621340">
 
 The webapp is developed on top of Streamlit `(using Python >= 3.10)` and employs concurrent concepts of Async to parse different websites for badminton slots availability in smaller response times. 
 ## Run Locally
