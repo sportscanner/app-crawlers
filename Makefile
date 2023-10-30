@@ -18,6 +18,10 @@ setup: health
 run: setup
 	@python -m streamlit run shuttlebot/webapp/app.py
 
+build:
+	@docker build -t shuttlebot .
+	@docker run -p 8501:8501 shuttlebot
+
 format:
 	@isort -r shuttlebot/ *.py
 	@black shuttlebot/
