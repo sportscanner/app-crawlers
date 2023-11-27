@@ -1,3 +1,5 @@
+"""Contains configurations for the code"""
+
 START_TIME, END_TIME = "17:30", "22:00"
 LOGGING_LEVEL = "DEBUG"
 MAPPINGS = "mappings.json"

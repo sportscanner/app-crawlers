@@ -1,3 +1,4 @@
+"""Initialises Loguru for logging"""
 import sys
 
 from loguru import logger as logging

@@ -8,6 +8,7 @@ from shuttlebot import config
 
 
 def validate_json_schema(data):
+    """Validates the Location and alias mapping inputs against a defined schema"""
     try:
         # Validate the data against the schema
         jsonschema.validate(data, config.schema)
@@ -20,8 +21,7 @@ def validate_json_schema(data):
 
 
 def timeit(func):
-    # This function shows the execution time of
-    # the function object passed
+    """Decorator to calculate function runtime"""
     def wrap_func(*args, **kwargs):
         tic = time()
         result = func(*args, **kwargs)
