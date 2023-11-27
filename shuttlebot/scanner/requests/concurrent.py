@@ -55,6 +55,7 @@ async def aggregate_concurrent_api_calls(sports_centre_lists, dates):
 
 @timeit
 def aggregate_api_responses(sports_centre_lists, dates):
+    """Generates Async commands to compile all API responses into list"""
     return asyncio.run(aggregate_concurrent_api_calls(sports_centre_lists, dates))
 
 

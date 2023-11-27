@@ -11,6 +11,7 @@ from shuttlebot.scanner.utils import timeit, validate_json_schema
 
 
 def metadata(dates, start_time, end_time):
+    """Logs initial search parameters specified in the search query"""
     logging.info("Dates for parsing urls: " + str(dates))
     logging.info("Time Range applied to filer slots: " + start_time + " - " + end_time)
 
@@ -18,6 +19,7 @@ def metadata(dates, start_time, end_time):
 def apply_slots_preference_filter(
     AGGREGATED_SLOTS, start_time_preference, end_time_preference
 ):
+    """Returns available slots during the defined start and end time"""
     available_timebound_slots = []
     start_time_range = datetime.strptime(start_time_preference, "%H:%M").time()
     end_time_range = datetime.strptime(end_time_preference, "%H:%M").time()
@@ -38,6 +40,7 @@ def apply_slots_preference_filter(
 
 
 def dataframe_display_transformations(available_slots_with_preferences):
+    """Converting List of dict into a pandas dataframe for display purpose"""
     transformed_dataframe = (
         pd.DataFrame(available_slots_with_preferences)
         .sort_values(by=["date", "parsed_start_time"], ascending=True)
@@ -90,6 +93,7 @@ def slots_scanner(sports_centre_lists, dates, start_time, end_time):
 
 
 def get_mappings():
+    """Fetches the sports centres names and slug/alias from mappings file"""
     with open(f"./{config.MAPPINGS}", "r") as file:
         sports_centre_lists = json.load(file)
         if validate_json_schema(sports_centre_lists):
