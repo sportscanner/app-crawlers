@@ -8,9 +8,9 @@ import pandas as pd
 from loguru import logger as logging
 
 from shuttlebot import config
-from shuttlebot.scanner.organisations.better.api import generate_api_call_params
-from shuttlebot.scanner.requests.utils import align_api_responses, parse_api_response
-from shuttlebot.scanner.utils import timeit
+from shuttlebot.backend.organisations.better.api import generate_api_call_params
+from shuttlebot.backend.requests.utils import align_api_responses, parse_api_response
+from shuttlebot.backend.utils import timeit
 
 
 def create_async_tasks(session, parameter_sets):
