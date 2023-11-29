@@ -16,7 +16,7 @@ setup: health
 	@$(support-libs)
 
 run: setup
-	@python -m streamlit run shuttlebot/webapp/app.py
+	@python -m streamlit run shuttlebot/frontend/app.py
 
 format:
 	@isort -r shuttlebot/ *.py
