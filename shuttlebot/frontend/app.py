@@ -5,11 +5,12 @@ from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 import streamlit as st
+import streamlit_shadcn_ui as ui
 
-from shuttlebot.scanner.script import get_mappings, slots_scanner
-from shuttlebot.scanner.utils import find_consecutive_slots
-from shuttlebot.webapp.config import DEFAULT_MAPPINGS_SELECTION
-from shuttlebot.webapp.utils import (
+from shuttlebot.backend.script import get_mappings, slots_scanner
+from shuttlebot.backend.utils import find_consecutive_slots
+from shuttlebot.frontend.config import DEFAULT_MAPPINGS_SELECTION
+from shuttlebot.frontend.utils import (
     custom_css_carousal,
     get_carousal_card_items,
     hide_streamlit_brandings,
@@ -54,6 +55,11 @@ options = st.multiselect(
         :DEFAULT_MAPPINGS_SELECTION
     ],  # default select first "n" centres from mappings file
 )
+
+all_options_switch = ui.switch(default_checked=False, label="Select all locations")
+if all_options_switch:
+    options = [x["name"] for x in json_data]
+
 
 start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
 with start_time_filter:

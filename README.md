@@ -30,7 +30,7 @@ Install dependencies
 Launch the webapp on localhost
 
 ```bash
-  python -m streamlit run shuttlebot/webapp/app.py
+  python -m streamlit run shuttlebot/frontend/app.py
 ```
 App will be available at: http://localhost:8501/
 
