@@ -1,6 +1,7 @@
 aiohttp==3.8.5
-jsonschema==4.17.3
+jsonschema==4.20.0
 loguru==0.7.2
 pandas==2.0.2
 setuptools==67.8.0
 streamlit==1.27.0
+streamlit_shadcn_ui==0.1.15

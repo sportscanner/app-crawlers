@@ -4,9 +4,9 @@ import json
 import requests
 from loguru import logger as logging
 
-from shuttlebot.scanner.organisations.better.api import generate_api_call_params
-from shuttlebot.scanner.requests.utils import parse_api_response
-from shuttlebot.scanner.utils import timeit
+from shuttlebot.backend.organisations.better.api import generate_api_call_params
+from shuttlebot.backend.requests.utils import parse_api_response
+from shuttlebot.backend.utils import timeit
 
 
 @timeit

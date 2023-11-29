@@ -6,8 +6,8 @@ import pandas as pd
 from loguru import logger as logging
 
 from shuttlebot import config
-from shuttlebot.scanner.requests.concurrent import aggregate_api_responses
-from shuttlebot.scanner.utils import (
+from shuttlebot.backend.requests.concurrent import aggregate_api_responses
+from shuttlebot.backend.utils import (
     find_consecutive_slots,
     timeit,
     validate_json_schema,
