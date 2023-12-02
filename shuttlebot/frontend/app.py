@@ -22,7 +22,7 @@ page_title = "Shuttle Bot"
 layout: str = "wide"
 st.set_page_config(
     page_title=page_title,
-    page_icon="🏸",
+    page_icon="📎",
     layout=layout,
     initial_sidebar_state="collapsed"
 )
@@ -36,7 +36,7 @@ st.subheader("Find badminton slots for upcoming week, `90x` faster")
 # App layouts and logic starts here
 
 today = date.today()
-raw_dates = [today + timedelta(days=i) for i in range(6)]
+raw_dates = [today + timedelta(days=i) for i in range(7)]
 dates = [date.strftime("%Y-%m-%d") for date in raw_dates]
 
 

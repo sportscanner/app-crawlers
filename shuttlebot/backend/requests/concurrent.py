@@ -14,10 +14,12 @@ from shuttlebot.backend.utils import timeit
 
 
 def create_async_tasks(session, parameter_sets):
+    """Generates Async tasks for later concurrent call"""
     tasks = []
     for sports_centre, date in parameter_sets:
-        url, headers, _ = generate_api_call_params(sports_centre, date)
-        logging.debug(url)
+        url, headers, _ = generate_api_call_params(sports_centre, date, activity="badminton-40min")
+        tasks.append(asyncio.create_task(session.get(url, headers=headers, ssl=False)))
+        url, headers, _ = generate_api_call_params(sports_centre, date, activity="badminton-60min")
         tasks.append(asyncio.create_task(session.get(url, headers=headers, ssl=False)))
 
     return tasks
@@ -49,7 +51,7 @@ async def aggregate_concurrent_api_calls(sports_centre_lists, dates):
 
         # Process the response content
         AGGREGATED_SLOTS = []
-        for response in responses:
+        for index, response in enumerate(responses):
             # Check if the response status code is 200 (OK)
             if (
                 response.status == 200
@@ -57,7 +59,7 @@ async def aggregate_concurrent_api_calls(sports_centre_lists, dates):
             ):
                 # Read the response content as text
                 data = await response.text()
-                logging.debug(data)
+                logging.debug(f"Response JSON:\n{data}")
                 response_dict = json.loads(data)
                 api_response = response_dict.get("data")
                 AGGREGATED_SLOTS.extend(
@@ -67,11 +69,13 @@ async def aggregate_concurrent_api_calls(sports_centre_lists, dates):
                 )
             elif response.headers.get("content-type") != "application/json":
                 logging.error(
-                    f"Response content-type is not application/json \n Response: {response}"
+                    f"Response content-type is not application/json"
+                    f"\nResponse: {response}"
                 )
             else:
                 logging.error(
-                    f"Request failed: status code {response.status} \n Response: {response}"
+                    f"Request failed: status code {response.status}"
+                    f"\nResponse: {response}"
                 )
 
         aggregated_slots_parsed = populate_api_response(

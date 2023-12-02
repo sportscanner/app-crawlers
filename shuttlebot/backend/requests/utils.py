@@ -1,5 +1,5 @@
 import json
-import logging
+from loguru import logger as logging
 from datetime import date, datetime, timedelta
 
 
@@ -14,6 +14,7 @@ def align_api_responses(api_response):
             aligned_api_response.extend(
                 [response_block for response_block in api_response]
             )
+    logging.success("Data aligned with overall schema")
     return aligned_api_response
 
 
