@@ -29,7 +29,7 @@ st.set_page_config(
 hide_streamlit_brandings()
 custom_css_carousal()
 
-st.title(f"🏸{page_title}")
+st.title(f"📎{page_title}")
 st.subheader("Find badminton slots for upcoming week, `90x` faster")
 # st.caption("Currently supports `Better Org.` badminton courts (in London)")
 
