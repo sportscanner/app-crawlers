@@ -15,7 +15,7 @@ setup: health
 	@pip install -r requirements.txt
 	@$(support-libs)
 
-run: setup
+run:
 	@python -m streamlit run shuttlebot/frontend/app.py
 
 format:

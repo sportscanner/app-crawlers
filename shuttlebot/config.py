@@ -1,5 +1,5 @@
 START_TIME, END_TIME = "17:30", "22:00"
-LOGGING_LEVEL = "DEBUG"
+LOGGING_LEVEL = "INFO"
 MAPPINGS = "mappings.json"
 
 schema = {
