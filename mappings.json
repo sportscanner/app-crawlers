@@ -1,70 +1,149 @@
 [
-    {
-        "name": "John Orwell Sports Centre",
-        "encoded_alias": "john-orwell"
-    },
-    {
-        "name": "Whitechapel Sports Centre",
-        "encoded_alias": "whitechapel-sports-centre"
-    },
-    {
-        "name": "Swiss Cottage Leisure Centre",
-        "encoded_alias": "swiss-cottage-leisure-centre"
-    },
-    {
-        "name": "Kensington Leisure Centre",
-        "encoded_alias": "kensington-leisure-centre"
-    },
-    {
-        "name": "Poplar Leisure Centre",
-        "encoded_alias": "poplar-baths-leisure-centre"
-    },
-    {
-        "name": "Finsbury Leisure Centre",
-        "encoded_alias": "finsbury-leisure-centre"
-    },
-    {
-        "name": "Britannia Leisure Centre",
-        "encoded_alias": "britannia-leisure-centre"
-    },
-    {
-        "name": "Mile End Park Leisure Centre",
-        "encoded_alias": "mile-end-park-leisure-centre"
-    },
-    {
-        "name": "Queensbridge Sports And Community",
-        "encoded_alias": "queensbridge-sport-and-community-centre"
-    },
-    {
-        "name": "Kings Hall Leisure Centre",
-        "encoded_alias": "kings-hall-leisure-centre"
-    },
-    {
-        "name": "Clissold Leisure Centre",
-        "encoded_alias": "clissold-leisure-centre"
-    },
-    {
-        "name": "Talacre Community Sports Centre",
-        "encoded_alias": "talacre-community-sports-centre"
-    },
-    {
-        "name": "Leytonstone Leisure Centre",
-        "encoded_alias": "leytonstone-leisure-centre"
-    },
-    {
-        "name": "Walthamstow Leisure Centre",
-        "encoded_alias": "walthamstow-leisure-centre"
-    },
-    {
-        "name": "Crystal Palace National Sports Centre",
-        "encoded_alias": "crystal-palace-national-sports-centre"
-    },
-    {
-        "name": "Phoenix Fitness Centre",
-        "encoded_alias": "phoenix-fitness-centre-and-janet-adegoke-swimming-pool"
-    },
-    {
-        "name": "Waltham Forest Feel Good Centre",
-        "encoded_alias": "waltham-forest-feel-good-centre"
-    }
+  {
+    "name": "John Orwell Sports Centre",
+    "encoded_alias": "john-orwell",
+    "postcode": "E1W 2QD",
+    "lat": "51.5049",
+    "lng": "-0.061617"
+  },
+  {
+    "name": "Whitechapel Sports Centre",
+    "encoded_alias": "whitechapel-sports-centre",
+    "postcode": "E1 5BA",
+    "lat": "51.5199",
+    "lng": "-0.060763"
+  },
+  {
+    "name": "Swiss Cottage Leisure Centre",
+    "encoded_alias": "swiss-cottage-leisure-centre",
+    "postcode": "NW3 3NF",
+    "lat": "51.5424",
+    "lng": "-0.173416"
+  },
+  {
+    "name": "Kensington Leisure Centre",
+    "encoded_alias": "kensington-leisure-centre",
+    "postcode": "W10 6EX",
+    "lat": "51.5114309",
+    "lng": "-0.2121396"
+  },
+  {
+    "name": "Poplar Leisure Centre",
+    "encoded_alias": "poplar-baths-leisure-centre",
+    "postcode": "E14 0ED",
+    "lat": "51.511139",
+    "lng": "-0.014445"
+  },
+  {
+    "name": "Finsbury Leisure Centre",
+    "encoded_alias": "finsbury-leisure-centre",
+    "postcode": "EC1V 3PU",
+    "lat": "51.5261266",
+    "lng": "-0.0951542"
+  },
+  {
+    "name": "Britannia Leisure Centre",
+    "encoded_alias": "britannia-leisure-centre",
+    "postcode": "N1 5FT",
+    "lat": "51.534244152029",
+    "lng": "-0.082955257571105"
+  },
+  {
+    "name": "Mile End Park Leisure Centre",
+    "encoded_alias": "mile-end-park-leisure-centre",
+    "postcode": "E3 4HL",
+    "lat": "51.5193",
+    "lng": "-0.032319"
+  },
+  {
+    "name": "Queensbridge Sports And Community",
+    "encoded_alias": "queensbridge-sports-community-centre",
+    "postcode": "E8 3XW",
+    "lat": "51.542135",
+    "lng": "-0.071475"
+  },
+  {
+    "name": "Kings Hall Leisure Centre",
+    "encoded_alias": "kings-hall-leisure-centre",
+    "postcode": "E5 0NU",
+    "lat": "51.5513595",
+    "lng": "-0.0524287"
+  },
+  {
+    "name": "Clissold Leisure Centre",
+    "encoded_alias": "clissold-leisure-centre",
+    "postcode": "N16 9EX",
+    "lat": "51.5579",
+    "lng": "-0.084595"
+  },
+  {
+    "name": "Talacre Community Sports Centre",
+    "encoded_alias": "talacre-community-sports-centre",
+    "postcode": "NW5 3AF",
+    "lat": "51.547056",
+    "lng": "-0.147121"
+  },
+  {
+    "name": "Leytonstone Leisure Centre",
+    "encoded_alias": "leytonstone-leisure-centre",
+    "postcode": "E11 4LA",
+    "lat": "51.5604",
+    "lng": "0.003602"
+  },
+  {
+    "name": "Walthamstow Leisure Centre",
+    "encoded_alias": "walthamstow-leisure-centre",
+    "postcode": "E178RN",
+    "lat": "51.5758",
+    "lng": "-0.02884"
+  },
+  {
+    "name": "Crystal Palace National Sports Centre",
+    "encoded_alias": "crystal-palace-leisure-centre",
+    "postcode": "SE192BB",
+    "lat": "51.4189989",
+    "lng": "-0.0677686"
+  },
+  {
+    "name": "Phoenix Fitness Centre",
+    "encoded_alias": "phoenix-fitness-centre-and-janet-adegoke-swimming-pool",
+    "postcode": "W12 7DB",
+    "lat": "51.5127",
+    "lng": "-0.23535"
+  },
+  {
+    "name": "Waltham Forest Feel Good Centre",
+    "encoded_alias": "waltham-forest-feel-good-centre",
+    "postcode": "E17 5AA",
+    "lat": "51.5955114",
+    "lng": "-0.0137085"
+  },
+  {
+    "name": "Copper Box Arena",
+    "encoded_alias": "copper-box-arena",
+    "postcode": "E20 3HB",
+    "lat": "51.5446",
+    "lng": "-0.021522"
+  },
+  {
+    "name": "Hendon Leisure Centre",
+    "encoded_alias": "hendon-leisure-centre",
+    "postcode": "NW2 1XQ",
+    "lat": "51.5739526",
+    "lng": "-0.2155321"
+  },
+  {
+    "name": "Gunnersbury Park Sports Hub",
+    "encoded_alias": "gunnersbury-park-sports-hub",
+    "postcode": "W3 8LQ",
+    "lat": "51.500481",
+    "lng": "-0.28953"
+  },
+  {
+    "name": "Canons Leisure Centre",
+    "encoded_alias": "canons-leisure-centre",
+    "postcode": "CR4 4HD",
+    "lat": "51.3997",
+    "lng": "-0.161339"
+  }
 ]
