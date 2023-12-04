@@ -5,3 +5,7 @@ pandas==2.0.2
 setuptools==67.8.0
 streamlit==1.27.0
 streamlit_shadcn_ui==0.1.15
+
+asyncio~=3.4.3
+requests~=2.31.0
+pydantic~=2.5.2
