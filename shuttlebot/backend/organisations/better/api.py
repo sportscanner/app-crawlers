@@ -1,6 +1,7 @@
-from loguru import logger as logging
-import requests
 import json
+
+import requests
+from loguru import logger as logging
 
 
 def generate_api_call_params(sports_centre, date, activity="badminton-40min"):

@@ -2,11 +2,12 @@ import itertools
 import sys
 from datetime import date, datetime, time
 from time import time as timer
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel, ValidationError
 import pandas as pd
 from loguru import logger as logging
-from typing import List, Dict, Optional
+from pydantic import BaseModel, ValidationError
+
 from shuttlebot import config
 
 pd.set_option("display.max_columns", None)
@@ -21,7 +22,7 @@ class MappingsModel(BaseModel):
 
 
 def validate_json_schema(data: List[Dict]) -> str:
-    """"Validates the Mappings.json file against a predefined pydantic model"""
+    """ "Validates the Mappings.json file against a predefined pydantic model"""
     try:
         # Validate the data against the schema
         [MappingsModel(**venue) for venue in data]
