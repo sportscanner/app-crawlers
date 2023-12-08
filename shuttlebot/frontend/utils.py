@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 
@@ -92,7 +91,7 @@ def get_carousal_card_items(
                     f"<div style='white-space: pre-wrap;'><span style='color:#6d7e86'>Approx. {groupings_for_consecutive_slots[group_id][0]['nearest_distance']} miles away</span></div>"
                     f"<div style='white-space: pre-wrap;'>{groupings_for_consecutive_slots[group_id][0]['name']}</div>"
                     f"<div style='white-space: pre-wrap;'><strong>{groupings_for_consecutive_slots[group_id][0]['date'].strftime('%Y-%m-%d (%A)')}</strong></div><br>"
-                    f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>"
+                    f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>",
                 )
             )
         flag = False

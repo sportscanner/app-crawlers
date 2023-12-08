@@ -7,7 +7,10 @@ import pandas as pd
 import streamlit as st
 import streamlit_shadcn_ui as ui
 
-from shuttlebot.backend.geolocation.api import validate_uk_postcode, get_postcode_metadata
+from shuttlebot.backend.geolocation.api import (
+    get_postcode_metadata,
+    validate_uk_postcode,
+)
 from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
 from shuttlebot.backend.script import get_mappings, slots_scanner
 from shuttlebot.backend.utils import find_consecutive_slots
@@ -26,7 +29,7 @@ st.set_page_config(
     page_title=page_title,
     page_icon="📎",
     layout=layout,
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 hide_streamlit_brandings()
 custom_css_carousal()
@@ -49,12 +52,15 @@ def cached_mappings():
     return json_data, pd.DataFrame(json_data)
 
 
-if 'all_options_switch' in st.session_state and st.session_state["all_options_switch"] is True:
-    st.session_state['disable_court_selection'] = True
+if (
+    "all_options_switch" in st.session_state
+    and st.session_state["all_options_switch"] is True
+):
+    st.session_state["disable_court_selection"] = True
     st.session_state["postcode_input_state"] = False
 else:
-    st.session_state['disable_court_selection'] = False
-    st.session_state['all_options_switch'] = False
+    st.session_state["disable_court_selection"] = False
+    st.session_state["all_options_switch"] = False
     st.session_state["postcode_input_state"] = True
 
 
@@ -63,19 +69,19 @@ options = st.multiselect(
     "Pick your preferred playing locations",
     [x["name"] for x in json_data],
     [x["name"] for x in json_data][
-    :DEFAULT_MAPPINGS_SELECTION
+        :DEFAULT_MAPPINGS_SELECTION
     ],  # default select first "n" centres from mappings file
-    disabled = st.session_state['disable_court_selection']
+    disabled=st.session_state["disable_court_selection"],
 )
 
 ui.switch(default_checked=False, label="Select all locations", key="all_options_switch")
-if st.session_state['all_options_switch']:
+if st.session_state["all_options_switch"]:
     options = [x["name"] for x in json_data]
 
 postcode_input = st.text_input(
     label="Find availability near you",
     placeholder="Enter your postcode to find nearest slots",
-    disabled=st.session_state['postcode_input_state']
+    disabled=st.session_state["postcode_input_state"],
 )
 
 start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
@@ -101,11 +107,15 @@ if st.button("Find me badminton slots"):
         tic = pytime.time()
         if len(postcode_input) != 0 and validate_uk_postcode(postcode_input) is True:
             st.success(f"Postcode validation successful")
-            postcode_metadata: PostcodesResponseModel = get_postcode_metadata(postcode_input)
-        else:
-            st.warning("Incorrect/No postcode specified - searching near **central london**")
             postcode_metadata: PostcodesResponseModel = get_postcode_metadata(
-                postcode="WC2N 5DU" # TODO: this is a central london placeholder
+                postcode_input
+            )
+        else:
+            st.warning(
+                "Incorrect/No postcode specified - searching near **central london**"
+            )
+            postcode_metadata: PostcodesResponseModel = get_postcode_metadata(
+                postcode="WC2N 5DU"  # TODO: this is a central london placeholder
             )
         st.write(f"Fetching slots data for dates {dates[0]} to {dates[-1]}")
         try:
@@ -114,7 +124,7 @@ if st.button("Find me badminton slots"):
                 dates,
                 start_time=start_time_filter_input.strftime("%H:%M"),
                 end_time=end_time_filter_input.strftime("%H:%M"),
-                postcode_search=postcode_metadata
+                postcode_search=postcode_metadata,
             )
             st.write(f"calculating {consecutive_slots_input} consecutive slots")
             groupings_for_consecutive_slots: list = find_consecutive_slots(
@@ -125,10 +135,12 @@ if st.button("Find me badminton slots"):
             )
             st.write("Sorting outputs for final results")
             sorted_consecutive_slot_groupings = sorted(
-                groupings_for_consecutive_slots, key=lambda grouping: (
-                    grouping[0]['date'],
-                    grouping[0]['nearest_distance'],
-                    grouping[0]['parsed_start_time'])
+                groupings_for_consecutive_slots,
+                key=lambda grouping: (
+                    grouping[0]["date"],
+                    grouping[0]["parsed_start_time"],
+                    grouping[0]["nearest_distance"]
+                ),
             )
             status.update(
                 label=f"Processing complete in {pytime.time() - tic:.2f}s",
@@ -137,7 +149,6 @@ if st.button("Find me badminton slots"):
             )
         except:
             status.update(label="Failed to fetch slots", state="error", expanded=True)
-
 
     carousel_items, show_all_slots = get_carousal_card_items(
         sorted_consecutive_slot_groupings, consecutive_slots_input, dates
