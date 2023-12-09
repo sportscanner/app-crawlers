@@ -16,6 +16,7 @@ from shuttlebot.frontend.utils import (
     custom_css_carousal,
     get_carousal_card_items,
     hide_streamlit_brandings,
+    customise_dropdown_views,
     icon,
 )
 
@@ -28,7 +29,7 @@ st.set_page_config(
     layout=layout,
     initial_sidebar_state="collapsed"
 )
-hide_streamlit_brandings()
+customise_dropdown_views()
 custom_css_carousal()
 
 st.title(f"📎{page_title}")
@@ -48,16 +49,6 @@ def cached_mappings():
     json_data = get_mappings()
     return json_data, pd.DataFrame(json_data)
 
-
-if 'all_options_switch' in st.session_state and st.session_state["all_options_switch"] is True:
-    st.session_state['disable_court_selection'] = True
-    st.session_state["postcode_input_state"] = False
-else:
-    st.session_state['disable_court_selection'] = False
-    st.session_state['all_options_switch'] = False
-    st.session_state["postcode_input_state"] = True
-
-
 json_data, mappings_df = cached_mappings()
 options = st.multiselect(
     "Pick your preferred playing locations",
@@ -65,17 +56,17 @@ options = st.multiselect(
     [x["name"] for x in json_data][
     :DEFAULT_MAPPINGS_SELECTION
     ],  # default select first "n" centres from mappings file
-    disabled = st.session_state['disable_court_selection']
+    disabled = True
 )
 
-ui.switch(default_checked=False, label="Select all locations", key="all_options_switch")
+ui.switch(label="Select all locations", key="all_options_switch", default_checked=True)
 if st.session_state['all_options_switch']:
     options = [x["name"] for x in json_data]
 
 postcode_input = st.text_input(
-    label="Find availability near you",
-    placeholder="Enter your postcode to find nearest slots",
-    disabled=st.session_state['postcode_input_state']
+    label="Find badminton availability near you",
+    placeholder="Enter your postcode (default: Central London)",
+    disabled=not(st.session_state["all_options_switch"])
 )
 
 start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
