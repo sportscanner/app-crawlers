@@ -6,8 +6,10 @@ from datetime import date, datetime, time, timedelta
 import pandas as pd
 import streamlit as st
 import streamlit_shadcn_ui as ui
-
-from shuttlebot.backend.geolocation.api import validate_uk_postcode, get_postcode_metadata
+from streamlit_searchbox import st_searchbox
+import requests
+from shuttlebot.backend.geolocation.api import validate_uk_postcode, get_postcode_metadata, \
+    postcode_autocompletion
 from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
 from shuttlebot.backend.script import get_mappings, slots_scanner
 from shuttlebot.backend.utils import find_consecutive_slots
@@ -22,7 +24,7 @@ from shuttlebot.frontend.utils import (
 
 # -- Page specific settings: title/description/icons etc --
 page_title = "Shuttle Bot"
-layout: str = "wide"
+layout: str = "centered"
 st.set_page_config(
     page_title=page_title,
     page_icon="📎",
@@ -49,6 +51,7 @@ def cached_mappings():
     json_data = get_mappings()
     return json_data, pd.DataFrame(json_data)
 
+
 json_data, mappings_df = cached_mappings()
 options = st.multiselect(
     "Pick your preferred playing locations",
@@ -56,17 +59,19 @@ options = st.multiselect(
     [x["name"] for x in json_data][
     :DEFAULT_MAPPINGS_SELECTION
     ],  # default select first "n" centres from mappings file
-    disabled = True
+    disabled=False
 )
 
-ui.switch(label="Select all locations", key="all_options_switch", default_checked=True)
+st.toggle(label="Select all locations", key="all_options_switch", value=False)
 if st.session_state['all_options_switch']:
     options = [x["name"] for x in json_data]
 
-postcode_input = st.text_input(
+
+postcode_input = st_searchbox(
+    postcode_autocompletion,
     label="Find badminton availability near you",
     placeholder="Enter your postcode (default: Central London)",
-    disabled=not(st.session_state["all_options_switch"])
+    key="postcode_input_autocompletion",
 )
 
 start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
@@ -88,7 +93,7 @@ if st.button("Find me badminton slots"):
         if _sports_centre["name"] in options
     ]
 
-    with st.status("Fetching desired slots", expanded=True) as status:
+    with st.status("Fetching desired slots", expanded=False) as status:
         tic = pytime.time()
         if len(postcode_input) != 0 and validate_uk_postcode(postcode_input) is True:
             st.success(f"Postcode validation successful")

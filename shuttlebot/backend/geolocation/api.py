@@ -31,6 +31,17 @@ def get_postcode_metadata(postcode: str):
     return PostcodesResponseModel(**validated_response) if validated_response is not None else None
 
 
+def postcode_autocompletion(search_term: str, limit: int = 5):
+    url = (
+        f"https://api.postcodes.io/postcodes/"
+        f"{search_term}/autocomplete"
+    )
+    headers, payload = {}, {}
+    response = requests.request("GET", url, headers=headers, data=payload)
+    validated_response = validate_response(response)
+    return validated_response["result"][:limit] if validated_response.get("result") is not None else []
+
+
 @timeit
 def validate_uk_postcode(postcode: str):
     url = (
