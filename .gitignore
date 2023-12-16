@@ -7,6 +7,7 @@ snorlax/.DS_Store
 dist/
 build/
 experimental/
+.idea
 
 # iPython Notebook files
 .ipynb_checkpoints/
