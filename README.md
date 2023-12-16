@@ -49,4 +49,3 @@ Currently there is a Make target, that is responsible for linting and formatting
 ## Authors
 
 - [Yasir Khalid](https://www.linkedin.com/in/yasir-khalid)
-
