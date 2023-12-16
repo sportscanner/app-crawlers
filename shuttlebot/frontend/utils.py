@@ -15,18 +15,6 @@ def hide_streamlit_brandings():
                         #MainMenu {visibility : hidden;}
                         footer {visibility : hidden;}
                         header {visibility : hidden;}
-                        .stMultiSelect [data-baseweb=select] span{
-                            max-width: 250px;
-                            font-size: 0.6rem;
-                        }
-                        div[data-testid="metric-container"] {
-                           background-color: rgba(28, 131, 225, 0.1);
-                           border: 1px solid rgba(28, 131, 225, 0.1);
-                           padding: 5% 5% 5% 10%;
-                           border-radius: 5px;
-                           color: rgb(30, 103, 119);
-                           overflow-wrap: break-word;
-                        }
                     </style>
                     """
     hide_sidebar_hamburger = """
@@ -41,6 +29,26 @@ def hide_streamlit_brandings():
         hide_sidebar_hamburger,
         unsafe_allow_html=True,
     )
+
+
+def customise_dropdown_views():
+    css_style = """
+    <style>
+        .stMultiSelect [data-baseweb=select] span{
+            max-width: 250px;
+            font-size: 0.6rem;
+        }
+        div[data-testid="metric-container"] {
+           background-color: rgba(28, 131, 225, 0.1);
+           border: 1px solid rgba(28, 131, 225, 0.1);
+           padding: 5% 5% 5% 10%;
+           border-radius: 5px;
+           color: rgb(30, 103, 119);
+           overflow-wrap: break-word;
+        }
+    </style>
+    """
+    st.markdown(css_style, unsafe_allow_html=True)
 
 
 def custom_css_carousal():
@@ -88,7 +96,7 @@ def get_carousal_card_items(
             carousel_items.append(
                 (
                     "#FAFAFA",
-                    f"<div style='white-space: pre-wrap;'><span style='color:#e74c3c'>{consecutive_slots_input} consecutive slots</span></div>"
+                    f"<div style='white-space: pre-wrap;'><span style='color:#6d7e86'>Approx. {groupings_for_consecutive_slots[group_id][0]['nearest_distance']} miles away</span></div>"
                     f"<div style='white-space: pre-wrap;'>{groupings_for_consecutive_slots[group_id][0]['name']}</div>"
                     f"<div style='white-space: pre-wrap;'><strong>{groupings_for_consecutive_slots[group_id][0]['date'].strftime('%Y-%m-%d (%A)')}</strong></div><br>"
                     f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>",

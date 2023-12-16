@@ -1,5 +1,15 @@
-def generate_api_call_params(sports_centre, date):
-    url = f"https://better-admin.org.uk/api/activities/venue/{sports_centre['encoded_alias']}/activity/badminton-40min/times?date={date}"
+from loguru import logger as logging
+import requests
+import json
+
+
+def generate_api_call_params(sports_centre, date, activity="badminton-40min"):
+    """Generates URL, Headers and Payload information for the API curl request"""
+    url = (
+        f"https://better-admin.org.uk/api/activities/venue/"
+        f"{sports_centre['encoded_alias']}/activity/{activity}/times?date={date}"
+    )
+    logging.debug(url)
     headers = {"Origin": "https://bookings.better.org.uk"}
     payload = {}
     return url, headers, payload

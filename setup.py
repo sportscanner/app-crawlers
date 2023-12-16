@@ -10,7 +10,7 @@ setup(
                 "upcoming week",
     author="Yasir Khalid",
     author_email="yasir_khalid@outlook.com",
-    url="https://github.com/yasir-khalid/badminton-slots-scanner",
+    url="https://github.com/yasir-khalid/shuttlebot",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     packages=find_packages(),
