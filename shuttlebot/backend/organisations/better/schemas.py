@@ -21,4 +21,3 @@ class BetterBookingResponseModel(BaseModel):
     venue_slug: str
     spaces: int
     name: str
-
