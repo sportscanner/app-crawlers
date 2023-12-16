@@ -1,6 +1,5 @@
 ## Shuttlebot - badminton slots finder
-[![build status](https://github.com/yasir-khalid/shuttlebot/actions/workflows/pre-commit.yml/badge.
-svg)](https://github.com/yasir-khalid/shuttlebot/actions/workflows/pre-commit.yml)
+![example workflow](https://github.com/yasir-khalid/shuttlebot/actions/workflows/pre-commit.yml/badge.svg)
 
 ### What is it about?
 [Shuttlebot](https://shuttle-bot.onrender.com/) is a webapp that helps badminton players find
