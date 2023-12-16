@@ -15,8 +15,8 @@ setup: health
 	@pip install -r requirements.txt
 	@$(support-libs)
 
-run: setup
-	@python -m streamlit run shuttlebot/webapp/app.py
+run:
+	@python -m streamlit run shuttlebot/frontend/app.py
 
 build:
 	@docker build -t shuttlebot .

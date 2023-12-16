@@ -6,8 +6,10 @@ import pandas as pd
 from loguru import logger as logging
 
 from shuttlebot import config
-from shuttlebot.scanner.requests.concurrent import aggregate_api_responses
-from shuttlebot.scanner.utils import (
+from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
+from shuttlebot.backend.requests.concurrent import aggregate_api_responses
+from shuttlebot.backend.requests.utils import transform_api_response
+from shuttlebot.backend.utils import (
     find_consecutive_slots,
     timeit,
     validate_json_schema,
@@ -34,7 +36,7 @@ def apply_slots_preference_filter(
             available_timebound_slots.append(slot)
         else:
             pass
-    logging.debug(available_timebound_slots)
+    logging.debug(f"Available timebound slots:\n{available_timebound_slots}")
     logging.success(
         f"Available slots after filtering: {len(available_timebound_slots)}"
     )
@@ -81,10 +83,23 @@ def filter_and_transform_to_dataframe(
     return transformed_dataframe.reset_index(drop=True)
 
 
-def slots_scanner(sports_centre_lists, dates, start_time, end_time):
-    AGGREGATED_SLOTS = aggregate_api_responses(sports_centre_lists, dates)
+def trim_api_response_fields(aggregated_slots_enhanced_with_metadata: list[dict]) -> list[dict]:
+    aggregated_slots_parsed = [
+        transform_api_response(response) for response in aggregated_slots_enhanced_with_metadata
+    ]
+    logging.debug(aggregated_slots_parsed)
+    return aggregated_slots_parsed
+
+
+def slots_scanner(
+        sports_centre_lists, dates, start_time, end_time,
+        postcode_search: PostcodesResponseModel = None):
+    aggregated_slots_enhanced_with_metadata = aggregate_api_responses(
+        sports_centre_lists, dates, postcode_search
+    )
+    trimmed_api_response_fields = trim_api_response_fields(aggregated_slots_enhanced_with_metadata)
     available_slots_with_preferences = apply_slots_preference_filter(
-        AGGREGATED_SLOTS,
+        trimmed_api_response_fields,
         start_time_preference=start_time,
         end_time_preference=end_time,
     )
