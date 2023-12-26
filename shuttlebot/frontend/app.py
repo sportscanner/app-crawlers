@@ -27,14 +27,14 @@ page_title = "Shuttle Bot"
 layout: str = "centered"
 st.set_page_config(
     page_title=page_title,
-    page_icon="📎",
+    page_icon="🔖",
     layout=layout,
     initial_sidebar_state="collapsed"
 )
 customise_dropdown_views()
 custom_css_carousal()
 
-st.title(f"📎{page_title}")
+st.title(f"🔖{page_title}")
 st.subheader("Find badminton slots for upcoming week, `90x` faster")
 # st.caption("Currently supports `Better Org.` badminton courts (in London)")
 
@@ -95,7 +95,7 @@ if st.button("Find me badminton slots"):
 
     with st.status("Fetching desired slots", expanded=False) as status:
         tic = pytime.time()
-        if len(postcode_input) != 0 and validate_uk_postcode(postcode_input) is True:
+        if postcode_input is not None and validate_uk_postcode(postcode_input) is True:
             st.success(f"Postcode validation successful")
             postcode_metadata: PostcodesResponseModel = get_postcode_metadata(postcode_input)
         else:
