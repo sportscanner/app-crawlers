@@ -3,7 +3,7 @@ import itertools
 import json
 from datetime import date, datetime, timedelta
 from typing import List, Dict
-import aiohttp
+import httpx
 import pandas as pd
 from loguru import logger as logging
 
@@ -14,16 +14,24 @@ from shuttlebot.backend.organisations.better.api import generate_api_call_params
 from shuttlebot.backend.requests.utils import align_api_responses, transform_api_response
 from shuttlebot.backend.utils import timeit
 
+async def fetch_data(client, url, headers):
+    """Initiates request to server asynchronous using httpx"""
+    response = await client.get(url, headers=headers)
+    return response
 
-def create_async_tasks(session, parameter_sets):
+
+def create_async_tasks(client, parameter_sets):
     """Generates Async tasks for later concurrent call"""
     tasks = []
     for sports_centre, fetch_date in parameter_sets:
         url, headers, _ = generate_api_call_params(sports_centre, fetch_date, activity="badminton-40min")
-        tasks.append(asyncio.create_task(session.get(url, headers=headers, ssl=False)))
+        tasks.append(
+                fetch_data(client, url, headers)
+            )
         url, headers, _ = generate_api_call_params(sports_centre, fetch_date, activity="badminton-60min")
-        tasks.append(asyncio.create_task(session.get(url, headers=headers, ssl=False)))
-
+        tasks.append(
+                fetch_data(client, url, headers)
+            )
     return tasks
 
 
@@ -63,19 +71,19 @@ async def aggregate_concurrent_api_calls(
     parameter_sets = [(x, y) for x, y in itertools.product(sports_centre_lists, dates)]
     logging.info(f"VENUES: {sports_centre_lists}")
     logging.info(f"GET RESPONSE FOR DATES: {dates}")
-    async with aiohttp.ClientSession() as session:
-        tasks = create_async_tasks(session, parameter_sets)
+    async with httpx.AsyncClient() as client:
+        tasks = create_async_tasks(client, parameter_sets)
         responses = await asyncio.gather(*tasks)
     # Process the response content
     all_fetched_slots = []
     for index, response in enumerate(responses):
         # Check if the response status code is 200 (OK)
         if (
-            response.status == 200
+            response.status_code == 200
             and response.headers.get("content-type") == "application/json"
         ):
             # Read the response content as text
-            data = await response.text()
+            data = response.json()
             logging.debug(f"Response JSON:\n{data}")
             response_dict = json.loads(data)
             api_response = response_dict.get("data")
@@ -91,7 +99,7 @@ async def aggregate_concurrent_api_calls(
             )
         else:
             logging.error(
-                f"Request failed: status code {response.status}"
+                f"Request failed: status code {response.status_code}"
                 f"\nResponse: {response}"
             )
 
