@@ -9,7 +9,7 @@ health:
 
 freeze:
 	@pip install pipreqs
-	@pipreqs . --savepath "requirements.txt" --force --encoding=utf-8
+	@pipreqs shuttlebot/ --savepath "requirements.txt" --force --encoding=utf-8
 
 setup: health
 	@pip install -r requirements.txt
