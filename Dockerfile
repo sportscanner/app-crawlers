@@ -15,5 +15,5 @@ EXPOSE 8501
 HEALTHCHECK CMD CURL --fail http://localhost:8501/_stcore/health
 
 # Define the command to run your Streamlit app
-CMD ["python", "-m", "streamlit", "run", "shuttlebot/webapp/app.py", \
+CMD ["python", "-m", "streamlit", "run", "shuttlebot/frontend/app.py", \
 "--server.port=8501", "--server.address=0.0.0.0"]
