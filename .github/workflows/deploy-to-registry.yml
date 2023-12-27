@@ -23,6 +23,7 @@ jobs:
         run: pytest . -v --disable-warnings
   push-to-registry:
     needs: unit-test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Build & Push the image
