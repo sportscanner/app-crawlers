@@ -32,8 +32,15 @@ jobs:
         run: docker login ghcr.io -u yasir-khalid -p ${{ secrets.GHCR }}
       - name: Build & Push the image
         run: |
-          docker build . -t ghcr.io/yasir-khalid/shuttlebot:latest
+          LATEST_COMMIT_ID=$(git rev-parse --short HEAD)
+          echo "Building Image with tag:latest / tag:"${LATEST_COMMIT_ID}
+          docker build . -t ghcr.io/yasir-khalid/shuttlebot:latest -t ghcr.io/yasir-khalid/shuttlebot:${LATEST_COMMIT_ID}
           docker push ghcr.io/yasir-khalid/shuttlebot:latest
+          docker push ghcr.io/yasir-khalid/shuttlebot:${LATEST_COMMIT_ID}
+  deploy-to-cloud:
+    needs: push-to-registry
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger Webhook / Deploy to Render
         run: |
           curl -X POST https://api.render.com/deploy/srv-cm5r5bnqd2ns73eq1k8g?key=Im5XAO4qeIU
