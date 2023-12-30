@@ -26,9 +26,11 @@ jobs:
     needs: unit-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Login to GitHub Container Registry
+        run: docker login ghcr.io -u yasir-khalid -p ${{ secrets.GHCR }}
       - name: Build & Push the image
         run: |
-          docker login --username yasir-khalid --password {{ secrets.GHCR }} ghcr.io
           docker build . -t ghcr.io/yasir-khalid/shuttlebot:latest
           docker push ghcr.io/yasir-khalid/shuttlebot:latest
