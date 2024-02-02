@@ -1,13 +1,13 @@
 .vscode/
-*.cache
-__pycache__
+*cache
+__pycache__/
 venv
 snorlax/.DS_Store
 *.egg-info
 dist/
 build/
 experimental/
-.idea
+.idea/
 
 # iPython Notebook files
 .ipynb_checkpoints/
