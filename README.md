@@ -13,6 +13,7 @@ The webapp is developed on top of Streamlit `(using Python >= 3.10)` and employs
 - Currently supports `20` badminton centres across London
 - Option to filter available badminton slots based on given time ranges
 - searches badminton slots for the upcoming 6-7 days depending on published slots by providers
+> This means the number of API calls become `20 sports centres` **x** `6-days` **~** 120, therefore the need for Asynchronous to improve UX
 - Displays the location metadata (in miles) on how far a badminton centre is from the user,
   based on postcode search (Postcode search supported by `https://postcodes.io/`)
 
