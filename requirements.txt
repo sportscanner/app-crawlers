@@ -2,8 +2,8 @@ geopy==2.4.1
 httpx==0.26.0
 loguru==0.7.2
 pandas==2.0.2
-pydantic==2.5.3
-pytest==7.4.3
+pydantic==2.5.2
+setuptools==67.8.0
 streamlit==1.29.0
 streamlit_searchbox==0.1.6
 streamlit_shadcn_ui==0.1.15

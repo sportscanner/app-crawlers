@@ -1,6 +1,7 @@
 define support-libs
 	@pip install black
 	@pip install isort
+	@pip install pytest
 endef
 
 health:
@@ -15,10 +16,13 @@ setup: health
 	@pip install -r requirements.txt
 	@$(support-libs)
 
-run:
+test:
+	@pytest . -v --disable-warnings
+
+run: test
 	@python -m streamlit run shuttlebot/frontend/app.py
 
-build:
+build: test
 	@docker build -t shuttlebot .
 	@docker run -p 8501:8501 shuttlebot
 
