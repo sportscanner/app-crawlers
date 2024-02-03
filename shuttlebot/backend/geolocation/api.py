@@ -19,35 +19,34 @@ def validate_response(response):
 
 @timeit
 def get_postcode_metadata(postcode: str):
-    url = (
-        f"https://api.postcodes.io/postcodes/"
-        f"{postcode}"
-    )
+    url = f"https://api.postcodes.io/postcodes/" f"{postcode}"
     headers, payload = {}, {}
     logging.info(f"Requests URL: {url}")
 
     response = requests.request("GET", url, headers=headers, data=payload)
     validated_response = validate_response(response)
-    return PostcodesResponseModel(**validated_response) if validated_response is not None else None
+    return (
+        PostcodesResponseModel(**validated_response)
+        if validated_response is not None
+        else None
+    )
 
 
 def postcode_autocompletion(search_term: str, limit: int = 5):
-    url = (
-        f"https://api.postcodes.io/postcodes/"
-        f"{search_term}/autocomplete"
-    )
+    url = f"https://api.postcodes.io/postcodes/" f"{search_term}/autocomplete"
     headers, payload = {}, {}
     response = requests.request("GET", url, headers=headers, data=payload)
     validated_response = validate_response(response)
-    return validated_response["result"][:limit] if validated_response.get("result") is not None else []
+    return (
+        validated_response["result"][:limit]
+        if validated_response.get("result") is not None
+        else []
+    )
 
 
 @timeit
 def validate_uk_postcode(postcode: str):
-    url = (
-        f"https://api.postcodes.io/postcodes/"
-        f"{postcode}/validate"
-    )
+    url = f"https://api.postcodes.io/postcodes/" f"{postcode}/validate"
 
     headers, payload = {}, {}
     logging.info(f"Requests URL: {url}")
@@ -57,6 +56,8 @@ def validate_uk_postcode(postcode: str):
 
 
 if __name__ == "__main__":
-    logging.info("Running script standalone with testdata for London bridge postcode: SE1 9BG")
+    logging.info(
+        "Running script standalone with testdata for London bridge postcode: SE1 9BG"
+    )
     logging.info(validate_uk_postcode("SE1 9BG"))
     logging.success(get_postcode_metadata("SE1 9BG"))
