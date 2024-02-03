@@ -47,6 +47,17 @@ def timeit(func):
     return wrap_func
 
 
+def async_timer(func):
+    """Calculates the execution time of the Async function on top of which the decorator is assigned"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        tic = timer()
+        result = await func(*args, **kwargs)
+        tac = timer()
+        logging.info(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
+        return result
+    return wrapper
+
 @timeit
 def find_consecutive_slots(
     sports_centre_lists: List[Dict], dates: list, slots: list, consecutive_count: int
@@ -115,12 +126,5 @@ def parse_consecutive_slots(consecutive_slots):
 
 
 if __name__ == "__main__":
-    venue_name = "swiss-cottage-leisure-centre"
-    target_date = date(2023, 9, 26)
-    consecutive_count = 3
-
-    consecutive_slots = find_consecutive_slots(
-        venue_name, target_date, data_list, consecutive_count
-    )
-    print(consecutive_slots)
-    print(parse_consecutive_slots(consecutive_slots))
+    """Write a test here for calculating consecutive slots"""
+    logging.info("This scripts cannot be called standalone for now")
