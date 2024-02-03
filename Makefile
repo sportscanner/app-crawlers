@@ -14,6 +14,7 @@ freeze:
 
 setup: health
 	@pip install -r requirements.txt
+	@pip install -e .
 	@$(support-libs)
 
 test:
