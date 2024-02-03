@@ -1,4 +1,5 @@
 """Contains dataclasses for the API call schema"""
+
 from pydantic import BaseModel
 
 

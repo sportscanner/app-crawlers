@@ -83,21 +83,30 @@ def filter_and_transform_to_dataframe(
     return transformed_dataframe.reset_index(drop=True)
 
 
-def trim_api_response_fields(aggregated_slots_enhanced_with_metadata: list[dict]) -> list[dict]:
+def trim_api_response_fields(
+    aggregated_slots_enhanced_with_metadata: list[dict],
+) -> list[dict]:
     aggregated_slots_parsed = [
-        transform_api_response(response) for response in aggregated_slots_enhanced_with_metadata
+        transform_api_response(response)
+        for response in aggregated_slots_enhanced_with_metadata
     ]
     logging.debug(aggregated_slots_parsed)
     return aggregated_slots_parsed
 
 
 def slots_scanner(
-        sports_centre_lists, dates, start_time, end_time,
-        postcode_search: PostcodesResponseModel = None):
+    sports_centre_lists,
+    dates,
+    start_time,
+    end_time,
+    postcode_search: PostcodesResponseModel = None,
+):
     aggregated_slots_enhanced_with_metadata = aggregate_api_responses(
         sports_centre_lists, dates, postcode_search
     )
-    trimmed_api_response_fields = trim_api_response_fields(aggregated_slots_enhanced_with_metadata)
+    trimmed_api_response_fields = trim_api_response_fields(
+        aggregated_slots_enhanced_with_metadata
+    )
     available_slots_with_preferences = apply_slots_preference_filter(
         trimmed_api_response_fields,
         start_time_preference=start_time,
