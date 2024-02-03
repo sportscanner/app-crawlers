@@ -85,8 +85,7 @@ async def aggregate_concurrent_api_calls(
             # Read the response content as text
             data = response.json()
             logging.debug(f"Response JSON:\n{data}")
-            response_dict = json.loads(data)
-            api_response = response_dict.get("data")
+            api_response = data.get("data")
             all_fetched_slots.extend(
                 align_api_responses(api_response)
                 if api_response is not None

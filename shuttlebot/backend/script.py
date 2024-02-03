@@ -7,7 +7,7 @@ from loguru import logger as logging
 
 from shuttlebot import config
 from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
-from shuttlebot.backend.requests.concurrent import aggregate_api_responses
+from shuttlebot.backend.requests.harmony import aggregate_api_responses
 from shuttlebot.backend.requests.utils import transform_api_response
 from shuttlebot.backend.utils import (
     find_consecutive_slots,
