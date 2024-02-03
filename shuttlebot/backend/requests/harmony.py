@@ -3,6 +3,7 @@ import itertools
 import json
 from datetime import date, datetime, timedelta
 from typing import Dict, List
+from time import time as timer
 
 import httpx
 import pandas as pd
@@ -18,14 +19,16 @@ from shuttlebot.backend.requests.utils import (
 )
 from shuttlebot.backend.utils import timeit
 
-
+@timeit
 async def fetch_data(client, url, headers):
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
     content_type = response.headers.get("content-type", "")
     match response.status_code, content_type:
         case (200, "application/json"):
-            return response.json()
+            json_response = response.json()
+            logging.debug(f"Response for url: {url} \n{json_response}")
+            return json_response
         case (_, c) if c != "application/json":
             logging.error(
                 f"Response content-type is not application/json"
@@ -53,6 +56,7 @@ def create_async_tasks(client, parameter_sets):
             sports_centre, fetch_date, activity="badminton-60min"
         )
         tasks.append(fetch_data(client, url, headers))
+    logging.debug(f"Total number of concurrent request tasks: {len(tasks)}")
     return tasks
 
 
@@ -114,7 +118,7 @@ def aggregate_and_standardise_responses(responses):
         all_fetched_slots.extend(
             align_api_responses(api_response) if api_response is not None else {}
         )
-
+    logging.debug(f"All fetched slots - standardised to same schema: \n{all_fetched_slots}")
     return all_fetched_slots
 
 
@@ -126,22 +130,28 @@ def aggregate_api_responses(
     parameter_sets = [(x, y) for x, y in itertools.product(sports_centre_lists, dates)]
     logging.info(f"VENUES: {sports_centre_lists}")
     logging.info(f"GET RESPONSE FOR DATES: {dates}")
+    tic = timer()
     responses = asyncio.run(
         send_concurrent_requests(parameter_sets)
     )
+    tac = timer()
+    print(f"TIME: {tac-tic}")
     all_fetched_slots = aggregate_and_standardise_responses(responses)
-    metadata_enhancements_for_responses = populate_api_response(
-        sports_centre_lists, all_fetched_slots, postcode_search
-    )
-    return metadata_enhancements_for_responses
+    if len(all_fetched_slots) > 0:
+        metadata_enhancements_for_responses = populate_api_response(
+            sports_centre_lists, all_fetched_slots, postcode_search
+        )
+        return metadata_enhancements_for_responses
+    else:
+        return []
 
 
 def main():
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(2)]
+    dates = [today + timedelta(days=i) for i in range(1)]
     with open(f"./{config.MAPPINGS}", "r") as file:
         sports_centre_lists = json.load(file)
-        aggregate_api_responses(sports_centre_lists[:3], dates)
+        aggregate_api_responses(sports_centre_lists[:2], dates)
 
 
 if __name__ == "__main__":
