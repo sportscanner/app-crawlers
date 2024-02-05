@@ -19,6 +19,7 @@ from shuttlebot.backend.requests.utils import (
 )
 from shuttlebot.backend.utils import async_timer, timeit
 
+@async_timer
 async def fetch_data(client, url, headers):
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
@@ -148,7 +149,7 @@ def main():
     dates = [today + timedelta(days=i) for i in range(3)]
     with open(f"./{config.MAPPINGS}", "r") as file:
         sports_centre_lists = json.load(file)
-        aggregate_api_responses(sports_centre_lists[:10], dates)
+        aggregate_api_responses(sports_centre_lists[:2], dates)
 
 
 if __name__ == "__main__":
