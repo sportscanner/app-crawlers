@@ -43,4 +43,4 @@ jobs:
     steps:
       - name: Trigger Webhook / Deploy to Render
         run: |
-          curl -X POST https://api.render.com/deploy/srv-cm5r5bnqd2ns73eq1k8g?key=Im5XAO4qeIU
+          curl -X POST ${{ secrets.RENDER_DEPLOYMENT_WEBHOOK }}
