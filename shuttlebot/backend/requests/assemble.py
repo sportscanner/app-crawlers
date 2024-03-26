@@ -12,12 +12,13 @@ from loguru import logger as logging
 from shuttlebot import config
 from shuttlebot.backend.geolocation.distance import calculate_distance_in_miles
 from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
-from shuttlebot.backend.organisations.better.api import generate_api_call_params
+from shuttlebot.backend.parsers.better.api import generate_api_call_params
 from shuttlebot.backend.requests.utils import (
     align_api_responses,
     transform_api_response,
 )
 from shuttlebot.backend.utils import async_timer, timeit
+
 
 @async_timer
 async def fetch_data(client, url, headers):
@@ -61,9 +62,9 @@ def create_async_tasks(client, parameter_sets):
 
 @timeit
 def populate_api_response(
-    sports_centre_lists: List[Dict],
-    AGGREGATED_SLOTS: List[Dict],
-    postcode_search: PostcodesResponseModel = None,
+        sports_centre_lists: List[Dict],
+        AGGREGATED_SLOTS: List[Dict],
+        postcode_search: PostcodesResponseModel = None,
 ) -> List[Dict]:
     """Adds venue full name and postal code distance metadata to responses"""
     sports_centre_df = pd.DataFrame(sports_centre_lists).rename(
@@ -99,8 +100,6 @@ def populate_api_response(
     return aggregated_slots_enhanced_with_metadata
 
 
-
-
 @async_timer
 async def send_concurrent_requests(parameter_sets):
     """Core logic to generate Async tasks and collect responses"""
@@ -125,7 +124,7 @@ def aggregate_and_standardise_responses(responses):
 
 @timeit
 def aggregate_api_responses(
-    sports_centre_lists, dates, postcode_search: PostcodesResponseModel = None
+        sports_centre_lists, dates, postcode_search: PostcodesResponseModel = None
 ):
     """Runs the Async API calls, collects and standardises responses and populate distance/postal metadata"""
     parameter_sets = [(x, y) for x, y in itertools.product(sports_centre_lists, dates)]
