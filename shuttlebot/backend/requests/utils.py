@@ -4,7 +4,7 @@ from typing import Optional
 from loguru import logger as logging
 from pydantic import BaseModel
 
-from shuttlebot.backend.organisations.better.schemas import BetterBookingResponseModel
+from shuttlebot.backend.parsers.better.schemas import BetterBookingResponseModel
 
 
 def align_api_responses(api_response):
