@@ -250,5 +250,17 @@
       "latitude": "51.3997",
       "longitude": "-0.161339"
     }
+  },
+  {
+    "venue_name": "CitySport",
+    "slug": "citysport",
+    "organisation_name": "citysport.org.uk",
+    "organisation_hash": "378b041c5cd6e6844e173b295b62f259f78189b1",
+    "parser_uuid": "e065ef88-91d1-4ba3-b56b-48081b16b6be",
+    "location": {
+      "postcode": "EC1V 7DP",
+      "latitude": "51.524709",
+      "longitude": "-0.099123"
+    }
   }
 ]

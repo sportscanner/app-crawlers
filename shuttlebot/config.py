@@ -3,7 +3,7 @@ from pydantic import BaseModel, UUID4
 from enum import Enum
 
 START_TIME, END_TIME = "17:30", "22:00"
-LOGGING_LEVEL = "DEBUG"
+LOGGING_LEVEL = "INFO"
 MAPPINGS = "mappings.json"
 
 from enum import Enum

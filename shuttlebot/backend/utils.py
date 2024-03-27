@@ -54,7 +54,7 @@ def async_timer(func):
         tic = timer()
         result = await func(*args, **kwargs)
         tac = timer()
-        logging.info(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
+        logging.debug(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
         return result
     return wrapper
 

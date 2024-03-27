@@ -11,7 +11,7 @@ import uuid
 
 sqlite_file_name = "sportscanner.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
-engine = create_engine(sqlite_url, echo=True)
+engine = create_engine(sqlite_url, echo=False)
 
 def create_db_and_tables(engine):
     """Creates non-existing tables in db using Class arguments `table=True` which

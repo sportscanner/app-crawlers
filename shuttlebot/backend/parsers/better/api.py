@@ -22,13 +22,15 @@ from pydantic import BaseModel, ValidationError
 async def send_concurrent_requests(parameter_sets: [(SportsCentre, date)]):
     """Core logic to generate Async tasks and collect responses"""
     tasks = []
-    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=250, max_keepalive_connections=20)) as client:
+    async with httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
+            timeout=httpx.Timeout(timeout=15.0)
+    ) as client:
         for sports_centre, fetch_date in parameter_sets:
             async_tasks = create_async_tasks(client, sports_centre, fetch_date)
             tasks.extend(async_tasks)
         logging.info(f"Total number of concurrent request tasks: {len(tasks)}")
         responses = await asyncio.gather(*tasks)
-        logging.debug(f"Unified parser schema mapped responses:\n{responses}")
     return responses
 
 
@@ -51,8 +53,10 @@ def generate_api_call_params(sports_centre: SportsCentre, fetch_date: date, acti
     )
     logging.debug(url)
     headers = {
-        "Origin": "https://bookings.better.org.uk",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        "origin": "https://bookings.better.org.uk",
+        "referer": f"https://bookings.better.org.uk/location/{sports_centre.slug}"
+                   f"/{activity}",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     }
     payload = {}
     return url, headers, payload
@@ -105,26 +109,26 @@ def fetch_data_across_centres(
     metadata"""
     parameter_sets: [(SportsCentre, date)] = [(x, y) for x, y in itertools.product(
         sports_centre_lists, dates)]
-    logging.info(f"VENUES: {sports_centre_lists}")
-    logging.info(f"GET RESPONSE FOR DATES: {dates}")
+    logging.debug(f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}")
     responses_from_all_sources: List[List[UnifiedParserSchema]] = asyncio.run(
         send_concurrent_requests(parameter_sets)
     )
     all_fetched_slots: List[UnifiedParserSchema] = [item for sublist in
                                                     responses_from_all_sources for item in sublist]
+    logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
     return all_fetched_slots
 
 
-def pipeline() -> List[UnifiedParserSchema]:
-    today = date.today()
-    dates = [today + timedelta(days=i) for i in range(6)]
+def pipeline(dates: List) -> List[UnifiedParserSchema]:
     sports_centre_lists = db.get_all_rows(
         db.engine, table=db.SportsVenue,
-        expression=select(db.SportsVenue)
+        expression=select(db.SportsVenue).where(db.SportsVenue.organisation_name == "better.org.uk")
     )
     logging.success("Sports venue data loaded from database")
     return fetch_data_across_centres(sports_centre_lists, dates)
 
 
 if __name__ == "__main__":
-    pipeline()
+    today = date.today()
+    dates = [today + timedelta(days=i) for i in range(6)]
+    pipeline(dates)
