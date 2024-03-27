@@ -4,25 +4,7 @@ from typing import Optional
 from loguru import logger as logging
 from pydantic import BaseModel
 
-from shuttlebot.backend.parsers.better.schemas import BetterBookingResponseModel
-
-
-def align_api_responses(api_response):
-    aligned_api_response = []
-    if isinstance(api_response, dict):
-        aligned_api_response.extend(
-            [response_block for _key, response_block in api_response.items()]
-        )
-    else:
-        if len(api_response) > 0:
-            aligned_api_response.extend(
-                [response_block for response_block in api_response]
-            )
-    logging.debug("Data aligned with overall schema")
-    return aligned_api_response
-
-
-class ResponseBlock(BaseModel):
+class StandardisedParserOutput(BaseModel):
     venue_slug: str
     venue_name: str
     date: str
@@ -35,7 +17,7 @@ class ResponseBlock(BaseModel):
 
 def transform_api_response(response_block: dict):
     # Parse the response block into a ResponseBlock model instance
-    response_block_model = ResponseBlock(**response_block)
+    response_block_model = StandardisedParserOutput(**response_block)
     return {
         "venue": response_block_model.venue_slug,
         "name": response_block_model.venue_name,

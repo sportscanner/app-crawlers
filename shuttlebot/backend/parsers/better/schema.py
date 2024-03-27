@@ -12,7 +12,7 @@ class Price(BaseModel):
     formatted_amount: str
 
 
-class BetterBookingResponseModel(BaseModel):
+class BetterApiResponseSchema(BaseModel):
     starts_at: TimeFormat
     ends_at: TimeFormat
     duration: str
