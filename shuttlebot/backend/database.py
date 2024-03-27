@@ -14,11 +14,16 @@ sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=True)
 
 def create_db_and_tables(engine):
+    """Creates non-existing tables in db using Class arguments `table=True` which
+    registers SQLModel inheritted class into a Table schema
+    """
     SQLModel.metadata.create_all(engine)
 
 
 class SportScanner(SQLModel, table=True):
-    """Table contains records of slots fetched from sport centres"""
+    """Table contains records of slots fetched from sport centres
+    Original Model: UnifiedParserSchema -> Mapped to: SportScanner
+    """
     uuid: str = Field(primary_key=True)
     venue_slug: str
     category: str
@@ -32,7 +37,9 @@ class SportScanner(SQLModel, table=True):
 
 
 class SportsVenue(SQLModel, table=True):
-    """Table containing information on Sports centres"""
+    """Table containing information on Sports centres
+    Original Model: SportsCentre -> Mapped to: SportsVenue
+    """
     venue_name: str
     slug: str = Field(primary_key=True)
     organisation_name: str | None
@@ -44,7 +51,7 @@ class SportsVenue(SQLModel, table=True):
 
 
 def load_sports_centre_mappings(engine):
-    """Loads sports centre lookup sheet to db Table"""
+    """Loads sports centre lookup sheet to Table: SportsVenue"""
     with open(f"./{config.MAPPINGS}", "r") as file:
         raw_sports_centres = json.load(file)
         try:
@@ -75,6 +82,7 @@ def load_sports_centre_mappings(engine):
 
 
 def truncate_table(engine, table: sqlmodel.main.SQLModelMetaclass):
+    """Truncates (deletes all rows) in a given Table name/SQL Model class name"""
     with Session(engine) as session:
         statement = delete(table)
         result = session.exec(statement)
@@ -107,6 +115,9 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
 
 
 def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select):
+    """Returns all rows from full table or selected columns
+    Select columns via: select(table.columnA, table.columnB)
+    """
     with Session(engine) as session:
         rows = session.exec(
             expression
@@ -115,7 +126,6 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
 
 
 if __name__ == "__main__":
-    # create_db_and_tables(engine)
-    # truncate_table(engine, table=SportsVenue)
-    # load_sports_centre_mappings(engine)
-    type(SportsVenue)
+    create_db_and_tables(engine)
+    truncate_table(engine, table=SportsVenue)
+    load_sports_centre_mappings(engine)
