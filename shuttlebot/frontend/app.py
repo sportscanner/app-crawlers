@@ -120,7 +120,6 @@ if st.button("Find me badminton slots"):
                 end_time=end_time_filter_input.strftime("%H:%M"),
                 postcode_search=postcode_metadata,
             )
-            print(available_slots_with_preferences)
             st.write(f"calculating {consecutive_slots_input} consecutive slots")
             groupings_for_consecutive_slots: list = find_consecutive_slots(
                 sports_centre_lists,
