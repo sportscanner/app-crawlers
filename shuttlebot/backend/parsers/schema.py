@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from datetime import datetime, time, date
 from typing import Optional
 from shuttlebot.backend.parsers.better.schema import BetterApiResponseSchema
-
+from shuttlebot.backend.parsers.citysports.schema import CitySportsResponseSchema
 
 class UnifiedParserSchema(BaseModel):
     name: Optional[str]
@@ -32,5 +32,20 @@ class UnifiedParserSchema(BaseModel):
             price=response.price.formatted_amount,
             spaces=response.spaces,
             organisation="better.org.uk",
+            last_refreshed=datetime.now()
+        )
+
+    @classmethod
+    def from_citysports_api_response(cls, response: CitySportsResponseSchema):
+        return cls(
+            name="CitySports Leisure Hub",
+            venue_slug="citysport",
+            category=response.ActivityGroupDescription,
+            starting_time=datetime.strptime(response.StartTime, '%Y-%m-%dT%H:%M:%S').time(),
+            ending_time=datetime.strptime(response.EndTime, '%Y-%m-%dT%H:%M:%S').time(),
+            date=datetime.strptime(response.StartTime, '%Y-%m-%dT%H:%M:%S').date(),
+            price="£" + str(response.Price),
+            spaces=response.AvailablePlaces,
+            organisation="citysport.org.uk",
             last_refreshed=datetime.now()
         )
