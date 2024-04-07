@@ -11,7 +11,7 @@ from sqlmodel import Session
 def main():
     """Gathers data from all sources/providers and loads to SQL database"""
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(6)]
+    dates = [today + timedelta(days=i) for i in range(2)]
     logging.info(f"Finding slots for dates: {dates}")
 
     logging.debug(f"Fetching data for org: 'better.org.uk' - hash: "
