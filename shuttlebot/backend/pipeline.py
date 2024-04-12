@@ -15,7 +15,7 @@ def main():
     initialize_db_and_tables(engine)
     
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(1)]
+    dates = [today + timedelta(days=i) for i in range(6)]
     logging.info(f"Finding slots for dates: {dates}")
 
     logging.debug(f"Fetching data for org: 'better.org.uk' - hash: "

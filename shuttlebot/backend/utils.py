@@ -45,7 +45,7 @@ def find_consecutive_slots(consecutive_count: int) -> List[List[SportScanner]]:
     
     slots = get_all_rows(engine, SportScanner, select(SportScanner).where(SportScanner.spaces > 0))
     sports_centre_lists = get_all_rows(engine, SportsVenue, select(SportsVenue))
-    dates: datetime.date = list(set([row.date for row in slots]))
+    dates: List[date] = list(set([row.date for row in slots]))
     print(dates)
     consecutive_slots_list = []
     parameter_sets = [(x, y) for x, y in itertools.product(dates, sports_centre_lists)]
@@ -93,7 +93,7 @@ def find_consecutive_slots(consecutive_count: int) -> List[List[SportScanner]]:
 
 
 @timeit
-def format_consecutive_slots_groupings(consecutive_slots: List[List[SportScanner]]):
+def format_consecutive_slots_groupings(consecutive_slots: List[List[SportScanner]]) -> List[Dict]:
     temp = []
     for consecutive_groupings in consecutive_slots:
         temp.append(

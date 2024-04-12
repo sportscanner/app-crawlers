@@ -252,6 +252,54 @@
     }
   },
   {
+    "venue_name": "The Plumstead Centre",
+    "slug": "the-plumstead-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "CR4 4HD",
+      "latitude": "51.39959",
+      "longitude": "-0.161533"
+    }
+  },
+  {
+    "venue_name": "Waterfront Leisure Centre",
+    "slug": "waterfront-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "SE18 6DL",
+      "latitude": "51.494047",
+      "longitude": "0.063403"
+    }
+  },
+  {
+    "venue_name": "Barking Sporthouse and Gym",
+    "slug": "barking-sporthouse-and-gym",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "RM8 2JR",
+      "latitude": "51.545368",
+      "longitude": "0.113014"
+    }
+  },
+  {
+    "venue_name": "East Ham Leisure Centre",
+    "slug": "east-ham-leisure-cente",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E6 2RT",
+      "latitude": "51.533443",
+      "longitude": "0.058953"
+    }
+  },
+  {
     "venue_name": "CitySport",
     "slug": "citysport",
     "organisation_name": "citysport.org.uk",

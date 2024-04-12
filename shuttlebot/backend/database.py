@@ -1,4 +1,3 @@
-import datetime
 import json
 from pydantic import BaseModel, UUID4, ValidationError
 import sqlmodel
@@ -8,9 +7,8 @@ from shuttlebot import config
 from shuttlebot.config import SportsCentre
 from loguru import logger as logging
 import uuid
-from tabulate import tabulate
 from sqlalchemy import text
-
+from functools import cache
 
 sqlite_file_name = "sportscanner.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -181,11 +179,11 @@ def create_temporary_view_consecutive_ordering(engine):
             connection.execute(text(create_view_query))
 
 
+@cache
 def initialize_db_and_tables(engine):
     logging.info(f"Creating database {sqlite_url}")
     create_db_and_tables(engine)
     truncate_table(engine, table=SportsVenue)
-    truncate_table(engine, table=SportScanner)
     load_sports_centre_mappings(engine)
     
     
