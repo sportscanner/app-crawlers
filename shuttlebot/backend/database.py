@@ -12,6 +12,11 @@ from tabulate import tabulate
 from sqlalchemy import text
 
 
+sqlite_file_name = "sportscanner.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+engine = create_engine(sqlite_url, echo=False)
+
+
 class SportScanner(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
@@ -176,10 +181,6 @@ def create_temporary_view_consecutive_ordering(engine):
 
 
 if __name__ == "__main__":
-    sqlite_file_name = "sportscanner.db"
-    sqlite_url = f"sqlite:///{sqlite_file_name}"
-    engine = create_engine(sqlite_url, echo=False)
-
     logging.info(f"Creating database {sqlite_url}")
     create_db_and_tables(engine)
 
