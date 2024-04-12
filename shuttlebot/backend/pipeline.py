@@ -15,7 +15,7 @@ def main():
     initialize_db_and_tables(engine)
     
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(6)]
+    dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
 
     logging.debug(f"Fetching data for org: 'better.org.uk' - hash: "
@@ -36,10 +36,7 @@ def main():
         organisation="citysport.org.uk"
     )
     
-    consecutive_slots: List[List[SportScanner]] = find_consecutive_slots(5)
-    print(
-        format_consecutive_slots_groupings(consecutive_slots)
-    )
+    consecutive_slots: List[List[SportScanner]] = find_consecutive_slots(3)
 
 
 if __name__ == "__main__":

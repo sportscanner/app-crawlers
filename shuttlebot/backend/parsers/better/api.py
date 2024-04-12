@@ -13,7 +13,7 @@ from shuttlebot.config import SportsCentre
 from shuttlebot import config
 from shuttlebot.backend.parsers.better.schema import BetterApiResponseSchema
 import shuttlebot.backend.database as db
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 
 from pydantic import BaseModel, ValidationError
 
@@ -119,16 +119,22 @@ def fetch_data_across_centres(
     return all_fetched_slots
 
 
-def pipeline(dates: List) -> List[UnifiedParserSchema]:
+def pipeline(dates: List, selected_sports_venue_slugs: List) -> List[UnifiedParserSchema]:
     sports_centre_lists = db.get_all_rows(
         db.engine, table=db.SportsVenue,
-        expression=select(db.SportsVenue).where(db.SportsVenue.organisation_name == "better.org.uk")
+        expression=select(db.SportsVenue).where(
+            db.SportsVenue.organisation_name == "better.org.uk" 
+        ).where(
+            col(db.SportsVenue.slug).in_(selected_sports_venue_slugs)
+        )
     )
-    logging.success("Sports venue data loaded from database")
+    logging.success(f"Sports venue data loaded from database: {sports_centre_lists}")
     return fetch_data_across_centres(sports_centre_lists, dates)
 
 
 if __name__ == "__main__":
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(6)]
-    pipeline(dates)
+    sports_venues = db.get_all_rows(db.engine, db.SportsVenue, select(db.SportsVenue))
+    sports_venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
+    pipeline(dates, sports_venues_slugs[:3])
