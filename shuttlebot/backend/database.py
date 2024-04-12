@@ -95,7 +95,7 @@ def truncate_table(engine, table: sqlmodel.main.SQLModelMetaclass):
 
 
 def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str):
-    """Inserts the slots one by one into the table: SportScanner"""
+    """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:
         statement = delete(SportScanner).where(SportScanner.organisation == organisation)
         results = session.exec(statement)
@@ -128,6 +128,7 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
     return rows
 
 
+# TODO: need to work on logic so consecutive sorting is done by SQL views
 def create_temporary_view_consecutive_ordering(engine):
     # Define the raw SQL query to check if the view exists
     check_view_query = """
@@ -180,12 +181,13 @@ def create_temporary_view_consecutive_ordering(engine):
             connection.execute(text(create_view_query))
 
 
-if __name__ == "__main__":
+def initialize_db_and_tables(engine):
     logging.info(f"Creating database {sqlite_url}")
     create_db_and_tables(engine)
-
-    # create_temporary_view_consecutive_ordering(engine)
-    # rows = get_all_rows(engine, SportScanner, select(SportScanner))
-    # print(rows)
-    # # truncate_table(engine, table=SportsVenue)
-    # # load_sports_centre_mappings(engine)
+    truncate_table(engine, table=SportsVenue)
+    truncate_table(engine, table=SportScanner)
+    load_sports_centre_mappings(engine)
+    
+    
+if __name__ == "__main__":
+    initialize_db_and_tables(engine)

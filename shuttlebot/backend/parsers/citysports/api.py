@@ -22,7 +22,10 @@ from pydantic import BaseModel, ValidationError
 async def send_concurrent_requests(search_dates: [date]):
     """Core logic to generate Async tasks and collect responses"""
     tasks = []
-    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=250, max_keepalive_connections=20)) as client:
+    async with httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
+            timeout=httpx.Timeout(timeout=15.0)
+    ) as client:
         for search_date in search_dates:
             async_tasks = create_async_tasks(client, search_date)
             tasks.extend(async_tasks)

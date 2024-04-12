@@ -8,31 +8,11 @@ from functools import wraps
 import pandas as pd
 from loguru import logger as logging
 from pydantic import BaseModel, ValidationError
+from shuttlebot.backend.database import engine, SportScanner, get_all_rows, SportsVenue
+from sqlmodel import select
 
+from rich import print
 from shuttlebot import config
-
-pd.set_option("display.max_columns", None)
-
-
-class MappingsModel(BaseModel):
-    name: str
-    encoded_alias: str
-    postcode: Optional[str]
-    lat: str
-    lng: str
-
-
-def validate_json_schema(data: List[Dict]) -> str:
-    """ "Validates the Mappings.json file against a predefined pydantic model"""
-    try:
-        # Validate the data against the schema
-        [MappingsModel(**venue) for venue in data]
-        logging.success("JSON data is valid according to the schema")
-        return True
-    except ValidationError as e:
-        logging.error(f"JSON data is not valid according to the schema:\n{e}")
-        return False
-
 
 def timeit(func):
     """Calculates the execution time of the function on top of which the decorator is assigned"""
@@ -59,17 +39,19 @@ def async_timer(func):
     return wrapper
 
 @timeit
-def find_consecutive_slots(
-    sports_centre_lists: List[Dict], dates: list, slots: list, consecutive_count: int
-) -> list:
-    """Finds consecutive overlapping slots i.e. end time of one slot overlaps with start time of
-    another"""
+def find_consecutive_slots(consecutive_count: int) -> List[List[SportScanner]]:
+    """Finds consecutively overlapping slots i.e. end time of one slot overlaps with start time of
+    another and calculats the `n` consecutive slots"""
+    
+    slots = get_all_rows(engine, SportScanner, select(SportScanner).where(SportScanner.spaces > 0))
+    sports_centre_lists = get_all_rows(engine, SportsVenue, select(SportsVenue))
+    dates: datetime.date = list(set([row.date for row in slots]))
+    print(dates)
     consecutive_slots_list = []
     parameter_sets = [(x, y) for x, y in itertools.product(dates, sports_centre_lists)]
 
     for target_date, venue in parameter_sets:
-        venue = venue.get("encoded_alias")
-        target_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+        venue = venue.slug
         logging.debug(
             f"Extracting consecutive slots for venue slug: {venue} / date: {target_date}"
         )
@@ -78,10 +60,10 @@ def find_consecutive_slots(
             filtered_slots = [
                 slot
                 for slot in slots
-                if slot["venue"] == venue and slot["date"] == target_date
+                if slot.venue_slug == venue and slot.date == target_date
             ]
             sorted_slots = sorted(
-                filtered_slots, key=lambda slot: slot["parsed_start_time"]
+                filtered_slots, key=lambda slot: slot.starting_time
             )
             logging.debug(sorted_slots)
 
@@ -89,7 +71,7 @@ def find_consecutive_slots(
                 slot1 = sorted_slots[i]
                 slot2 = sorted_slots[i + 1]
 
-                if slot1["parsed_end_time"] >= slot2["parsed_start_time"]:
+                if slot1.ending_time >= slot2.starting_time:
                     consecutive_slots.append(slot1)
 
                     if len(consecutive_slots) == consecutive_count - 1:
@@ -111,15 +93,15 @@ def find_consecutive_slots(
 
 
 @timeit
-def parse_consecutive_slots(consecutive_slots):
+def format_consecutive_slots_groupings(consecutive_slots: List[List[SportScanner]]):
     temp = []
     for consecutive_groupings in consecutive_slots:
         temp.append(
             {
-                "venue": consecutive_groupings[0]["venue"],
-                "date": consecutive_groupings[0]["date"],
-                "consecutive_start_time": consecutive_groupings[0]["parsed_start_time"],
-                "consecutive_end_time": consecutive_groupings[-1]["parsed_end_time"],
+                "venue": consecutive_groupings[0].venue_slug,
+                "date": consecutive_groupings[0].date,
+                "consecutive_start_time": consecutive_groupings[0].starting_time,
+                "consecutive_end_time": consecutive_groupings[-1].ending_time,
             }
         )
     return temp
@@ -128,3 +110,5 @@ def parse_consecutive_slots(consecutive_slots):
 if __name__ == "__main__":
     """Write a test here for calculating consecutive slots"""
     logging.info("This scripts cannot be called standalone for now")
+    
+    
