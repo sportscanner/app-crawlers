@@ -1,0 +1,16 @@
+.card {
+    background-color: #FAFAFA;
+    white-space: pre-wrap;
+    display: flex; /* Consider using flexbox for layout */
+    flex-direction: column;
+    padding: 10px;
+    margin-right: 15px; /* Adjust for spacing */
+}
+
+.card span {
+    color: #6d7e86;
+}
+
+.card strong {
+    font-weight: bold;
+}

@@ -11,6 +11,10 @@ import uuid
 from tabulate import tabulate
 from sqlalchemy import text
 
+sqlite_file_name = "sportscanner.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+engine = create_engine(sqlite_url, echo=False)
+
 
 class SportScanner(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
@@ -48,7 +52,7 @@ def create_db_and_tables(engine):
     """
     SQLModel.metadata.create_all(engine)
 
-    
+
 def load_sports_centre_mappings(engine):
     """Loads sports centre lookup sheet to Table: SportsVenue"""
     with open(f"./{config.MAPPINGS}", "r") as file:
@@ -176,10 +180,6 @@ def create_temporary_view_consecutive_ordering(engine):
 
 
 if __name__ == "__main__":
-    sqlite_file_name = "sportscanner.db"
-    sqlite_url = f"sqlite:///{sqlite_file_name}"
-    engine = create_engine(sqlite_url, echo=False)
-
     logging.info(f"Creating database {sqlite_url}")
     create_db_and_tables(engine)
 
