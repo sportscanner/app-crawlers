@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from shuttlebot.backend.parsers.better import api as BetterOrganisation
 from shuttlebot.backend.parsers.citysports import api as CitySports
 from shuttlebot.backend.utils import timeit
-from shuttlebot.backend.database import engine, SportScanner, delete_and_insert_slots_to_database
+from shuttlebot.backend.database import delete_and_insert_slots_to_database
 from sqlmodel import Session
 
 @timeit
