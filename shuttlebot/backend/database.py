@@ -8,8 +8,8 @@ from shuttlebot import config
 from shuttlebot.config import SportsCentre
 from loguru import logger as logging
 import uuid
-from tabulate import tabulate
 from sqlalchemy import text
+from functools import cache
 
 sqlite_file_name = "sportscanner.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -52,7 +52,7 @@ def create_db_and_tables(engine):
     """
     SQLModel.metadata.create_all(engine)
 
-
+    
 def load_sports_centre_mappings(engine):
     """Loads sports centre lookup sheet to Table: SportsVenue"""
     with open(f"./{config.MAPPINGS}", "r") as file:
@@ -94,7 +94,7 @@ def truncate_table(engine, table: sqlmodel.main.SQLModelMetaclass):
 
 
 def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str):
-    """Inserts the slots one by one into the table: SportScanner"""
+    """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:
         statement = delete(SportScanner).where(SportScanner.organisation == organisation)
         results = session.exec(statement)
@@ -127,6 +127,7 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
     return rows
 
 
+# TODO: need to work on logic so consecutive sorting is done by SQL views
 def create_temporary_view_consecutive_ordering(engine):
     # Define the raw SQL query to check if the view exists
     check_view_query = """
@@ -179,12 +180,13 @@ def create_temporary_view_consecutive_ordering(engine):
             connection.execute(text(create_view_query))
 
 
-if __name__ == "__main__":
+@cache
+def initialize_db_and_tables(engine):
     logging.info(f"Creating database {sqlite_url}")
     create_db_and_tables(engine)
+    truncate_table(engine, table=SportsVenue)
+    load_sports_centre_mappings(engine)
 
-    # create_temporary_view_consecutive_ordering(engine)
-    # rows = get_all_rows(engine, SportScanner, select(SportScanner))
-    # print(rows)
-    # # truncate_table(engine, table=SportsVenue)
-    # # load_sports_centre_mappings(engine)
+
+if __name__ == "__main__":
+    initialize_db_and_tables(engine)

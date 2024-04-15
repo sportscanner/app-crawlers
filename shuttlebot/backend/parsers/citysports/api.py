@@ -1,7 +1,7 @@
 from datetime import date, timedelta, datetime
 
 from loguru import logger as logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 import json
 import itertools
 import asyncio
@@ -19,10 +19,13 @@ from pydantic import BaseModel, ValidationError
 
 
 @async_timer
-async def send_concurrent_requests(search_dates: [date]):
+async def send_concurrent_requests(search_dates: List[date]):
     """Core logic to generate Async tasks and collect responses"""
     tasks = []
-    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=250, max_keepalive_connections=20)) as client:
+    async with httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
+            timeout=httpx.Timeout(timeout=15.0)
+    ) as client:
         for search_date in search_dates:
             async_tasks = create_async_tasks(client, search_date)
             tasks.extend(async_tasks)
@@ -52,7 +55,7 @@ def generate_api_call_params(search_date: date):
         "Referer": "https://bookings.citysport.org.uk/LhWeb/en/Public/Bookings",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     }
-    payload = {}
+    payload: Dict = {}
     return url, headers, payload
 
 
