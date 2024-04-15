@@ -7,7 +7,7 @@ from loguru import logger as logging
 
 from shuttlebot import config
 from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
-from shuttlebot.backend.compilation.pipeline import aggregate_api_responses
+from shuttlebot.backend.pipeline import aggregate_api_responses
 from shuttlebot.backend.compilation.utils import transform_api_response
 from shuttlebot.backend.utils import (
     find_consecutive_slots,
@@ -116,16 +116,6 @@ def slots_scanner(
         available_slots_with_preferences, start_time, end_time
     )
     return slots_dataframe, available_slots_with_preferences
-
-
-def get_mappings():
-    with open(f"./{config.MAPPINGS}", "r") as file:
-        sports_centre_lists = json.load(file)
-        if validate_json_schema(sports_centre_lists):
-            return sports_centre_lists
-        else:
-            logging.error("JSON schema is invalid for mappings")
-            return None
 
 
 def main():

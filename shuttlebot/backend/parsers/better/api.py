@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from loguru import logger as logging
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict
 import json
 import itertools
 import asyncio
@@ -13,13 +13,13 @@ from shuttlebot.config import SportsCentre
 from shuttlebot import config
 from shuttlebot.backend.parsers.better.schema import BetterApiResponseSchema
 import shuttlebot.backend.database as db
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 
 from pydantic import BaseModel, ValidationError
 
 
 @async_timer
-async def send_concurrent_requests(parameter_sets: [(SportsCentre, date)]):
+async def send_concurrent_requests(parameter_sets: List[Tuple[SportsCentre, date]]):
     """Core logic to generate Async tasks and collect responses"""
     tasks = []
     async with httpx.AsyncClient(
@@ -58,7 +58,7 @@ def generate_api_call_params(sports_centre: SportsCentre, fetch_date: date, acti
                    f"/{activity}",
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     }
-    payload = {}
+    payload: Dict = {}
     return url, headers, payload
 
 
@@ -107,7 +107,7 @@ def fetch_data_across_centres(
 ) -> List[UnifiedParserSchema]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
-    parameter_sets: [(SportsCentre, date)] = [(x, y) for x, y in itertools.product(
+    parameter_sets: List[Tuple[SportsCentre, date]] = [(x, y) for x, y in itertools.product(
         sports_centre_lists, dates)]
     logging.debug(f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}")
     responses_from_all_sources: List[List[UnifiedParserSchema]] = asyncio.run(
@@ -119,16 +119,22 @@ def fetch_data_across_centres(
     return all_fetched_slots
 
 
-def pipeline(dates: List) -> List[UnifiedParserSchema]:
+def pipeline(dates: List, selected_sports_venue_slugs: List) -> List[UnifiedParserSchema]:
     sports_centre_lists = db.get_all_rows(
         db.engine, table=db.SportsVenue,
-        expression=select(db.SportsVenue).where(db.SportsVenue.organisation_name == "better.org.uk")
+        expression=select(db.SportsVenue).where(
+            db.SportsVenue.organisation_name == "better.org.uk" 
+        ).where(
+            col(db.SportsVenue.slug).in_(selected_sports_venue_slugs)
+        )
     )
-    logging.success("Sports venue data loaded from database")
+    logging.success(f"Sports venue data loaded from database: {sports_centre_lists}")
     return fetch_data_across_centres(sports_centre_lists, dates)
 
 
 if __name__ == "__main__":
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(6)]
-    pipeline(dates)
+    sports_venues = db.get_all_rows(db.engine, db.SportsVenue, select(db.SportsVenue))
+    sports_venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
+    pipeline(dates, sports_venues_slugs[:3])
