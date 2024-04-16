@@ -9,13 +9,14 @@ from shuttlebot.backend.utils import timeit, find_consecutive_slots, format_cons
 from shuttlebot.backend.database import engine, SportScanner, delete_and_insert_slots_to_database, initialize_db_and_tables
 from sqlmodel import Session
 
+
 @timeit
 def main():
     """Gathers data from all sources/providers and loads to SQL database"""
     initialize_db_and_tables(engine)
 
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(10)]
+    dates = [today + timedelta(days=i) for i in range(2)]
     logging.info(f"Finding slots for dates: {dates}")
 
     logging.debug(f"Fetching data for org: 'better.org.uk' - hash: "
@@ -36,7 +37,8 @@ def main():
         organisation="citysport.org.uk"
     )
 
-    consecutive_slots: List[List[SportScanner]] = find_consecutive_slots(3)
+    consecutive_slots: List[List[SportScanner]] = find_consecutive_slots(5)
+    format_consecutive_slots_groupings(consecutive_slots)
 
 
 if __name__ == "__main__":

@@ -103,7 +103,7 @@ def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
 
 @timeit
 def fetch_data_across_centres(
-        sports_centre_lists: List[SportsCentre], dates
+        sports_centre_lists: List[SportsCentre], dates: List[date]
 ) -> List[UnifiedParserSchema]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
@@ -119,16 +119,14 @@ def fetch_data_across_centres(
     return all_fetched_slots
 
 
-def pipeline(dates: List, selected_sports_venue_slugs: List) -> List[UnifiedParserSchema]:
+def pipeline(dates: List[date]) -> List[UnifiedParserSchema]:
     sports_centre_lists = db.get_all_rows(
         db.engine, table=db.SportsVenue,
         expression=select(db.SportsVenue).where(
             db.SportsVenue.organisation_name == "better.org.uk" 
-        ).where(
-            col(db.SportsVenue.slug).in_(selected_sports_venue_slugs)
         )
     )
-    logging.success(f"Sports venue data loaded from database: {sports_centre_lists}")
+    logging.success(f"{len(sports_centre_lists)} Sports venue data queried from database")
     return fetch_data_across_centres(sports_centre_lists, dates)
 
 
