@@ -17,6 +17,7 @@ class UnifiedParserSchema(BaseModel):
     spaces: int
     organisation: str
     last_refreshed: datetime
+    booking_url: Optional[str]
 
     @classmethod
     def from_better_api_response(cls, response: BetterApiResponseSchema):
@@ -32,7 +33,11 @@ class UnifiedParserSchema(BaseModel):
             price=response.price.formatted_amount,
             spaces=response.spaces,
             organisation="better.org.uk",
-            last_refreshed=datetime.now()
+            last_refreshed=datetime.now(),
+            booking_url=f"""
+            https://bookings.better.org.uk/location/{response.venue_slug}/{response.category_slug}/
+                {datetime.strptime(response.date,"%Y-%m-%d").date()}/by-time/
+            """
         )
 
     @classmethod
@@ -47,5 +52,6 @@ class UnifiedParserSchema(BaseModel):
             price="£" + str(response.Price),
             spaces=response.AvailablePlaces,
             organisation="citysport.org.uk",
-            last_refreshed=datetime.now()
+            last_refreshed=datetime.now(),
+            booking_url=None
         )

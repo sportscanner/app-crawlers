@@ -30,6 +30,7 @@ class SportScanner(SQLModel, table=True):
     spaces: int
     organisation: str
     last_refreshed: datetime
+    booking_url: str | None
 
 
 class SportsVenue(SQLModel, table=True):
@@ -110,7 +111,8 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
                 price=slots.price,
                 spaces=slots.spaces,
                 organisation=slots.organisation,
-                last_refreshed=slots.last_refreshed
+                last_refreshed=slots.last_refreshed,
+                booking_url=slots.booking_url
             )
             session.add(orm_object)
         session.commit()

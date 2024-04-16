@@ -14,8 +14,10 @@ from sqlmodel import select
 from rich import print
 from shuttlebot import config
 
+
 def timeit(func):
     """Calculates the execution time of the function on top of which the decorator is assigned"""
+
     @wraps(func)
     def wrap_func(*args, **kwargs):
         tic = timer()
@@ -27,8 +29,18 @@ def timeit(func):
     return wrap_func
 
 
+class ConsecutiveSlotsCarousalDisplay(BaseModel):
+    """Model to store information displayed via Card carousal"""
+    venue: str
+    date: date
+    consecutive_start_time: time
+    consecutive_end_time: time
+    slots_starting_times: str
+
+
 def async_timer(func):
     """Calculates the execution time of the Async function on top of which the decorator is assigned"""
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         tic = timer()
@@ -36,13 +48,17 @@ def async_timer(func):
         tac = timer()
         logging.debug(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
         return result
+
     return wrapper
+
 
 @timeit
 def find_consecutive_slots(consecutive_count: int) -> List[List[SportScanner]]:
     """Finds consecutively overlapping slots i.e. end time of one slot overlaps with start time of
-    another and calculats the `n` consecutive slots"""
-    
+    another and calculates the `n` consecutive slots
+    Returns: List of grouped consecutively occurring slots
+    """
+
     slots = get_all_rows(engine, SportScanner, select(SportScanner).where(SportScanner.spaces > 0))
     sports_centre_lists = get_all_rows(engine, SportsVenue, select(SportsVenue))
     dates: List[date] = list(set([row.date for row in slots]))
@@ -87,27 +103,35 @@ def find_consecutive_slots(consecutive_count: int) -> List[List[SportScanner]]:
             else:
                 break  # No more consecutive slots found
 
-    logging.debug(f"Consecutive slots calculations:\n{consecutive_slots_list}")
+    logging.debug(f"Top 3 Consecutive slots calculations:\n{consecutive_slots_list[:3]}")
     return consecutive_slots_list
 
 
 @timeit
 def format_consecutive_slots_groupings(consecutive_slots: List[List[SportScanner]]) -> List[Dict]:
     temp = []
-    for consecutive_groupings in consecutive_slots:
+    for group_for_consecutive_slots in consecutive_slots:
+        gather_slots_starting_times = []
+        for slot in group_for_consecutive_slots:
+            gather_slots_starting_times.append(
+                slot.starting_time.strftime("%H:%M")
+            )
+        display_message_slots_starting_times: str = ("Slots starting at "
+                                                     f"{', '.join(gather_slots_starting_times)}")
+
         temp.append(
-            {
-                "venue": consecutive_groupings[0].venue_slug,
-                "date": consecutive_groupings[0].date,
-                "consecutive_start_time": consecutive_groupings[0].starting_time,
-                "consecutive_end_time": consecutive_groupings[-1].ending_time,
-            }
+            ConsecutiveSlotsCarousalDisplay(
+                venue=group_for_consecutive_slots[0].venue_slug,
+                date=group_for_consecutive_slots[0].date,
+                consecutive_start_time=group_for_consecutive_slots[0].starting_time,
+                consecutive_end_time=group_for_consecutive_slots[-1].ending_time,
+                slots_starting_times=display_message_slots_starting_times
+            )
         )
+    logging.info(f"Top 3 formatted consecutive slot groupings for Carousal:\n{temp[:3]}")
     return temp
 
 
 if __name__ == "__main__":
     """Write a test here for calculating consecutive slots"""
     logging.info("This scripts cannot be called standalone for now")
-    
-    
