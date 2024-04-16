@@ -31,11 +31,12 @@ def timeit(func):
 
 class ConsecutiveSlotsCarousalDisplay(BaseModel):
     """Model to store information displayed via Card carousal"""
+    distance: str
     venue: str
-    date: date
-    consecutive_start_time: time
-    consecutive_end_time: time
+    organisation: str
+    date: str
     slots_starting_times: str
+    bookings_url: Optional[str]
 
 
 def async_timer(func):
@@ -108,7 +109,9 @@ def find_consecutive_slots(consecutive_count: int) -> List[List[SportScanner]]:
 
 
 @timeit
-def format_consecutive_slots_groupings(consecutive_slots: List[List[SportScanner]]) -> List[Dict]:
+def format_consecutive_slots_groupings(
+        consecutive_slots: List[List[SportScanner]]
+) -> List[ConsecutiveSlotsCarousalDisplay]:
     temp = []
     for group_for_consecutive_slots in consecutive_slots:
         gather_slots_starting_times = []
@@ -121,11 +124,12 @@ def format_consecutive_slots_groupings(consecutive_slots: List[List[SportScanner
 
         temp.append(
             ConsecutiveSlotsCarousalDisplay(
+                distance="Approx x. miles away",
                 venue=group_for_consecutive_slots[0].venue_slug,
-                date=group_for_consecutive_slots[0].date,
-                consecutive_start_time=group_for_consecutive_slots[0].starting_time,
-                consecutive_end_time=group_for_consecutive_slots[-1].ending_time,
-                slots_starting_times=display_message_slots_starting_times
+                organisation=group_for_consecutive_slots[0].organisation,
+                date=group_for_consecutive_slots[0].date.strftime("%Y-%m-%d (%A)"),
+                slots_starting_times=display_message_slots_starting_times,
+                bookings_url=group_for_consecutive_slots[0].booking_url
             )
         )
     logging.info(f"Top 3 formatted consecutive slot groupings for Carousal:\n{temp[:3]}")

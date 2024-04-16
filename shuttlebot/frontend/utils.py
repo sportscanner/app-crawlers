@@ -1,4 +1,7 @@
 import streamlit as st
+from typing import List
+
+from shuttlebot.backend.utils import ConsecutiveSlotsCarousalDisplay
 
 
 def icon(emoji: str):
@@ -9,106 +12,35 @@ def icon(emoji: str):
     )
 
 
-def hide_streamlit_brandings():
-    # generic streamlit configuration to hide brandings
-    hide_st_style = """<style>
-                        #MainMenu {visibility : hidden;}
-                        footer {visibility : hidden;}
-                        header {visibility : hidden;}
-                    </style>
-                    """
-    hide_sidebar_hamburger = """
-                            <style>
-                                [data-testid="collapsedControl"] {
-                                    display: none
-                                }
-                            </style>
-                            """
-    st.markdown(hide_st_style, unsafe_allow_html=True)
-    st.markdown(
-        hide_sidebar_hamburger,
-        unsafe_allow_html=True,
-    )
+@st.cache_data
+def load_css_styles(file_path: str):
+    with open(file_path, "r") as f:
+        css = f.read()
+    return css
 
 
-def customise_dropdown_views():
-    css_style = """
-    <style>
-        .stMultiSelect [data-baseweb=select] span{
-            max-width: 250px;
-            font-size: 0.6rem;
-        }
-        div[data-testid="metric-container"] {
-           background-color: rgba(28, 131, 225, 0.1);
-           border: 1px solid rgba(28, 131, 225, 0.1);
-           padding: 5% 5% 5% 10%;
-           border-radius: 5px;
-           color: rgb(30, 103, 119);
-           overflow-wrap: break-word;
-        }
-    </style>
-    """
-    st.markdown(css_style, unsafe_allow_html=True)
-
-
-def custom_css_carousal():
-    css_style = f"""
-        <style>
-        .horizontal-scroll {{
-            display: flex;
-            overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }}
-        .horizontal-scroll::-webkit-scrollbar {{
-            width: 0px;
-            height: 0px;
-        }}
-        .card {{
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-right: 10px;
-            min-width: 200px;
-            border-radius: 10px; /* Adjust the radius as needed */
-            word-wrap: break-word; /* Enable word wrapping */
-        }}
-        </style>
-        """
-    st.markdown(
-        css_style,
-        unsafe_allow_html=True,  # Render the HTML content
-    )
-
-
-def get_carousal_card_items(
-    groupings_for_consecutive_slots: list, consecutive_slots_input: int, dates
+def generate_carousal_with_data(
+        consecutive_slots_groupings: List[ConsecutiveSlotsCarousalDisplay]
 ):
-    carousel_items = []
-    if len(groupings_for_consecutive_slots) > 0:
-        for group_id in range(len(groupings_for_consecutive_slots)):
-            gather_slots_starting_times = []
-            for j in groupings_for_consecutive_slots[group_id]:
-                gather_slots_starting_times.append(
-                    j["parsed_start_time"].strftime("%H:%M")
-                )
-
-            carousel_items.append(
-                (
-                    "#FAFAFA",
-                    f"<div style='white-space: pre-wrap;'><span style='color:#6d7e86'>Approx. {groupings_for_consecutive_slots[group_id][0]['nearest_distance']} miles away</span></div>"
-                    f"<div style='white-space: pre-wrap;'>{groupings_for_consecutive_slots[group_id][0]['name']}</div>"
-                    f"<div style='white-space: pre-wrap;'><strong>{groupings_for_consecutive_slots[group_id][0]['date'].strftime('%Y-%m-%d (%A)')}</strong></div><br>"
-                    f"<div style='white-space: pre-wrap;'>Slots starting at {', '.join(gather_slots_starting_times)}</div>",
-                )
+    if len(consecutive_slots_groupings) > 0:
+        card_html_template = f"""
+        <div class="horizontal-scroll">
+        {" ".join(
+            f'''
+            <div class="card" style="background-color: #FAFAFA;">
+                <div style='white-space: pre-wrap;'><span style='color:#6d7e86'>{group.distance}</span></div>
+                <div style='white-space: pre-wrap;'>{group.venue}</div>
+                <div style='white-space: pre-wrap;'><strong>{group.date}</strong></div><br>
+                <div style='white-space: pre-wrap;'>{group.slots_starting_times}</div>
+            </div>
+            '''
+            for group in consecutive_slots_groupings
             )
-        flag = False
-    else:
-        carousel_items.append(
-            (
-                "#f3f2f1",
-                f"<div style='white-space: pre-wrap;'>Selected centres do not have {consecutive_slots_input} consecutive slots</div>",
-            )
+        }
+        </div>
+        """
+        st.html(
+            f"""
+              {card_html_template}
+            """
         )
-        flag = True
-    return carousel_items, flag
