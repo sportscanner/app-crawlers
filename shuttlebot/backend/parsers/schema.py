@@ -34,10 +34,11 @@ class UnifiedParserSchema(BaseModel):
             spaces=response.spaces,
             organisation="better.org.uk",
             last_refreshed=datetime.now(),
-            booking_url=f"""
-            https://bookings.better.org.uk/location/{response.venue_slug}/{response.category_slug}/
-                {datetime.strptime(response.date,"%Y-%m-%d").date()}/by-time/
-            """
+            booking_url="https://bookings.better.org.uk/location/{}/{}/{}/by-time/".format(
+                response.venue_slug,
+                response.category_slug,
+                datetime.strptime(response.date,"%Y-%m-%d").date()
+            )
         )
 
     @classmethod

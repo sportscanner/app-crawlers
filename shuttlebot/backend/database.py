@@ -1,19 +1,25 @@
-import datetime
 import json
 from pydantic import BaseModel, UUID4, ValidationError
 import sqlmodel
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select, and_
-from datetime import time, datetime, date
+from datetime import time, datetime, date, timedelta
 from shuttlebot import config
 from shuttlebot.config import SportsCentre
 from loguru import logger as logging
 import uuid
-from sqlalchemy import text
+from sqlalchemy import text, Engine
 from functools import cache
+from enum import Enum
 
 sqlite_file_name = "sportscanner.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=False)
+
+
+class PipelineRefreshStatus(Enum):
+    RUNNING = "Running"
+    COMPLETED = "Completed"
+    OBSOLETE = "Obsolete"
 
 
 class SportScanner(SQLModel, table=True):
@@ -46,6 +52,60 @@ class SportsVenue(SQLModel, table=True):
     latitude: float
     longitude: float
 
+
+class RefreshMetadata(SQLModel, table=True):
+    """Table containing Refresh data, and if refresh is in progress"""
+    id: int = Field(default=None, primary_key=True)
+    last_refreshed: datetime
+    refresh_status: str
+
+
+def get_refresh_status_for_pipeline(engine: Engine):
+    """GET status of current refresh status from RefreshMetadata table"""
+    with Session(engine) as session:
+        # Get the existing record (should be only one)
+        existing_record = session.exec(select(RefreshMetadata)).first()
+    return existing_record.refresh_status
+
+
+def update_refresh_status_for_pipeline(engine: Engine, refresh_status: PipelineRefreshStatus):
+    """UPDATE status of current refresh status from RefreshMetadata table"""
+    with Session(engine) as session:
+        # Get the existing record (should be only one)
+        existing_record = session.exec(select(RefreshMetadata)).first()
+        if existing_record:
+            existing_record.refresh_status = refresh_status.value
+            existing_record.last_refreshed = datetime.now()
+        session.commit()
+
+
+def pipeline_refresh_decision_based_on_interval(
+        engine: Engine,
+        refresh_interval: timedelta
+):
+    """Updates the refresh status if it's older than refresh_interval (class: datetime.timedelta)"""
+    x_minutes_ago = datetime.now() - refresh_interval
+    with Session(engine) as session:
+        # Get the existing record (should be only one)
+        existing_record = session.exec(select(RefreshMetadata)).first()
+        if existing_record:
+            if existing_record.last_refreshed < x_minutes_ago:
+                logging.info(f"Data is older than `x` minutes ago: {refresh_interval}, refresh needed")
+                # Update existing record
+                existing_record.refresh_status = PipelineRefreshStatus.OBSOLETE.value
+                existing_record.last_refreshed = datetime.now()
+            else:
+                logging.info(
+                    f"Data is within `x` minutes ago range: {refresh_interval}, NO refresh needed"
+                )
+        else:
+            # Create a new record if none exists (unlikely)
+            new_record = RefreshMetadata(
+                refresh_status=PipelineRefreshStatus.COMPLETED.value,
+                last_refreshed=datetime.now()
+            )
+            session.add(new_record)
+        session.commit()
 
 def create_db_and_tables(engine):
     """Creates non-existing tables in db using Class arguments `table=True` which
@@ -192,3 +252,7 @@ def initialize_db_and_tables(engine):
 
 if __name__ == "__main__":
     initialize_db_and_tables(engine)
+    pipeline_refresh_decision_based_on_interval(engine, refresh_interval=timedelta(seconds=10))
+    logging.success(f"REFRESH STATUS: {get_refresh_status_for_pipeline(engine)}")
+    update_refresh_status_for_pipeline(engine, refresh_status=PipelineRefreshStatus.COMPLETED)
+    logging.success(f"REFRESH STATUS: {get_refresh_status_for_pipeline(engine)}")

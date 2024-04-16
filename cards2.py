@@ -16,7 +16,7 @@ def load_css_styles(file_path: str):
     return css
 
 
-cards_css = load_css_styles("cards.css")
+cards_css = load_css_styles("shuttlebot/frontend/cards.css")
 st.html(f"<style>{cards_css}</style>")
 
 carousel_container = st.container()
