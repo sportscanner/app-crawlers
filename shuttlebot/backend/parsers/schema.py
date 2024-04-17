@@ -54,5 +54,5 @@ class UnifiedParserSchema(BaseModel):
             spaces=response.AvailablePlaces,
             organisation="citysport.org.uk",
             last_refreshed=datetime.now(),
-            booking_url=None
+            booking_url="https://bookings.citysport.org.uk/LhWeb/en/Public/Bookings/"
         )

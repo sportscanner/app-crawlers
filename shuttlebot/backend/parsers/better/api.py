@@ -133,6 +133,6 @@ def pipeline(dates: List[date]) -> List[UnifiedParserSchema]:
 if __name__ == "__main__":
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(6)]
-    sports_venues = db.get_all_rows(db.engine, db.SportsVenue, select(db.SportsVenue))
+    sports_venues: List[db.SportsVenue] = db.get_all_rows(db.engine, db.SportsVenue, select(db.SportsVenue))
     sports_venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
     pipeline(dates, sports_venues_slugs[:3])

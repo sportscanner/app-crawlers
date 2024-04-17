@@ -3,16 +3,7 @@ from typing import List
 
 from shuttlebot.backend.utils import ConsecutiveSlotsCarousalDisplay
 
-
-def icon(emoji: str):
-    """Shows an emoji as a Notion-style page icon."""
-    st.write(
-        f'<span style="font-size: 78px; line-height: 1">{emoji}</span>',
-        unsafe_allow_html=True,
-    )
-
-
-@st.cache_data
+st.cache_data()
 def load_css_styles(file_path: str):
     with open(file_path, "r") as f:
         css = f.read()
@@ -27,11 +18,16 @@ def generate_carousal_with_data(
         <div class="horizontal-scroll">
         {" ".join(
             f'''
-            <div class="card" style="background-color: #FAFAFA;">
+            <div class="card" style="background-color: #f9f9fd;">
                 <div style='white-space: pre-wrap;'><span style='color:#6d7e86'>{group.distance}</span></div>
                 <div style='white-space: pre-wrap;'>{group.venue}</div>
                 <div style='white-space: pre-wrap;'><strong>{group.date}</strong></div><br>
                 <div style='white-space: pre-wrap;'>{group.slots_starting_times}</div>
+                  <div class="actions">
+                    <a class="read" href='{group.bookings_url}' target='_blank'>
+                      Visit Bookings Site
+                    </a>
+                  </div>
             </div>
             '''
             for group in consecutive_slots_groupings
