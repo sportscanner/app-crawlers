@@ -10,6 +10,7 @@ import streamlit as st
 import streamlit_shadcn_ui as ui
 from streamlit_searchbox import st_searchbox
 
+from shuttlebot.backend.pipeline import pipeline_data_refresh
 from shuttlebot.backend.database import load_sports_centre_mappings, engine
 from shuttlebot.backend.geolocation.api import (
     get_postcode_metadata,
@@ -25,15 +26,13 @@ from shuttlebot.frontend.utils import (
 )
 
 # -- Page specific settings: title/description/icons etc --
-page_title = "Shuttle Bot"
-layout: str = "centered"
+page_title = "SportScanner"
+layout: str = "wide"
 st.set_page_config(
     page_title=page_title,
-    page_icon="🔖",
     layout=layout,
     initial_sidebar_state="collapsed",
 )
-
 
 cards_css = load_css_styles("./shuttlebot/frontend/cards.css")
 dropdown_css = load_css_styles("./shuttlebot/frontend/dropdown.css")
@@ -46,7 +45,6 @@ st.html(f"<style>{brandings_css}</style>")
 
 st.title(f"🔖{page_title}")
 st.subheader("Find badminton slots for upcoming week, `90x` faster")
-# st.caption("Currently supports `Better Org.` badminton courts (in London)")
 
 # App layouts and logic starts here
 
@@ -62,120 +60,132 @@ def cached_mappings():
         db.engine, table=db.SportsVenue,
         expression=db.select(db.SportsVenue)
     )
-    return [sports_centre.venue_name for sports_centre in sports_centre_lists]
+    return [sports_centre.venue_name for sports_centre in sports_centre_lists], sports_centre_lists
 
 
-sports_centre_names = cached_mappings()
-options = st.multiselect(
-    "Pick your preferred playing locations",
-    sports_centre_names,
-    sports_centre_names[:DEFAULT_MAPPINGS_SELECTION],
-    # default select first "n" centres from mappings file
-    disabled=False,
-)
+sports_centre_names, sports_venues = cached_mappings()
+st.markdown(f"###### Covers up-to `{len(sports_centre_names)} venues` across London")
 
-st.toggle(label="Select all locations", key="all_options_switch", value=False)
-if st.session_state["all_options_switch"]:
-    options = sports_centre_names
-
-
-postcode_input = st_searchbox(
-    postcode_autocompletion,
-    label="Find badminton availability near you",
-    placeholder="Enter your postcode (default: Central London)",
-    key="postcode_input_autocompletion",
-)
-
-start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
-with start_time_filter:
-    start_time_filter_input = st.time_input("Slots ranging from", time(18, 00))
-with end_time_filter:
-    end_time_filter_input = st.time_input("Slots ranging upto", time(22, 00))
-with consecutive_slots_filter:
-    consecutive_slots_input = st.radio(
-        "Want consecutive slots?",
-        [2, 3, 4],
-        horizontal=True,
+with st.form("my_form"):
+    options = st.multiselect(
+        "Pick your preferred playing locations",
+        sports_centre_names,
+        sports_centre_names[:DEFAULT_MAPPINGS_SELECTION],
+        # default select first "n" centres from mappings file
+        disabled=True,
     )
 
+    st.toggle(label="Select all locations", key="all_options_switch", value=True, disabled=True)
+    if st.session_state["all_options_switch"]:
+        options = sports_centre_names
 
-carousel_container = st.container()
-with carousel_container:
-    consecutive_slots: List[List[db.SportScanner]] = find_consecutive_slots(5)
-    generate_carousal_with_data(
-        format_consecutive_slots_groupings(consecutive_slots)
+
+    # postcode_input = st_searchbox(
+    #     postcode_autocompletion,
+    #     label="Find badminton availability near you",
+    #     placeholder="Enter your postcode (default: Central London)",
+    #     key="postcode_input_autocompletion",
+    # )
+
+    date_range_input = st.date_input(
+        "Select the dates you want to play at?",
+        value=(datetime.now().date(), datetime.now().date() + timedelta(days=5)),
+        min_value=datetime.now().date(),
+        max_value=datetime.now().date() + timedelta(days=7),
+        format="DD/MM/YYYY",
     )
+    start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
+    with start_time_filter:
+        start_time_filter_input = st.time_input("Slots starting from", time(18, 00))
+    with end_time_filter:
+        end_time_filter_input = st.time_input("Slots available until", time(22, 00))
+    with consecutive_slots_filter:
+        consecutive_slots_input = st.radio(
+            "Want consecutive slots?",
+            [2, 3, 4],
+            horizontal=True,
+        )
+    user_preferences_selection = st.form_submit_button("Find me badminton slots")
 
-# if st.button("Find me badminton slots"):
-#     sports_centre_lists = [
-#         _sports_centre
-#         for _sports_centre in json_data
-#         if _sports_centre["name"] in options
-#     ]
-#
-#     with st.status("Fetching desired slots", expanded=False) as status:
-#         tic = pytime.time()
-#         if postcode_input is not None and validate_uk_postcode(postcode_input) is True:
-#             st.success(f"Postcode validation successful")
-#             postcode_metadata: PostcodesResponseModel = get_postcode_metadata(
-#                 postcode_input
-#             )
-#         else:
-#             st.warning(
-#                 "Incorrect/No postcode specified - searching near **central london**"
-#             )
-#             postcode_metadata: PostcodesResponseModel = get_postcode_metadata(
-#                 postcode="WC2N 5DU"  # TODO: this is a central london placeholder
-#             )
-#         st.write(f"Fetching slots data for dates {dates[0]} to {dates[-1]}")
-#         try:
-#             display_df, available_slots_with_preferences = slots_scanner(
-#                 sports_centre_lists,
-#                 dates,
-#                 start_time=start_time_filter_input.strftime("%H:%M"),
-#                 end_time=end_time_filter_input.strftime("%H:%M"),
-#                 postcode_search=postcode_metadata,
-#             )
-#             st.write(f"calculating {consecutive_slots_input} consecutive slots")
-#             groupings_for_consecutive_slots: list = find_consecutive_slots(
-#                 sports_centre_lists,
-#                 dates,
-#                 available_slots_with_preferences,
-#                 consecutive_slots_input,
-#             )
-#             st.write("Sorting outputs for final results")
-#             sorted_consecutive_slot_groupings = sorted(
-#                 groupings_for_consecutive_slots,
-#                 key=lambda grouping: (
-#                     grouping[0]["date"],
-#                     grouping[0]["nearest_distance"],
-#                     grouping[0]["parsed_start_time"],
-#                 ),
-#             )
-#             status.update(
-#                 label=f"Processing complete in {pytime.time() - tic:.2f}s",
-#                 state="complete",
-#                 expanded=False,
-#             )
-#         except:
-#             status.update(label="Failed to fetch slots", state="error", expanded=True)
-#
-#     carousel_items, show_all_slots = get_carousal_card_items(
-#         sorted_consecutive_slot_groupings, consecutive_slots_input, dates
-#     )
-#     # Create a container to hold the carousel
-#     carousel_container = st.container()
-#     # Create the horizontal card carousel
-#     with carousel_container:
-#         st.markdown(
-#             f"""
-#             <div class="horizontal-scroll">
-#                 {" ".join(f'<div class="card" style="background-color: {bg_color};">{text}</div>' for bg_color, text in carousel_items)}
-#             </div>
-#             """,
-#             unsafe_allow_html=True,  # Render the HTML content
-#         )
-#
-#     st.divider()
-#     with st.expander("Display all available slots", expanded=show_all_slots):
-#         st.dataframe(display_df, use_container_width=True, hide_index=True)
+if user_preferences_selection:
+    with (st.status("Fetching available badminton slots", expanded=True) as status):
+        tic = pytime.time()
+        st.write(f"Fetching slots data for dates **{dates[0]}** to **{dates[-1]}**")
+        db.initialize_db_and_tables(engine)
+        db.pipeline_refresh_decision_based_on_interval(engine, timedelta(minutes=30))
+        if db.get_refresh_status_for_pipeline(engine) != db.PipelineRefreshStatus.COMPLETED.value:
+            st.write(f"Cache miss, data refresh in-progress")
+            pipeline_data_refresh()
+        else:
+            st.write(f"Data is already up-to to date, fetching cache")
+        st.write(f"Calculating {consecutive_slots_input} consecutive slots")
+        starting_date_input = date_range_input[0]
+        ending_date_input = date_range_input[1] if len(date_range_input) > 1 \
+            else date_range_input[0]
+        consecutive_slots: List[List[db.SportScanner]] = find_consecutive_slots(
+            consecutive_slots_input,
+            start_time_filter_input,
+            end_time_filter_input,
+            starting_date_input,
+            ending_date_input
+        )
+
+        slots = db.get_all_rows(
+            engine, db.SportScanner,
+            db.select(db.SportScanner).where(db.SportScanner.spaces > 0)
+            .where(db.SportScanner.starting_time >= start_time_filter_input)
+            .where(db.SportScanner.ending_time <= end_time_filter_input)
+            .where(db.SportScanner.date >= starting_date_input)
+            .where(db.SportScanner.date <= ending_date_input)
+            .order_by(db.SportScanner.date)
+            .order_by(db.SportScanner.starting_time)
+        )
+        slots_dict_list = [model.model_dump() for model in slots]
+
+        # Convert the dictionary list to a pandas DataFrame
+        badminton_slots_df = pd.DataFrame(slots_dict_list)
+        sports_venues_df = pd.DataFrame([model.model_dump() for model in sports_venues])
+        dataframe_for_display = pd.merge(
+            badminton_slots_df,
+            sports_venues_df[['venue_name', 'slug']],
+            left_on='venue_slug',
+            right_on='slug',
+            how='left'
+        )
+        dataframe_for_display = dataframe_for_display.loc[:,
+                                ['venue_name', 'date', 'starting_time', 'ending_time', 'price',
+                                 'booking_url']
+                             ]
+
+        status.update(
+            label=f"Processing complete in {pytime.time() - tic:.2f}s",
+            state="complete",
+            expanded=False,
+        )
+    with st.container() as carousel_container:
+        formatted_consecutive_slots_groupings = format_consecutive_slots_groupings(consecutive_slots)
+        if len(formatted_consecutive_slots_groupings) == 0:
+            st.warning("No consecutive slots found in the selected time/venues")
+        else:
+            generate_carousal_with_data(
+                formatted_consecutive_slots_groupings
+            )
+
+    st.divider()
+    with st.expander("Display all available slots", expanded=True):
+        st.dataframe(
+            dataframe_for_display,
+            column_config={
+                "venue_name": "Venue name",
+                "date": "Date",
+                "starting_time": "Starting Time",
+                "ending_time": "Ending Time",
+                "price": "Price",
+                "booking_url": st.column_config.LinkColumn(
+                    label="Bookings Website",
+                    display_text="Visit Booking Site"
+                )
+            },
+            use_container_width=True,
+            hide_index=True
+        )

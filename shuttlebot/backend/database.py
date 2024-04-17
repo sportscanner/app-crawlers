@@ -27,7 +27,6 @@ class SportScanner(SQLModel, table=True):
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
     uuid: str = Field(primary_key=True)
-    venue_slug: str
     category: str
     starting_time: time
     ending_time: time
@@ -37,6 +36,8 @@ class SportScanner(SQLModel, table=True):
     organisation: str
     last_refreshed: datetime
     booking_url: str | None
+
+    venue_slug: str = Field(default=None, foreign_key="sportsvenue.slug")
 
 
 class SportsVenue(SQLModel, table=True):
@@ -250,9 +251,17 @@ def initialize_db_and_tables(engine):
     load_sports_centre_mappings(engine)
 
 
+
+def select_heroes():
+    with Session(engine) as session:
+        statement = select(SportScanner, SportsVenue).where(SportScanner.venue_slug == SportsVenue.slug)
+        results = session.exec(statement)
+        print(results)
+        print(type(results))
+        for hero, team in results:
+            print("Hero:", hero, "Team:", team)
+            print("\n")
+
 if __name__ == "__main__":
     initialize_db_and_tables(engine)
-    pipeline_refresh_decision_based_on_interval(engine, refresh_interval=timedelta(seconds=10))
-    logging.success(f"REFRESH STATUS: {get_refresh_status_for_pipeline(engine)}")
-    update_refresh_status_for_pipeline(engine, refresh_status=PipelineRefreshStatus.COMPLETED)
-    logging.success(f"REFRESH STATUS: {get_refresh_status_for_pipeline(engine)}")
+    select_heroes()
