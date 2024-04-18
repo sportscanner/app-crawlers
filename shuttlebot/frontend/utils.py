@@ -1,7 +1,9 @@
-import streamlit as st
 from typing import List
 
+import streamlit as st
+
 from shuttlebot.backend.utils import ConsecutiveSlotsCarousalDisplay
+
 
 def load_css_styles(file_path: str):
     with open(file_path, "r") as f:
@@ -10,7 +12,7 @@ def load_css_styles(file_path: str):
 
 
 def generate_carousal_with_data(
-        consecutive_slots_groupings: List[ConsecutiveSlotsCarousalDisplay]
+    consecutive_slots_groupings: List[ConsecutiveSlotsCarousalDisplay],
 ):
     if len(consecutive_slots_groupings) > 0:
         card_html_template = f"""
