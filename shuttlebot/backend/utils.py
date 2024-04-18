@@ -165,7 +165,7 @@ def format_consecutive_slots_groupings(
     sorted_groupings_for_consecutive_slots = sorted(
         temp, key=lambda x: (x.distance, x.raw_date, x.group_start_time)
     )
-    logging.info(f"Top 3 formatted consecutive slot groupings for Carousal:\n{sorted_groupings_for_consecutive_slots[:3]}")
+    logging.debug(f"Top formatted consecutive slot grouping for Carousal:\n{sorted_groupings_for_consecutive_slots[:1]}")
     return sorted_groupings_for_consecutive_slots
 
 
