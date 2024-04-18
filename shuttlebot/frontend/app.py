@@ -57,7 +57,7 @@ dates = [date.strftime("%Y-%m-%d") for date in raw_dates]
 
 
 # GLOBAL: Read the JSON file
-@st.cache_data
+@st.cache_resource
 def cached_mappings():
     sports_centre_lists = db.get_all_rows(
         db.engine, table=db.SportsVenue, expression=db.select(db.SportsVenue)

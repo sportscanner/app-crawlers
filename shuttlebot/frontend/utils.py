@@ -4,11 +4,16 @@ import streamlit as st
 
 from shuttlebot.backend.utils import ConsecutiveSlotsCarousalDisplay
 
-
+@st.cache_resource
 def load_css_styles(file_path: str):
     with open(file_path, "r") as f:
         css = f.read()
     return css
+
+
+@st.cache_data
+def load_postcodes_lookup():
+    pass #TODO: use the lookup file `postcodes.csv` to enrich the cards and dataframe
 
 
 def generate_carousal_with_data(
