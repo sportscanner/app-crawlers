@@ -23,7 +23,7 @@ test:
 run: test
 	@python -m streamlit run shuttlebot/frontend/app.py
 
-build: test
+build:
 	@docker build -t shuttlebot .
 	@docker run -p 8501:8501 shuttlebot
 

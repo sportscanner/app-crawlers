@@ -1,5 +1,6 @@
 from typing import List, Optional
-from pydantic import BaseModel, UUID4
+
+from pydantic import UUID4, BaseModel
 
 
 class ApplicableFilter(BaseModel):
@@ -53,6 +54,7 @@ class CitySportsResponseSchema(BaseModel):
     UntilEndWarningEnabled: bool
     UntilEndWarningText: Optional[str]
     Instructor: Optional[str]
+
 
 # Example usage:
 # activity_data = { ... }  # Your JSON data here
