@@ -43,7 +43,7 @@ st.html(f"<style>{dropdown_css}</style>")
 st.html(f"<style>{brandings_css}</style>")
 
 
-st.title(f"🔖{page_title}")
+st.markdown(f'<h1 style="color:rgb(59, 130, 246);">{page_title}</h1>', unsafe_allow_html=True)
 st.subheader("Find badminton slots for upcoming week, `90x` faster")
 
 # App layouts and logic starts here

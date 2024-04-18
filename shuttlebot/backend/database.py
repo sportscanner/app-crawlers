@@ -100,9 +100,9 @@ def pipeline_refresh_decision_based_on_interval(
                     f"Data is within `x` minutes ago range: {refresh_interval}, NO refresh needed"
                 )
         else:
-            # Create a new record if none exists (unlikely)
+            # Create a new record if none exists (When the setup is launched for 1st time on new infra)
             new_record = RefreshMetadata(
-                refresh_status=PipelineRefreshStatus.COMPLETED.value,
+                refresh_status=PipelineRefreshStatus.OBSOLETE.value,
                 last_refreshed=datetime.now()
             )
             session.add(new_record)
