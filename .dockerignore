@@ -1,3 +1,26 @@
+.vscode/
+*cache
+__pycache__/
+venv
+snorlax/.DS_Store
+*.egg-info
 dist/
 build/
 experimental/
+.idea/
+
+# iPython Notebook files
+.ipynb_checkpoints/
+*.ipynb
+
+# ignore credentials files/or environment variables
+credentials/
+*.logs
+secrets.toml
+
+# dotenv-vault credentials to store environment variables securely
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
+*.db
