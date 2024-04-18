@@ -159,7 +159,7 @@ def format_consecutive_slots_groupings(
 
             temp.append(
                 ConsecutiveSlotsCarousalDisplay(
-                    distance="Approx x. miles away",
+                    distance="Greater London, England",
                     venue=venue_name_lookup,
                     organisation=initial_slot_in_group.organisation,
                     raw_date=initial_slot_in_group.date,
