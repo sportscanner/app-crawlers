@@ -1,149 +1,314 @@
 [
   {
-    "name": "John Orwell Sports Centre",
-    "encoded_alias": "john-orwell",
-    "postcode": "E1W 2QD",
-    "lat": "51.5049",
-    "lng": "-0.061617"
+    "venue_name": "John Orwell Sports Centre",
+    "slug": "john-orwell",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E1W 2QD",
+      "latitude": "51.5049",
+      "longitude": "-0.061617"
+    }
   },
   {
-    "name": "Whitechapel Sports Centre",
-    "encoded_alias": "whitechapel-sports-centre",
-    "postcode": "E1 5BA",
-    "lat": "51.5199",
-    "lng": "-0.060763"
+    "venue_name": "Whitechapel Sports Centre",
+    "slug": "whitechapel-sports-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E1 5BA",
+      "latitude": "51.5199",
+      "longitude": "-0.060763"
+    }
   },
   {
-    "name": "Swiss Cottage Leisure Centre",
-    "encoded_alias": "swiss-cottage-leisure-centre",
-    "postcode": "NW3 3NF",
-    "lat": "51.5424",
-    "lng": "-0.173416"
+    "venue_name": "Swiss Cottage Leisure Centre",
+    "slug": "swiss-cottage-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "NW3 3NF",
+      "latitude": "51.5424",
+      "longitude": "-0.173416"
+    }
   },
   {
-    "name": "Kensington Leisure Centre",
-    "encoded_alias": "kensington-leisure-centre",
-    "postcode": "W10 6EX",
-    "lat": "51.5114309",
-    "lng": "-0.2121396"
+    "venue_name": "Kensington Leisure Centre",
+    "slug": "kensington-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "W10 6EX",
+      "latitude": "51.5114309",
+      "longitude": "-0.2121396"
+    }
   },
   {
-    "name": "Poplar Leisure Centre",
-    "encoded_alias": "poplar-baths-leisure-centre",
-    "postcode": "E14 0ED",
-    "lat": "51.511139",
-    "lng": "-0.014445"
+    "venue_name": "Poplar Leisure Centre",
+    "slug": "poplar-baths-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E14 0ED",
+      "latitude": "51.511139",
+      "longitude": "-0.014445"
+    }
   },
   {
-    "name": "Finsbury Leisure Centre",
-    "encoded_alias": "finsbury-leisure-centre",
-    "postcode": "EC1V 3PU",
-    "lat": "51.5261266",
-    "lng": "-0.0951542"
+    "venue_name": "Finsbury Leisure Centre",
+    "slug": "finsbury-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "EC1V 3PU",
+      "latitude": "51.5261266",
+      "longitude": "-0.0951542"
+    }
   },
   {
-    "name": "Britannia Leisure Centre",
-    "encoded_alias": "britannia-leisure-centre",
-    "postcode": "N1 5FT",
-    "lat": "51.534244152029",
-    "lng": "-0.082955257571105"
+    "venue_name": "Britannia Leisure Centre",
+    "slug": "britannia-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "N1 5FT",
+      "latitude": "51.534244152029",
+      "longitude": "-0.082955257571105"
+    }
   },
   {
-    "name": "Mile End Park Leisure Centre",
-    "encoded_alias": "mile-end-park-leisure-centre",
-    "postcode": "E3 4HL",
-    "lat": "51.5193",
-    "lng": "-0.032319"
+    "venue_name": "Mile End Park Leisure Centre",
+    "slug": "mile-end-park-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E3 4HL",
+      "latitude": "51.5193",
+      "longitude": "-0.032319"
+    }
   },
   {
-    "name": "Queensbridge Sports And Community",
-    "encoded_alias": "queensbridge-sports-community-centre",
-    "postcode": "E8 3XW",
-    "lat": "51.542135",
-    "lng": "-0.071475"
+    "venue_name": "Queensbridge Sports And Community",
+    "slug": "queensbridge-sports-community-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E8 3XW",
+      "latitude": "51.542135",
+      "longitude": "-0.071475"
+    }
   },
   {
-    "name": "Kings Hall Leisure Centre",
-    "encoded_alias": "kings-hall-leisure-centre",
-    "postcode": "E5 0NU",
-    "lat": "51.5513595",
-    "lng": "-0.0524287"
+    "venue_name": "Kings Hall Leisure Centre",
+    "slug": "kings-hall-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E5 0NU",
+      "latitude": "51.5513595",
+      "longitude": "-0.0524287"
+    }
   },
   {
-    "name": "Clissold Leisure Centre",
-    "encoded_alias": "clissold-leisure-centre",
-    "postcode": "N16 9EX",
-    "lat": "51.5579",
-    "lng": "-0.084595"
+    "venue_name": "Clissold Leisure Centre",
+    "slug": "clissold-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "N16 9EX",
+      "latitude": "51.5579",
+      "longitude": "-0.084595"
+    }
   },
   {
-    "name": "Talacre Community Sports Centre",
-    "encoded_alias": "talacre-community-sports-centre",
-    "postcode": "NW5 3AF",
-    "lat": "51.547056",
-    "lng": "-0.147121"
+    "venue_name": "Talacre Community Sports Centre",
+    "slug": "talacre-community-sports-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "NW5 3AF",
+      "latitude": "51.547056",
+      "longitude": "-0.147121"
+    }
   },
   {
-    "name": "Leytonstone Leisure Centre",
-    "encoded_alias": "leytonstone-leisure-centre",
-    "postcode": "E11 4LA",
-    "lat": "51.5604",
-    "lng": "0.003602"
+    "venue_name": "Leytonstone Leisure Centre",
+    "slug": "leytonstone-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E11 4LA",
+      "latitude": "51.5604",
+      "longitude": "0.003602"
+    }
   },
   {
-    "name": "Walthamstow Leisure Centre",
-    "encoded_alias": "walthamstow-leisure-centre",
-    "postcode": "E178RN",
-    "lat": "51.5758",
-    "lng": "-0.02884"
+    "venue_name": "Walthamstow Leisure Centre",
+    "slug": "walthamstow-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E178RN",
+      "latitude": "51.5758",
+      "longitude": "-0.02884"
+    }
   },
   {
-    "name": "Crystal Palace National Sports Centre",
-    "encoded_alias": "crystal-palace-leisure-centre",
-    "postcode": "SE192BB",
-    "lat": "51.4189989",
-    "lng": "-0.0677686"
+    "venue_name": "Crystal Palace National Sports Centre",
+    "slug": "crystal-palace-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "SE192BB",
+      "latitude": "51.4189989",
+      "longitude": "-0.0677686"
+    }
   },
   {
-    "name": "Phoenix Fitness Centre",
-    "encoded_alias": "phoenix-fitness-centre-and-janet-adegoke-swimming-pool",
-    "postcode": "W12 7DB",
-    "lat": "51.5127",
-    "lng": "-0.23535"
+    "venue_name": "Phoenix Fitness Centre",
+    "slug": "phoenix-fitness-centre-and-janet-adegoke-swimming-pool",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "W12 7DB",
+      "latitude": "51.5127",
+      "longitude": "-0.23535"
+    }
   },
   {
-    "name": "Waltham Forest Feel Good Centre",
-    "encoded_alias": "waltham-forest-feel-good-centre",
-    "postcode": "E17 5AA",
-    "lat": "51.5955114",
-    "lng": "-0.0137085"
+    "venue_name": "Waltham Forest Feel Good Centre",
+    "slug": "waltham-forest-feel-good-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E17 5AA",
+      "latitude": "51.5955114",
+      "longitude": "-0.0137085"
+    }
   },
   {
-    "name": "Copper Box Arena",
-    "encoded_alias": "copper-box-arena",
-    "postcode": "E20 3HB",
-    "lat": "51.5446",
-    "lng": "-0.021522"
+    "venue_name": "Copper Box Arena",
+    "slug": "copper-box-arena",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E20 3HB",
+      "latitude": "51.5446",
+      "longitude": "-0.021522"
+    }
   },
   {
-    "name": "Hendon Leisure Centre",
-    "encoded_alias": "hendon-leisure-centre",
-    "postcode": "NW2 1XQ",
-    "lat": "51.5739526",
-    "lng": "-0.2155321"
+    "venue_name": "Hendon Leisure Centre",
+    "slug": "hendon-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "NW2 1XQ",
+      "latitude": "51.5739526",
+      "longitude": "-0.2155321"
+    }
   },
   {
-    "name": "Gunnersbury Park Sports Hub",
-    "encoded_alias": "gunnersbury-park-sports-hub",
-    "postcode": "W3 8LQ",
-    "lat": "51.500481",
-    "lng": "-0.28953"
+    "venue_name": "Gunnersbury Park Sports Hub",
+    "slug": "gunnersbury-park-sports-hub",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "W3 8LQ",
+      "latitude": "51.500481",
+      "longitude": "-0.28953"
+    }
   },
   {
-    "name": "Canons Leisure Centre",
-    "encoded_alias": "canons-leisure-centre",
-    "postcode": "CR4 4HD",
-    "lat": "51.3997",
-    "lng": "-0.161339"
+    "venue_name": "Canons Leisure Centre",
+    "slug": "canons-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "CR4 4HD",
+      "latitude": "51.3997",
+      "longitude": "-0.161339"
+    }
+  },
+  {
+    "venue_name": "The Plumstead Centre",
+    "slug": "the-plumstead-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "CR4 4HD",
+      "latitude": "51.39959",
+      "longitude": "-0.161533"
+    }
+  },
+  {
+    "venue_name": "Waterfront Leisure Centre",
+    "slug": "waterfront-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "SE18 6DL",
+      "latitude": "51.494047",
+      "longitude": "0.063403"
+    }
+  },
+  {
+    "venue_name": "Barking Sporthouse and Gym",
+    "slug": "barking-sporthouse-and-gym",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "RM8 2JR",
+      "latitude": "51.545368",
+      "longitude": "0.113014"
+    }
+  },
+  {
+    "venue_name": "East Ham Leisure Centre",
+    "slug": "east-ham-leisure-cente",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E6 2RT",
+      "latitude": "51.533443",
+      "longitude": "0.058953"
+    }
+  },
+  {
+    "venue_name": "CitySport - City University London",
+    "slug": "citysport",
+    "organisation_name": "citysport.org.uk",
+    "organisation_hash": "378b041c5cd6e6844e173b295b62f259f78189b1",
+    "parser_uuid": "e065ef88-91d1-4ba3-b56b-48081b16b6be",
+    "location": {
+      "postcode": "EC1V 7DP",
+      "latitude": "51.524709",
+      "longitude": "-0.099123"
+    }
   }
 ]

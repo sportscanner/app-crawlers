@@ -10,10 +10,11 @@ health:
 
 freeze:
 	@pip install pipreqs
-	@pipreqs shuttlebot --savepath "requirements.txt" --force --encoding=utf-8
+	@pipreqs shuttlebot/ --savepath "requirements.txt" --force --encoding=utf-8
 
 setup: health
 	@pip install -r requirements.txt
+	@pip install -e .
 	@$(support-libs)
 
 test:
@@ -22,7 +23,7 @@ test:
 run: test
 	@python -m streamlit run shuttlebot/frontend/app.py
 
-build: test
+build:
 	@docker build -t shuttlebot .
 	@docker run -p 8501:8501 shuttlebot
 

@@ -1,0 +1,56 @@
+.horizontal-scroll {
+    display: flex;
+    flex-wrap: nowrap; /* Added property */
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.horizontal-scroll {
+    display: flex;
+    flex-wrap: nowrap; /* Keep this line */
+    overflow-x: auto;
+    /* Other scrollbar styles */
+}
+
+.card {
+    display: grid;
+    grid-template-rows: auto 1fr auto; /* Adjust row sizes as needed */
+    align-content: space-between;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-right: 10px;
+    min-width: 200px;
+    max-width: 200px;
+    border-radius: 10px; /* Adjust the radius as needed */
+    word-wrap: break-word; /* Enable word wrapping */
+}
+
+
+.actions {
+  margin-top: 1.5rem;
+}
+
+.actions a {
+  text-decoration: none;
+}
+
+a.read {
+  background-color: rgba(59, 130, 246, 1);
+  color: rgba(255, 255, 255, 1);
+  display: inline-block;
+  border-radius: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.read:hover {
+  background-color: rgb(32, 96, 201); /* Change color as desired */
+  color: rgb(255, 255, 255); /* Change text color to white on hover */
+}
+

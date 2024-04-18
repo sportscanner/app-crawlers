@@ -2,8 +2,8 @@ from pydantic import BaseModel
 
 
 class PostcodeMetadata(BaseModel):
-    longitude: float
-    latitude: float
+    longitude: float = -0.128294
+    latitude: float = 51.507209
 
 
 class PostcodesResponseModel(BaseModel):

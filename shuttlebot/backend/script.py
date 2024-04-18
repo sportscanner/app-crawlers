@@ -6,9 +6,9 @@ import pandas as pd
 from loguru import logger as logging
 
 from shuttlebot import config
+from shuttlebot.backend.compilation.utils import transform_api_response
 from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
-from shuttlebot.backend.requests.assemble import aggregate_api_responses
-from shuttlebot.backend.requests.utils import transform_api_response
+from shuttlebot.backend.pipeline import aggregate_api_responses
 from shuttlebot.backend.utils import (
     find_consecutive_slots,
     timeit,
@@ -83,21 +83,30 @@ def filter_and_transform_to_dataframe(
     return transformed_dataframe.reset_index(drop=True)
 
 
-def trim_api_response_fields(aggregated_slots_enhanced_with_metadata: list[dict]) -> list[dict]:
+def trim_api_response_fields(
+    aggregated_slots_enhanced_with_metadata: list[dict],
+) -> list[dict]:
     aggregated_slots_parsed = [
-        transform_api_response(response) for response in aggregated_slots_enhanced_with_metadata
+        transform_api_response(response)
+        for response in aggregated_slots_enhanced_with_metadata
     ]
     logging.debug(aggregated_slots_parsed)
     return aggregated_slots_parsed
 
 
 def slots_scanner(
-        sports_centre_lists, dates, start_time, end_time,
-        postcode_search: PostcodesResponseModel = None):
+    sports_centre_lists,
+    dates,
+    start_time,
+    end_time,
+    postcode_search: PostcodesResponseModel = None,
+):
     aggregated_slots_enhanced_with_metadata = aggregate_api_responses(
         sports_centre_lists, dates, postcode_search
     )
-    trimmed_api_response_fields = trim_api_response_fields(aggregated_slots_enhanced_with_metadata)
+    trimmed_api_response_fields = trim_api_response_fields(
+        aggregated_slots_enhanced_with_metadata
+    )
     available_slots_with_preferences = apply_slots_preference_filter(
         trimmed_api_response_fields,
         start_time_preference=start_time,
@@ -107,16 +116,6 @@ def slots_scanner(
         available_slots_with_preferences, start_time, end_time
     )
     return slots_dataframe, available_slots_with_preferences
-
-
-def get_mappings():
-    with open(f"./{config.MAPPINGS}", "r") as file:
-        sports_centre_lists = json.load(file)
-        if validate_json_schema(sports_centre_lists):
-            return sports_centre_lists
-        else:
-            logging.error("JSON schema is invalid for mappings")
-            return None
 
 
 def main():
