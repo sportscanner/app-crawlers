@@ -11,12 +11,14 @@ def validate_api_response(response, content_type: str, url: str):
         case (_, c) if c != "application/json":
             logging.error(
                 f"Response content-type is not application/json"
+                f"\nURL: {url}"
                 f"\nResponse: {response}"
             )
             return {}
         case (_, _):
             logging.error(
                 f"Request failed: status code {response.status_code}"
+                f"\nURL: {url}"
                 f"\nResponse: {response}"
             )
             return {}

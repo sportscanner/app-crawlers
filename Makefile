@@ -21,8 +21,10 @@ setup: health
 test:
 	@pytest . -v --disable-warnings
 
-run:
+reset:
 	@python shuttlebot/backend/database.py
+
+run: reset
 	@python -m streamlit run shuttlebot/frontend/app.py
 
 build:

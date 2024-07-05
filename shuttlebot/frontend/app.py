@@ -47,7 +47,11 @@ st.html(f"<style>{brandings_css}</style>")
 st.markdown(
     f'<h1 style="color:rgb(59, 130, 246);">{page_title}</h1>', unsafe_allow_html=True
 )
-st.subheader("Find your next sports booking - Quicker and Centralised")
+st.markdown(
+    '<h5 style="color:rgb(15, 60, 130);">Find Your Next Badminton Booking - Quicker and '
+    'Centralised</h5>', unsafe_allow_html=True
+)
+# st.markdown("Find Your Next Badminton Booking - Quicker and Centralised")
 
 # App layouts and logic starts here
 
