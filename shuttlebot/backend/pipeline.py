@@ -33,8 +33,8 @@ def pipeline_data_refresh():
     logging.info(f"Finding slots for dates: {dates}")
 
     logging.debug(
-        f"Fetching data for org: 'better.org.uk' - hash: "
-        f"'817c4e0f86723d52f14291327ca1723dc00a8615'"
+        f"Fetching data for org: 'better.org.uk' - dates: "
+        f"`{dates[0]}` to {dates[-1]}"
     )
     slots_fetched_org_hash_817c4e0f86723d52f14291327ca1723dc00a8615 = (
         BetterOrganisation.pipeline(dates)
@@ -47,9 +47,10 @@ def pipeline_data_refresh():
         organisation="better.org.uk",
     )
 
+    dates = [today + timedelta(days=i) for i in range(30)]
     logging.debug(
-        f"Fetching data for org: 'citysport.org.uk' - hash: "
-        f"'378b041c5cd6e6844e173b295b62f259f78189b1'"
+        f"Fetching data for org: 'citysport.org.uk' - dates: "
+        f"`{dates[0]}` to {dates[-1]}"
     )
     slots_fetched_org_hash_378b041c5cd6e6844e173b295b62f259f78189b1 = (
         CitySports.pipeline(dates)
@@ -68,25 +69,7 @@ def pipeline_data_refresh():
 @timeit
 def main():
     """Gathers data from all sources/providers and loads to SQL database"""
-    initialize_db_and_tables(engine)
-    pipeline_refresh_decision_based_on_interval(engine, timedelta(minutes=30))
-    while (
-        get_refresh_status_for_pipeline(engine) != PipelineRefreshStatus.COMPLETED.value
-    ):
-        if (
-            get_refresh_status_for_pipeline(engine)
-            == PipelineRefreshStatus.OBSOLETE.value
-        ):
-            pipeline_data_refresh()
-        elif (
-            get_refresh_status_for_pipeline(engine)
-            == PipelineRefreshStatus.RUNNING.value
-        ):
-            logging.info("Pipeline is currently running, wait for data refresh")
-            time.sleep(2)
-
-    consecutive_slots: List[List[SportScanner]] = find_consecutive_slots(5)
-    format_consecutive_slots_groupings(consecutive_slots)
+    pipeline_data_refresh()
 
 
 if __name__ == "__main__":

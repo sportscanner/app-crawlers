@@ -93,9 +93,9 @@ with st.form("my_form"):
 
     date_range_input = st.date_input(
         "Select the dates you want to play at?",
-        value=(datetime.now().date(), datetime.now().date() + timedelta(days=5)),
+        value=(datetime.now().date(), datetime.now().date() + timedelta(days=6)),
         min_value=datetime.now().date(),
-        max_value=datetime.now().date() + timedelta(days=7),
+        max_value=datetime.now().date() + timedelta(days=30),
         format="DD/MM/YYYY",
     )
     start_time_filter, end_time_filter, consecutive_slots_filter = st.columns(3)
