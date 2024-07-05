@@ -47,7 +47,7 @@ st.html(f"<style>{brandings_css}</style>")
 st.markdown(
     f'<h1 style="color:rgb(59, 130, 246);">{page_title}</h1>', unsafe_allow_html=True
 )
-st.subheader("Find badminton slots for upcoming week, `90x` faster")
+st.subheader("Find your next sports booking - Quicker and Centralised")
 
 # App layouts and logic starts here
 
@@ -67,20 +67,16 @@ def cached_mappings():
     ], sports_centre_lists
 
 
-# Initialising tables and making sure data is available for sportsvenue lookup
-db.initialize_db_and_tables(engine)
-
 sports_centre_names, sports_venues = cached_mappings()
-st.markdown(f"###### Covers up-to `{len(sports_centre_names)} venues` across London")
 
 with st.form("my_form"):
-    options = st.multiselect(
-        "Pick your preferred playing locations",
-        sports_centre_names,
-        sports_centre_names[:DEFAULT_MAPPINGS_SELECTION],
-        # default select first "n" centres from mappings file
-        disabled=True,
-    )
+    # options = st.multiselect(
+    #     "Pick your preferred playing locations",
+    #     sports_centre_names,
+    #     sports_centre_names[:DEFAULT_MAPPINGS_SELECTION],
+    #     # default select first "n" centres from mappings file
+    #     disabled=True,
+    # )
 
     st.toggle(
         label="Select all locations",
@@ -114,7 +110,7 @@ with st.form("my_form"):
 if user_preferences_selection:
     with st.status("Fetching available badminton slots", expanded=True) as status:
         tic = pytime.time()
-        db.pipeline_refresh_decision_based_on_interval(engine, timedelta(minutes=30))
+        db.pipeline_refresh_decision_based_on_interval(engine, timedelta(minutes=45))
         st.write(f"Fetching slots data for dates **{dates[0]}** to **{dates[-1]}**")
         if (
             db.get_refresh_status_for_pipeline(engine)

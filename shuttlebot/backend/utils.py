@@ -132,22 +132,18 @@ def format_consecutive_slots_groupings(
     consecutive_slots: List[List[SportScanner]],
 ) -> List[ConsecutiveSlotsCarousalDisplay]:
     temp = []
+    sports_venues: List[SportsVenue] = get_all_rows(
+        engine, SportsVenue, select(SportsVenue)
+    )
+    venue_slug_map = {venue.slug: venue for venue in sports_venues}
     for group_for_consecutive_slots in consecutive_slots:
         gather_slots_starting_times = []
         for slot in group_for_consecutive_slots:
             gather_slots_starting_times.append(slot.starting_time.strftime("%H:%M"))
+
         display_message_slots_starting_times: str = (
             "Slots starting at " f"{', '.join(gather_slots_starting_times)}"
         )
-
-        logging.debug(
-            "Getting sports venue data from tables for slug replace with names"
-        )
-        sports_venues: List[SportsVenue] = get_all_rows(
-            engine, SportsVenue, select(SportsVenue)
-        )
-        venue_slug_map = {venue.slug: venue for venue in sports_venues}
-
         initial_slot_in_group: SportScanner = group_for_consecutive_slots[0]
         final_slot_in_group: SportScanner = group_for_consecutive_slots[0]
         # replacing slug with names

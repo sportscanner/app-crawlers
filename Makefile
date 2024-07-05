@@ -13,6 +13,7 @@ freeze:
 	@pipreqs shuttlebot/ --savepath "requirements.txt" --force --encoding=utf-8
 
 setup: health
+	@python -m pip install --upgrade pip
 	@pip install -r requirements.txt
 	@pip install -e .
 	@$(support-libs)
@@ -20,7 +21,8 @@ setup: health
 test:
 	@pytest . -v --disable-warnings
 
-run: test
+run:
+	@python shuttlebot/backend/database.py
 	@python -m streamlit run shuttlebot/frontend/app.py
 
 build:

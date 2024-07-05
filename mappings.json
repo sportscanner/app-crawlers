@@ -2,7 +2,7 @@
   {
     "venue_name": "John Orwell Sports Centre",
     "slug": "john-orwell",
-    "organisation_name": "better.org.uk",
+    "organisation_name": "be-well.org.uk",
     "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
     "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
     "location": {
@@ -14,7 +14,7 @@
   {
     "venue_name": "Whitechapel Sports Centre",
     "slug": "whitechapel-sports-centre",
-    "organisation_name": "better.org.uk",
+    "organisation_name": "be-well.org.uk",
     "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
     "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
     "location": {
@@ -50,7 +50,7 @@
   {
     "venue_name": "Poplar Leisure Centre",
     "slug": "poplar-baths-leisure-centre",
-    "organisation_name": "better.org.uk",
+    "organisation_name": "be-well.org.uk",
     "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
     "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
     "location": {
@@ -86,7 +86,7 @@
   {
     "venue_name": "Mile End Park Leisure Centre",
     "slug": "mile-end-park-leisure-centre",
-    "organisation_name": "better.org.uk",
+    "organisation_name": "be-well.org.uk",
     "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
     "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
     "location": {
@@ -309,6 +309,42 @@
       "postcode": "EC1V 7DP",
       "latitude": "51.524709",
       "longitude": "-0.099123"
+    }
+  },
+  {
+    "venue_name": "Newham Leisure Centre",
+    "slug": "newham-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "E13 8SD",
+      "latitude": "51.5196997336241",
+      "longitude": "0.037804863874695845"
+    }
+  },
+  {
+    "venue_name": "Thornton Heath Leisure Centre",
+    "slug": "thornton-heath-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "CR7 8LF",
+      "latitude": "51.399032",
+      "longitude": "-0.096946"
+    }
+  },
+  {
+    "venue_name": "New Addington Leisure & Community Centre",
+    "slug": "new-addington-leisure-centre",
+    "organisation_name": "better.org.uk",
+    "organisation_hash": "817c4e0f86723d52f14291327ca1723dc00a8615",
+    "parser_uuid": "5184145c-4d83-4e3b-8bed-3466331a45ba",
+    "location": {
+      "postcode": "CR0 0JB",
+      "latitude": "51.340679",
+      "longitude": "-0.016029"
     }
   }
 ]

@@ -111,8 +111,11 @@ def fetch_data_at_venue(search_dates: List) -> List[UnifiedParserSchema]:
     all_fetched_slots: List[UnifiedParserSchema] = [
         item for sublist in responses_from_all_sources for item in sublist
     ]
-    logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
-    return all_fetched_slots
+    badminton_fetched_slots: List[UnifiedParserSchema] = [
+        slot for slot in all_fetched_slots if slot.category == "Badminton"
+    ]
+    logging.debug(f"Unified parser schema mapped responses:\n{badminton_fetched_slots}")
+    return badminton_fetched_slots
 
 
 def pipeline(search_dates: List) -> List[UnifiedParserSchema]:
