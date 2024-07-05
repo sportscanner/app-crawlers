@@ -19,7 +19,7 @@ credentials/
 secrets.toml
 
 # dotenv-vault credentials to store environment variables securely
-.env*
+.env
 .flaskenv*
 !.env.project
 !.env.vault

@@ -1,10 +1,13 @@
 import json
+import os
 import uuid
 from datetime import date, datetime, time, timedelta
 from enum import Enum
 from functools import cache
+from typing import List
 
 import sqlmodel
+from dotenv import load_dotenv
 from loguru import logger as logging
 from pydantic import UUID4, BaseModel, ValidationError
 from sqlalchemy import Engine, text
@@ -13,9 +16,14 @@ from sqlmodel import Field, Session, SQLModel, and_, create_engine, delete, sele
 from shuttlebot import config
 from shuttlebot.config import SportsCentre
 
-sqlite_file_name = "sportscanner.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-engine = create_engine(sqlite_url, echo=False)
+# Load environment variables from the .env file (if present)
+load_dotenv()
+
+database_name: str = "sportscanner"
+connection_string = os.getenv(
+    "DB_CONNECTION_STRING"
+)  # testing: f"sqlite:///sportscanner.db"
+engine = create_engine(connection_string, echo=False)
 
 
 class PipelineRefreshStatus(Enum):
@@ -103,12 +111,18 @@ def pipeline_refresh_decision_based_on_interval(
                 # Update existing record
                 existing_record.refresh_status = PipelineRefreshStatus.OBSOLETE.value
                 existing_record.last_refreshed = datetime.now()
+            elif existing_record.refresh_status == PipelineRefreshStatus.OBSOLETE.value:
+                logging.info(f"Metadata marked as `OBSOLETE` - indicates a system restart")
+                existing_record.last_refreshed = datetime.now()
             else:
                 logging.info(
                     f"Data is within `x` minutes ago range: {refresh_interval}, NO refresh needed"
                 )
         else:
-            # Create a new record if none exists (When the setup is launched for 1st time on new infra)
+            """
+            Create a new record if none exists
+            can happen when setup is initialised onto a new database or infra
+            """
             new_record = RefreshMetadata(
                 refresh_status=PipelineRefreshStatus.OBSOLETE.value,
                 last_refreshed=datetime.now(),
@@ -261,8 +275,12 @@ def create_temporary_view_consecutive_ordering(engine):
 
 @cache
 def initialize_db_and_tables(engine):
-    logging.info(f"Creating database {sqlite_url}")
+    logging.info(f"Creating database: `{database_name}`")
     create_db_and_tables(engine)
+    update_refresh_status_for_pipeline(
+        engine, refresh_status=PipelineRefreshStatus.OBSOLETE
+    )
+    truncate_table(engine, table=SportScanner)
     truncate_table(engine, table=SportsVenue)
     load_sports_centre_mappings(engine)
 
@@ -281,5 +299,5 @@ def select_heroes():
 
 
 if __name__ == "__main__":
+    logging.info("Database being initialised, cache deleted and mappings reloaded")
     initialize_db_and_tables(engine)
-    select_heroes()
