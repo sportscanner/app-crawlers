@@ -22,10 +22,14 @@ test:
 	@pytest . -v --disable-warnings
 
 reset:
+	@echo "Truncates database tables and sets metadata to Obsolete"
 	@python shuttlebot/backend/database.py
 
-run: reset
+run:
+	@echo "Launching webapp connected to database"
 	@python -m streamlit run shuttlebot/frontend/app.py
+
+develop: reset run
 
 build:
 	@docker build -t shuttlebot .

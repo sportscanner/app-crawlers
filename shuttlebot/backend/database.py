@@ -23,7 +23,10 @@ database_name: str = "sportscanner"
 connection_string = os.getenv(
     "DB_CONNECTION_STRING"
 )  # testing: f"sqlite:///sportscanner.db"
-engine = create_engine(connection_string, echo=False)
+engine_configs = {
+    "timeout": 5
+}
+engine = create_engine(connection_string, pool_pre_ping=True, echo=False)
 
 
 class PipelineRefreshStatus(Enum):
