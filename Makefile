@@ -26,14 +26,14 @@ reset:
 	@python shuttlebot/backend/database.py
 
 run:
-	@echo "Launching webapp connected to database"
-	@python -m streamlit run shuttlebot/frontend/app.py
+	@docker run --env-file .env -p 8501:8501 shuttlebot
 
-develop: reset run
-
-build:
+develop:
+	@echo "Launching in development mode (Docker Build/Run)"
+	@echo "Refine this command to use DuckDB for local mode and connect to volume"
 	@docker build -t shuttlebot .
-	@docker run -p 8501:8501 shuttlebot
+	@docker run --env-file .env -p 8501:8501 shuttlebot
+
 
 format:
 	@isort -r shuttlebot/ *.py
