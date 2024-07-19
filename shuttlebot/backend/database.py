@@ -23,9 +23,7 @@ database_name: str = "sportscanner"
 connection_string = os.getenv(
     "DB_CONNECTION_STRING"
 )  # testing: f"sqlite:///sportscanner.db"
-engine_configs = {
-    "timeout": 5
-}
+engine_configs = {"timeout": 5}
 engine = create_engine(connection_string, pool_pre_ping=True, echo=False)
 
 
@@ -115,7 +113,9 @@ def pipeline_refresh_decision_based_on_interval(
                 existing_record.refresh_status = PipelineRefreshStatus.OBSOLETE.value
                 existing_record.last_refreshed = datetime.now()
             elif existing_record.refresh_status == PipelineRefreshStatus.OBSOLETE.value:
-                logging.info(f"Metadata marked as `OBSOLETE` - indicates a system restart")
+                logging.info(
+                    f"Metadata marked as `OBSOLETE` - indicates a system restart"
+                )
                 existing_record.last_refreshed = datetime.now()
             else:
                 logging.info(

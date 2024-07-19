@@ -1,29 +1,18 @@
 # ---PIP PACKAGES---#
-import json
 import time as pytime
 from datetime import date, datetime, time, timedelta
 from typing import List
 
 import pandas as pd
-import requests
 import streamlit as st
-import streamlit_shadcn_ui as ui
-from streamlit_searchbox import st_searchbox
 
 import shuttlebot.backend.database as db
 from shuttlebot.backend.database import engine, load_sports_centre_mappings
-from shuttlebot.backend.geolocation.api import (
-    get_postcode_metadata,
-    postcode_autocompletion,
-    validate_uk_postcode,
-)
-from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
 from shuttlebot.backend.pipeline import pipeline_data_refresh
 from shuttlebot.backend.utils import (
     find_consecutive_slots,
     format_consecutive_slots_groupings,
 )
-from shuttlebot.frontend.config import DEFAULT_MAPPINGS_SELECTION
 from shuttlebot.frontend.utils import generate_carousal_with_data, load_css_styles
 
 # -- Page specific settings: title/description/icons etc --
@@ -33,7 +22,7 @@ st.set_page_config(
     page_title=page_title,
     layout=layout,
     initial_sidebar_state="collapsed",
-    page_icon=":material/query_stats:"
+    page_icon=":material/query_stats:",
 )
 
 cards_css = load_css_styles("./shuttlebot/frontend/cards.css")
@@ -44,9 +33,8 @@ st.html(f"<style>{cards_css}</style>")
 st.html(f"<style>{dropdown_css}</style>")
 st.html(f"<style>{brandings_css}</style>")
 
-
 st.markdown(
-    '''
+    """
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0" />
     <div style="display: flex; align-items: center;">
         <span class="material-symbols-outlined" style="font-size: 50px; color: rgb(59, 130, 246);">
@@ -55,11 +43,13 @@ st.markdown(
         <h1 style="color: rgb(59, 130, 246); margin: 0 0 0 10px;">Sportscanner</h1>
     </div>
 
-    ''', unsafe_allow_html=True
+    """,
+    unsafe_allow_html=True,
 )
 st.markdown(
     '<h5 style="color:rgb(15, 60, 130);">Find Your Next Badminton Booking - Quicker and '
-    'Centralised</h5>', unsafe_allow_html=True
+    "Centralised</h5>",
+    unsafe_allow_html=True,
 )
 
 today = date.today()
