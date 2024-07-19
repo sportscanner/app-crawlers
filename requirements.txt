@@ -9,6 +9,6 @@ python-dotenv==1.0.1
 rich==13.7.1
 SQLAlchemy==2.0.29
 sqlmodel==0.0.19
-streamlit==1.33.0
+streamlit==1.36.0
 streamlit_searchbox==0.1.6
 streamlit_shadcn_ui==0.1.15

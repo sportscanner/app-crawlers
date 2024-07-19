@@ -33,6 +33,7 @@ st.set_page_config(
     page_title=page_title,
     layout=layout,
     initial_sidebar_state="collapsed",
+    page_icon=":material/query_stats:"
 )
 
 cards_css = load_css_styles("./shuttlebot/frontend/cards.css")
@@ -45,15 +46,21 @@ st.html(f"<style>{brandings_css}</style>")
 
 
 st.markdown(
-    f'<h1 style="color:rgb(59, 130, 246);">{page_title}</h1>', unsafe_allow_html=True
+    '''
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0" />
+    <div style="display: flex; align-items: center;">
+        <span class="material-symbols-outlined" style="font-size: 50px; color: rgb(59, 130, 246);">
+            query_stats
+        </span>
+        <h1 style="color: rgb(59, 130, 246); margin: 0 0 0 10px;">Sportscanner</h1>
+    </div>
+
+    ''', unsafe_allow_html=True
 )
 st.markdown(
     '<h5 style="color:rgb(15, 60, 130);">Find Your Next Badminton Booking - Quicker and '
     'Centralised</h5>', unsafe_allow_html=True
 )
-# st.markdown("Find Your Next Badminton Booking - Quicker and Centralised")
-
-# App layouts and logic starts here
 
 today = date.today()
 raw_dates = [today + timedelta(days=i) for i in range(6)]
