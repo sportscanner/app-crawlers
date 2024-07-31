@@ -29,11 +29,9 @@ run:
 	@docker run --env-file .env -p 8501:8501 shuttlebot
 
 develop:
-	@echo "Launching in development mode (Docker Build/Run)"
-	@echo "Refine this command to use DuckDB for local mode and connect to volume"
-	@docker build -t shuttlebot .
-	@docker run --env-file .env -p 8501:8501 shuttlebot
-
+	@echo "Launching in development mode (connected to SQLiteDB)"
+	@DB_CONNECTION_STRING=sqlite:///sportscanner.db \
+		python -m streamlit run shuttlebot/frontend/app.py
 
 format:
 	@isort -r shuttlebot/ *.py
