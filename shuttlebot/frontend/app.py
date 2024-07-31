@@ -13,7 +13,8 @@ from shuttlebot.backend.utils import (
     find_consecutive_slots,
     format_consecutive_slots_groupings,
 )
-from shuttlebot.frontend.utils import generate_carousal_with_data, load_css_styles
+from shuttlebot.frontend.utils import generate_carousal_with_data, load_css_styles, load_page_headers
+from streamlit_js_eval import get_geolocation
 
 # -- Page specific settings: title/description/icons etc --
 page_title = "SportScanner"
@@ -25,32 +26,12 @@ st.set_page_config(
     page_icon=":material/query_stats:",
 )
 
-cards_css = load_css_styles("./shuttlebot/frontend/cards.css")
-dropdown_css = load_css_styles("./shuttlebot/frontend/dropdown.css")
-brandings_css = load_css_styles("./shuttlebot/frontend/brandings.css")
+# Loads page title and sub headers via caching
+load_page_headers()
 
-st.html(f"<style>{cards_css}</style>")
-st.html(f"<style>{dropdown_css}</style>")
-st.html(f"<style>{brandings_css}</style>")
-
-st.markdown(
-    """
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0" />
-    <div style="display: flex; align-items: center;">
-        <span class="material-symbols-outlined" style="font-size: 50px; color: rgb(59, 130, 246);">
-            query_stats
-        </span>
-        <h1 style="color: rgb(59, 130, 246); margin: 0 0 0 10px;">Sportscanner</h1>
-    </div>
-
-    """,
-    unsafe_allow_html=True,
-)
-st.markdown(
-    '<h5 style="color:rgb(15, 60, 130);">Find Your Next Badminton Booking - Quicker and '
-    "Centralised</h5>",
-    unsafe_allow_html=True,
-)
+load_css_styles("./shuttlebot/frontend/cards.css")
+load_css_styles("./shuttlebot/frontend/dropdown.css")
+load_css_styles("./shuttlebot/frontend/brandings.css")
 
 today = date.today()
 raw_dates = [today + timedelta(days=i) for i in range(6)]
@@ -69,7 +50,7 @@ def cached_mappings():
 
 
 sports_centre_names, sports_venues = cached_mappings()
-
+user_location = get_geolocation()
 with st.form("my_form"):
     # options = st.multiselect(
     #     "Pick your preferred playing locations",
@@ -106,9 +87,10 @@ with st.form("my_form"):
             [2, 3, 4],
             horizontal=True,
         )
-    user_preferences_selection = st.form_submit_button("Find me badminton slots")
+    user_preferences_selection = st.form_submit_button("Find badminton bookings near me :round_pushpin:")
 
 if user_preferences_selection:
+    st.write(user_location)
     with st.status("Fetching available badminton slots", expanded=True) as status:
         tic = pytime.time()
         db.pipeline_refresh_decision_based_on_interval(engine, timedelta(minutes=45))

@@ -9,7 +9,23 @@ from shuttlebot.backend.utils import ConsecutiveSlotsCarousalDisplay
 def load_css_styles(file_path: str):
     with open(file_path, "r") as f:
         css = f.read()
-    return css
+    st.html(f"<style>{css}</style>")
+
+
+@st.cache_resource
+def load_page_headers():
+    st.markdown(
+        """
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0" />
+        <div style="display: flex; align-items: center;">
+            <span class="material-symbols-outlined" style="font-size: 50px; color: rgb(59, 130, 246);">
+                query_stats
+            </span>
+            <h1 style="color: rgb(59, 130, 246); margin: 0 0 0 10px;">Sportscanner</h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_data

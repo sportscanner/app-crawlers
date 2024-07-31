@@ -1,0 +1,16 @@
+# By default, the services are --rm (removed) when services are brought down
+# You don't need to specify about running container/service in -d (detached mode), we do that while
+# bringing the containers up using `docker-compose up -d`
+version: "3.8"
+services:
+  webapp:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: 'shuttlebot-compose'
+    environment:
+      DB_CONNECTION_STRING: sqlite:///sportscanner.db
+    ports:
+      - '8501:8501'
+
+
