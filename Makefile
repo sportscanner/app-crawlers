@@ -23,13 +23,13 @@ test:
 
 reset:
 	@echo "Truncates database tables and sets metadata to Obsolete"
-	@python shuttlebot/backend/database.py
+	@DB_CONNECTION_STRING=sqlite:///sportscanner.db \
+		python shuttlebot/backend/database.py
 
 run:
 	@docker run --env-file .env -p 8501:8501 shuttlebot
 
 develop:
-	kill_port:
 	@lsof -i :8501 -t | xargs kill -9
 	@echo "Launching in development mode (connected to SQLiteDB)"
 	@DB_CONNECTION_STRING=sqlite:///sportscanner.db \
