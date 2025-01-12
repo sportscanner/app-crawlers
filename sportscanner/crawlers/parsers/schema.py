@@ -5,8 +5,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from shuttlebot.backend.parsers.better.schema import BetterApiResponseSchema
-from shuttlebot.backend.parsers.citysports.schema import CitySportsResponseSchema
+from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
+from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 
 
 class UnifiedParserSchema(BaseModel):

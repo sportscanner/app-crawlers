@@ -1,18 +1,14 @@
 import itertools
-import sys
 from datetime import date, datetime, time, timedelta
 from functools import wraps
 from time import time as timer
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-import pandas as pd
 from loguru import logger as logging
-from pydantic import BaseModel, ValidationError
-from rich import print
+from pydantic import BaseModel
 from sqlmodel import select
 
-from shuttlebot import config
-from shuttlebot.backend.database import SportScanner, SportsVenue, engine, get_all_rows
+from sportscanner.crawlers.database import SportScanner, SportsVenue, engine, get_all_rows
 
 
 def timeit(func):

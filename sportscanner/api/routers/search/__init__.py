@@ -1,0 +1,1 @@
+from sportscanner.api.routers.search import endpoints

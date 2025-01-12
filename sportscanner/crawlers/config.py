@@ -4,7 +4,6 @@ from typing import List, Optional
 from pydantic import UUID4, BaseModel
 
 START_TIME, END_TIME = "17:30", "22:00"
-LOGGING_LEVEL = "INFO"
 MAPPINGS = "mappings.json"
 
 from enum import Enum

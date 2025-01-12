@@ -9,20 +9,22 @@ from typing import List
 import sqlmodel
 from dotenv import load_dotenv
 from loguru import logger as logging
-from pydantic import UUID4, BaseModel, ValidationError
+from pydantic import UUID4, ValidationError
 from sqlalchemy import Engine, text
-from sqlmodel import Field, Session, SQLModel, and_, create_engine, delete, select
+from sqlmodel import Field, Session, SQLModel, create_engine, delete, select
 
-from shuttlebot import config
-from shuttlebot.config import SportsCentre
+from sportscanner.crawlers import config
+from sportscanner.crawlers.config import SportsCentre
 
-# Load environment variables from the .env file (if present)
-load_dotenv()
+# Check for an environment variable to determine the environment
+env_file = ".env" if os.getenv("ENV") == "production" else "dev.env"
+# Load the appropriate .env file
+load_dotenv(dotenv_path=env_file)
 
 database_name: str = "sportscanner"
 connection_string = os.getenv(
     "DB_CONNECTION_STRING"
-)  # testing: f"sqlite:///sportscanner.db"
+)
 engine_configs = {"timeout": 5}
 engine = create_engine(connection_string, pool_pre_ping=True, echo=False)
 
@@ -214,6 +216,32 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
         session.commit()
 
 
+def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues):
+    """Inserts the slots for an Organisation one by one into the table: SportScanner"""
+    with Session(engine) as session:
+        statement = delete(SportScanner)
+        results = session.exec(statement)
+        logging.debug(
+            f"Loading fresh data items to db: {len(slots_from_all_venues)}"
+        )
+        for slots in slots_from_all_venues:
+            orm_object = SportScanner(
+                uuid=str(uuid.uuid4()),
+                venue_slug=slots.venue_slug,
+                category=slots.category,
+                starting_time=slots.starting_time,
+                ending_time=slots.ending_time,
+                date=slots.date,
+                price=slots.price,
+                spaces=slots.spaces,
+                organisation=slots.organisation,
+                last_refreshed=slots.last_refreshed,
+                booking_url=slots.booking_url,
+            )
+            session.add(orm_object)
+        session.commit()
+
+
 def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select):
     """Returns all rows from full table or selected columns
     Select columns via: select(table.columnA, table.columnB)
@@ -288,17 +316,12 @@ def initialize_db_and_tables(engine):
     load_sports_centre_mappings(engine)
 
 
-def select_heroes():
-    with Session(engine) as session:
-        statement = select(SportScanner, SportsVenue).where(
-            SportScanner.venue_slug == SportsVenue.slug
-        )
-        results = session.exec(statement)
-        print(results)
-        print(type(results))
-        for hero, team in results:
-            print("Hero:", hero, "Team:", team)
-            print("\n")
+def get_all_sports_venues(engine) -> List[SportsVenue]:
+    sports_venues: List[db.SportsVenue] = get_all_rows(
+        engine, SportsVenue,
+        select(SportsVenue)
+    )
+    return sports_venues
 
 
 if __name__ == "__main__":

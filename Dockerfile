@@ -17,4 +17,4 @@ RUN make setup
 EXPOSE 8501
 HEALTHCHECK CMD CURL --fail http://localhost:8501/_stcore/health
 
-ENTRYPOINT ["python", "-m", "streamlit", "run", "shuttlebot/frontend/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENTRYPOINT ["python", "-m", "streamlit", "run", "sportscanner/frontend/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

@@ -1,25 +1,20 @@
 import asyncio
-import itertools
-import json
-from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import date, timedelta
+from typing import List, Dict, Coroutine, Any, Optional, Tuple
 
 import httpx
 from loguru import logger as logging
-from pydantic import BaseModel, ValidationError
-from sqlmodel import Session, select
+from pydantic import ValidationError
+from sqlmodel import select, col
 
-import shuttlebot.backend.database as db
-from shuttlebot import config
-from shuttlebot.backend.parsers.citysports.schema import CitySportsResponseSchema
-from shuttlebot.backend.parsers.schema import UnifiedParserSchema
-from shuttlebot.backend.parsers.utils import validate_api_response
-from shuttlebot.backend.utils import async_timer, timeit
-from shuttlebot.config import SportsCentre
+import sportscanner.crawlers.database as db
+from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
+from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
+from sportscanner.crawlers.utils import async_timer, timeit
 
 
 @async_timer
-async def send_concurrent_requests(search_dates: List[date]):
+async def send_concurrent_requests(search_dates: List[date]) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
     tasks = []
     async with httpx.AsyncClient(
@@ -34,9 +29,9 @@ async def send_concurrent_requests(search_dates: List[date]):
     return responses
 
 
-def create_async_tasks(client, search_date: date):
+def create_async_tasks(client, search_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
     """Generates Async task for concurrent calls to be made later"""
-    tasks = []
+    tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     url, headers, _ = generate_api_call_params(search_date)
     tasks.append(fetch_data(client, url, headers))
     return tasks
@@ -45,7 +40,6 @@ def create_async_tasks(client, search_date: date):
 def generate_api_call_params(search_date: date):
     formatted_search_date = search_date.strftime("%Y/%m/%d")
     """Generates URL, Headers and Payload information for the API curl request"""
-    # https://bookings.citysport.org.uk/LhWeb/en/api/Sites/1/Timetables/ActivityBookings?date=2024/04/26&pid=0
     url = (
         f"https://bookings.citysport.org.uk/LhWeb/en/api/Sites/1/Timetables/ActivityBookings"
         f"?date={formatted_search_date}&pid=0"
@@ -60,7 +54,7 @@ def generate_api_call_params(search_date: date):
 
 
 @async_timer
-async def fetch_data(client, url, headers):
+async def fetch_data(client, url, headers)-> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
     content_type = response.headers.get("content-type", "")
@@ -81,6 +75,7 @@ async def fetch_data(client, url, headers):
         return [
             UnifiedParserSchema.from_citysports_api_response(response)
             for response in raw_responses_with_schema
+            if response.ActivityGroupDescription == "Badminton"
         ]
     else:
         return []
@@ -96,7 +91,7 @@ def apply_raw_response_schema(api_response) -> List[CitySportsResponseSchema]:
         return aligned_api_response
     except ValidationError as e:
         logging.error(
-            f"Unable to apply Better API response schema to raw API json:\n{e}"
+            f"Unable to apply CitySportsResponseSchema to raw API json:\n{e}"
         )
         raise ValidationError
 
@@ -111,26 +106,38 @@ def fetch_data_at_venue(search_dates: List) -> List[UnifiedParserSchema]:
     all_fetched_slots: List[UnifiedParserSchema] = [
         item for sublist in responses_from_all_sources for item in sublist
     ]
-    badminton_fetched_slots: List[UnifiedParserSchema] = [
-        slot for slot in all_fetched_slots if slot.category == "Badminton"
-    ]
-    logging.debug(f"Unified parser schema mapped responses:\n{badminton_fetched_slots}")
-    return badminton_fetched_slots
+    logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
+    return all_fetched_slots
 
 
-def pipeline(search_dates: List) -> List[UnifiedParserSchema]:
+@timeit
+def get_concurrent_requests(search_dates: List) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
+    """Runs the Async API calls, collects and standardises responses and populate distance/postal
+    metadata"""
+    return send_concurrent_requests(search_dates)
+
+
+def pipeline(search_dates: List[date], venue_slugs: List[str]) -> List[UnifiedParserSchema]:
     sports_centre_lists = db.get_all_rows(
         db.engine,
         table=db.SportsVenue,
-        expression=select(db.SportsVenue).where(
-            db.SportsVenue.organisation_name == "citysport.org.uk"
-        ),
+        expression=select(db.SportsVenue)
+        .where(db.SportsVenue.organisation_name == "citysport.org.uk")
+        .where(col(db.SportsVenue.slug).in_(venue_slugs))
     )
-    logging.success("Sports venue data loaded from database")
-    return fetch_data_at_venue(search_dates)
-
+    print(sports_centre_lists)
+    logging.success(f"{len(sports_centre_lists)} Sports venue data loaded from database")
+    # return fetch_data_at_venue(search_dates)
+    return get_concurrent_requests(search_dates) if sports_centre_lists else []
 
 if __name__ == "__main__":
+    logging.info("Mocking up input data (user inputs) for pipeline")
     today = date.today()
-    search_dates = [today + timedelta(days=i) for i in range(2)]
-    pipeline(search_dates)
+    _dates = [today + timedelta(days=i) for i in range(3)]
+    sports_venues: List[db.SportsVenue] = db.get_all_rows(
+        db.engine, db.SportsVenue,
+        select(db.SportsVenue)
+        .where(db.SportsVenue.organisation_name == "citysport.org.uk")
+    )
+    venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
+    pipeline(_dates, venues_slugs[:4])

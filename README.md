@@ -1,9 +1,9 @@
-## Shuttlebot - badminton slots finder
-![example workflow](https://github.com/yasir-khalid/shuttlebot/actions/workflows/Automated-PR-tests.yml/badge.svg) ![example workflow](https://github.com/yasir-khalid/shuttlebot/actions/workflows/deploy-to-registry.yml/badge.svg)
+## sportscanner - badminton slots finder
+![example workflow](https://github.com/yasir-khalid/sportscanner/actions/workflows/Automated-PR-tests.yml/badge.svg) ![example workflow](https://github.com/yasir-khalid/sportscanner/actions/workflows/deploy-to-registry.yml/badge.svg)
 
  
 ### What is it about?
-[Shuttlebot](https://shuttle-bot.onrender.com/) is a webapp that helps badminton players find
+[sportscanner](https://shuttle-bot.onrender.com/) is a webapp that helps badminton players find
 available badminton slots for the upcoming week, across London,
 with the option to search for consecutively available slots
 
@@ -18,20 +18,20 @@ The webapp is developed on top of Streamlit `(using Python >= 3.10)` and employs
   based on postcode search (Postcode search supported by `https://postcodes.io/`)
 
 ### App deployment lifecycle
-![Doodles (2)](https://github.com/yasir-khalid/shuttlebot/assets/29762458/5020fac5-f409-476b-b5d5-5b9b485ec09e)
+![Doodles (2)](https://github.com/yasir-khalid/sportscanner/assets/29762458/5020fac5-f409-476b-b5d5-5b9b485ec09e)
 
 ### How to get started locally?
 
 1. Clone the project
 ```commandline
-  git clone https://github.com/yasir-khalid/shuttlebot.git
+  git clone https://github.com/yasir-khalid/sportscanner.git
 ```
 
 #### Using docker to run the app
 Ensure you have Docker installed on your machine
 ```commandline
-docker build -t shuttlebot .
-docker run -p 8501:8501 shuttlebot
+docker build -t sportscanner .
+docker run -p 8501:8501 sportscanner
 ```
 App will be available at: http://localhost:8501/
 
@@ -39,7 +39,7 @@ App will be available at: http://localhost:8501/
 
 #### Running app in local environment
 
-2. Go to the project directory `cd shuttlebot/`
+2. Go to the project directory `cd sportscanner/`
 3. Install dependencies
 
 ```commandline
@@ -49,7 +49,7 @@ App will be available at: http://localhost:8501/
 4. Launch the webapp on localhost
 
 ```commandline
-  python -m streamlit run shuttlebot/frontend/app.py
+  python -m streamlit run sportscanner/frontend/app.py
 ```
 App will be available at: http://localhost:8501/
 
