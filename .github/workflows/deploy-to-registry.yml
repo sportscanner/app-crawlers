@@ -32,9 +32,9 @@ jobs:
         run: |
           LATEST_COMMIT_ID=$(git rev-parse --short HEAD)
           echo "Building Image with tag:latest / tag:"${LATEST_COMMIT_ID}
-          docker build . -t ghcr.io/yasir-khalid/shuttlebot:latest -t ghcr.io/yasir-khalid/shuttlebot:${LATEST_COMMIT_ID}
-          docker push ghcr.io/yasir-khalid/shuttlebot:latest
-          docker push ghcr.io/yasir-khalid/shuttlebot:${LATEST_COMMIT_ID}
+          docker build . -t ghcr.io/yasir-khalid/sportscanner:latest -t ghcr.io/yasir-khalid/sportscanner:${LATEST_COMMIT_ID}
+          docker push ghcr.io/yasir-khalid/sportscanner:latest
+          docker push ghcr.io/yasir-khalid/sportscanner:${LATEST_COMMIT_ID}
   deploy-to-cloud:
     needs: push-to-registry
     runs-on: ubuntu-latest

@@ -2,9 +2,9 @@ import json
 
 import requests
 from loguru import logger as logging
-
-from shuttlebot.backend.geolocation.schemas import PostcodesResponseModel
-from shuttlebot.backend.utils import timeit
+from typing import Optional
+from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
+from sportscanner.crawlers.utils import timeit
 
 
 def validate_response(response):
@@ -18,7 +18,7 @@ def validate_response(response):
 
 
 @timeit
-def get_postcode_metadata(postcode: str):
+def get_postcode_metadata(postcode: str) -> Optional[PostcodesResponseModel]:
     url = f"https://api.postcodes.io/postcodes/" f"{postcode}"
     headers, payload = {}, {}
     logging.info(f"Requests URL: {url}")
@@ -45,7 +45,7 @@ def postcode_autocompletion(search_term: str, limit: int = 5):
 
 
 @timeit
-def validate_uk_postcode(postcode: str):
+def validate_uk_postcode(postcode: str) -> bool:
     url = f"https://api.postcodes.io/postcodes/" f"{postcode}/validate"
 
     headers, payload = {}, {}
@@ -61,3 +61,4 @@ if __name__ == "__main__":
     )
     logging.info(validate_uk_postcode("SE1 9BG"))
     logging.success(get_postcode_metadata("SE1 9BG"))
+    logging.success(get_postcode_metadata("SE29qq"))

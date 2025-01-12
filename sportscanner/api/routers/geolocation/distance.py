@@ -1,7 +1,7 @@
 import geopy.distance
 from loguru import logger as logging
 
-from shuttlebot.backend.geolocation.api import (
+from external.routers.geolocation.api import (
     get_postcode_metadata,
     validate_uk_postcode,
 )

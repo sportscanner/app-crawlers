@@ -12,3 +12,4 @@ sqlmodel==0.0.20
 streamlit==1.36.0
 streamlit_searchbox==0.1.6
 streamlit_shadcn_ui==0.1.15
+fastapi==0.114.2
