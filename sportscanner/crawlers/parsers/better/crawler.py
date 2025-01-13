@@ -1,23 +1,23 @@
 import asyncio
 import itertools
 from datetime import date, timedelta
-from typing import Dict, List, Tuple, Coroutine
+from typing import Tuple
 
 import httpx
 from loguru import logger as logging
 from pydantic import ValidationError
 from sqlmodel import select, col
-from typing import List, Dict, Coroutine, Any, Optional
-import sportscanner.crawlers.database as db
+from typing import List, Dict, Coroutine, Any
+import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.crawlers.parsers.utils import validate_api_response
-from sportscanner.crawlers.utils import async_timer, timeit
-from sportscanner.crawlers.config import SportsCentre
+from sportscanner.utils import async_timer, timeit
+from sportscanner.config import SportsVenueMappingSchema
 
 
 @async_timer
-async def send_concurrent_requests(parameter_sets: List[Tuple[SportsCentre, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
+async def send_concurrent_requests(parameter_sets: List[Tuple[SportsVenueMappingSchema, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     async with httpx.AsyncClient(
@@ -32,7 +32,7 @@ async def send_concurrent_requests(parameter_sets: List[Tuple[SportsCentre, date
     return responses
 
 
-def create_async_tasks(client, sports_centre: SportsCentre, fetch_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
+def create_async_tasks(client, sports_centre: SportsVenueMappingSchema, fetch_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
     """Generates Async task for concurrent calls to be made later"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     for activity_duration in ["badminton-40min", "badminton-60min"]:
@@ -44,7 +44,7 @@ def create_async_tasks(client, sports_centre: SportsCentre, fetch_date: date) ->
 
 
 def generate_api_call_params(
-    sports_centre: SportsCentre, fetch_date: date, activity: str
+    sports_centre: SportsVenueMappingSchema, fetch_date: date, activity: str
 ):
     """Generates URL, Headers and Payload information for the API curl request"""
     url = (
@@ -93,6 +93,7 @@ def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
             logging.error(
                 f"Unable to apply Better API response schema to raw API json:\n{e}"
             )
+            logging.error(f"{api_response}")
     else:
         if len(api_response) > 0:
             try:
@@ -116,7 +117,7 @@ def fetch_data_across_centres(
 ) -> List[UnifiedParserSchema]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
-    parameter_sets: List[Tuple[SportsCentre, date]] = [
+    parameter_sets: List[Tuple[SportsVenueMappingSchema, date]] = [
         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
     ]
     logging.debug(
@@ -138,7 +139,7 @@ def get_concurrent_requests(
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
-    parameter_sets: List[Tuple[SportsCentre, date]] = [
+    parameter_sets: List[Tuple[SportsVenueMappingSchema, date]] = [
         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
     ]
     logging.debug(

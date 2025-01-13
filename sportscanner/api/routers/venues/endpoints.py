@@ -1,12 +1,6 @@
 from sportscanner.api.routers.venues.utils import get_venues_from_database
-from sportscanner.crawlers import config
-from sportscanner.crawlers.config import SportsCentre
-import json
-from typing import List
-from pydantic import ValidationError
 from fastapi import APIRouter, Query
 from datetime import datetime
-from loguru import logger as logging
 
 router = APIRouter()
 

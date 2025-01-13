@@ -1,6 +1,5 @@
-from aiohttp.web_response import json_response
 from fastapi import APIRouter
-import sportscanner.crawlers.database as db
+import sportscanner.storage.postgres.database as db
 from pydantic import BaseModel
 from sportscanner.crawlers.pipeline import *
 from datetime import date, timedelta
@@ -54,7 +53,7 @@ async def trigger_search(filters: Filters):
     }
 
 
-@router.get("/refresh/")
+@router.get("/full-refresh/")
 async def refresh_dataset():
     """Trigger fresh dataset refresh for all venues for next 1 week"""
     today = date.today()

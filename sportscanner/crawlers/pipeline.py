@@ -1,30 +1,20 @@
-import time
-import uuid
 from datetime import date, timedelta
 from typing import List, Union, Any
 import asyncio
 from loguru import logger as logging
-from rich import print
-from sqlmodel import Session
 import itertools
 
-from sportscanner.crawlers.database import (
+from sportscanner.storage.postgres.database import (
     PipelineRefreshStatus,
-    SportScanner,
     delete_all_items_and_insert_fresh_to_db,
     engine,
-    get_refresh_status_for_pipeline,
-    initialize_db_and_tables,
-    pipeline_refresh_decision_based_on_interval,
     update_refresh_status_for_pipeline,
-    get_all_sports_venues, SportsVenue
+    get_all_sports_venues
 )
 from sportscanner.crawlers.parsers.better import crawler as BetterOrganisation
 from sportscanner.crawlers.parsers.citysports import crawler as CitySports
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
-from sportscanner.crawlers.utils import (
-    find_consecutive_slots,
-    format_consecutive_slots_groupings,
+from sportscanner.utils import (
     timeit,
 )
 
@@ -50,7 +40,7 @@ async def SportscannerCrawlerBot(*coroutine_lists: Union[List[Any], Any]) -> Lis
 
 
 @timeit
-def full_data_refresh_pipeline(sports_venues: List[SportsVenue]):
+def full_data_refresh_pipeline():
     update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.RUNNING)
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(2)]

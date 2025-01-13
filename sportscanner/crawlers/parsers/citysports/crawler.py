@@ -1,16 +1,16 @@
 import asyncio
 from datetime import date, timedelta
-from typing import List, Dict, Coroutine, Any, Optional, Tuple
+from typing import List, Dict, Coroutine, Any, Tuple
 
 import httpx
 from loguru import logger as logging
 from pydantic import ValidationError
 from sqlmodel import select, col
 
-import sportscanner.crawlers.database as db
+import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
-from sportscanner.crawlers.utils import async_timer, timeit
+from sportscanner.utils import async_timer, timeit
 
 
 @async_timer
@@ -125,7 +125,6 @@ def pipeline(search_dates: List[date], venue_slugs: List[str]) -> List[UnifiedPa
         .where(db.SportsVenue.organisation_name == "citysport.org.uk")
         .where(col(db.SportsVenue.slug).in_(venue_slugs))
     )
-    print(sports_centre_lists)
     logging.success(f"{len(sports_centre_lists)} Sports venue data loaded from database")
     # return fetch_data_at_venue(search_dates)
     return get_concurrent_requests(search_dates) if sports_centre_lists else []

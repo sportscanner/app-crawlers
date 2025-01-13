@@ -4,7 +4,7 @@ import requests
 from loguru import logger as logging
 from typing import Optional
 from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
-from sportscanner.crawlers.utils import timeit
+from sportscanner.utils import timeit
 
 
 def validate_response(response):
