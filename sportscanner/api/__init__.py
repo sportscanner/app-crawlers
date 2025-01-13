@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from sportscanner.api.routers import search, venues, geolocation
+from sportscanner.api.routers import venues, geolocation
+from sportscanner.api.routers.search import badminton
 from datetime import datetime
 
 description = """
@@ -30,8 +31,8 @@ app = FastAPI(
 )
 
 app.include_router(
-    router= search.endpoints.router,
-    prefix="/search",
+    router= badminton.endpoints.router,
+    prefix="/search/badminton",
     tags=["Search"]
 )
 

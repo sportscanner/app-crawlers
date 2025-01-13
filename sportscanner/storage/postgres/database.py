@@ -7,19 +7,14 @@ from functools import cache
 from typing import List
 
 import sqlmodel
-from dotenv import load_dotenv
 from loguru import logger as logging
 from pydantic import UUID4, ValidationError
 from sqlalchemy import Engine, text
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select
 
-from sportscanner.crawlers import config
-from sportscanner.crawlers.config import SportsCentre
-
-# Check for an environment variable to determine the environment
-env_file = ".env" if os.getenv("ENV") == "production" else "dev.env"
-# Load the appropriate .env file
-load_dotenv(dotenv_path=env_file)
+from sportscanner import config
+from sportscanner.config import SportsVenueMappingSchema
+from sportscanner.utils import load_sports_venue_mappings_json
 
 database_name: str = "sportscanner"
 connection_string = os.getenv(
@@ -145,19 +140,7 @@ def create_db_and_tables(engine):
 
 def load_sports_centre_mappings(engine):
     """Loads sports centre lookup sheet to Table: SportsVenue"""
-    with open(f"./{config.MAPPINGS}", "r") as file:
-        raw_sports_centres = json.load(file)
-        try:
-            sports_centre_lists: List[SportsCentre] = [
-                SportsCentre(**item) for item in raw_sports_centres
-            ]
-            logging.success("JSON data is valid according to the Pydantic model!")
-        except ValidationError as error:
-            logging.error(
-                f"JSON data is not valid according to the Pydantic model:\n {error}"
-            )
-            raise RuntimeError
-
+    sports_centre_lists: List[SportsVenueMappingSchema] = load_sports_venue_mappings_json()
     logging.debug("Loading sports venue mappings data to database")
     with Session(engine) as session:
         for sports_centre in sports_centre_lists:
@@ -250,58 +233,6 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
         rows = session.exec(expression).all()
     return rows
 
-
-# TODO: need to work on logic so consecutive sorting is done by SQL views
-def create_temporary_view_consecutive_ordering(engine):
-    # Define the raw SQL query to check if the view exists
-    check_view_query = """
-    SELECT count(name)
-    FROM sqlite_master
-    WHERE type='view' AND name='consecutive_slots_view';
-    """
-
-    # Execute the raw SQL query to check if the view exists
-    with engine.connect() as connection:
-        result = connection.execute(text(check_view_query))
-        view_exists = result.scalar()
-
-    # If the view doesn't exist, create it
-    if not view_exists:
-        create_view_query = """
-        CREATE VIEW consecutive_slots_view AS
-        SELECT
-            uuid,
-            venue_slug,
-            category,
-            starting_time,
-            ending_time,
-            date,
-            price,
-            spaces,
-            organisation,
-            last_refreshed
-        FROM
-            sportscanner AS s1
-        WHERE 
-            spaces > 0
-            AND EXISTS (
-                SELECT 1
-                FROM sportscanner AS s2
-                WHERE s1.venue_slug = s2.venue_slug
-                  AND s1.date = s2.date
-                  AND s1.starting_time <= s2.ending_time
-                  AND s1.ending_time >= s2.starting_time
-                  AND s1.uuid != s2.uuid
-            )
-        ORDER BY
-            venue_slug,
-            date,
-            starting_time;
-        """
-
-        # Execute the raw SQL query to create the view
-        with engine.connect() as connection:
-            connection.execute(text(create_view_query))
 
 
 @cache

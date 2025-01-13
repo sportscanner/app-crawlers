@@ -3,16 +3,10 @@ from typing import List, Optional
 
 from pydantic import UUID4, BaseModel
 
-START_TIME, END_TIME = "17:30", "22:00"
-MAPPINGS = "mappings.json"
+MAPPINGS = "sportscanner/mappings.json"
 
 from enum import Enum
 from uuid import UUID
-
-
-class Parsers(Enum):
-    better = UUID("5184145c-4d83-4e3b-8bed-3466331a45ba")
-    schoolhire = UUID("331b6c8a-ef34-4633-82d9-9b13852117ca")
 
 
 class Location(BaseModel):
@@ -23,7 +17,7 @@ class Location(BaseModel):
     longitude: float
 
 
-class SportsCentre(BaseModel):
+class SportsVenueMappingSchema(BaseModel):
     """Sports centre list of locations"""
 
     venue_name: str

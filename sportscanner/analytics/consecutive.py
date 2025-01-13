@@ -1,28 +1,13 @@
 import itertools
 from datetime import date, datetime, time, timedelta
-from functools import wraps
-from time import time as timer
 from typing import List, Optional
 
 from loguru import logger as logging
 from pydantic import BaseModel
 from sqlmodel import select
 
-from sportscanner.crawlers.database import SportScanner, SportsVenue, engine, get_all_rows
-
-
-def timeit(func):
-    """Calculates the execution time of the function on top of which the decorator is assigned"""
-
-    @wraps(func)
-    def wrap_func(*args, **kwargs):
-        tic = timer()
-        result = func(*args, **kwargs)
-        tac = timer()
-        logging.info(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
-        return result
-
-    return wrap_func
+from sportscanner.storage.postgres.database import SportScanner, SportsVenue, engine, get_all_rows
+from sportscanner.utils import timeit
 
 
 class ConsecutiveSlotsCarousalDisplay(BaseModel):
@@ -37,21 +22,6 @@ class ConsecutiveSlotsCarousalDisplay(BaseModel):
     group_end_time: time
     slots_starting_times: str
     bookings_url: Optional[str]
-
-
-def async_timer(func):
-    """Calculates the execution time of the Async function on top of which the decorator is assigned"""
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        tic = timer()
-        result = await func(*args, **kwargs)
-        tac = timer()
-        logging.debug(f"Function {func.__name__!r} executed in {(tac - tic):.4f}s")
-        return result
-
-    return wrapper
-
 
 @timeit
 def find_consecutive_slots(
@@ -170,7 +140,3 @@ def format_consecutive_slots_groupings(
     )
     return sorted_groupings_for_consecutive_slots
 
-
-if __name__ == "__main__":
-    """Write a test here for calculating consecutive slots"""
-    logging.info("This scripts cannot be called standalone for now")
