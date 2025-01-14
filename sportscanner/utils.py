@@ -3,12 +3,12 @@ from datetime import date, datetime, time, timedelta
 from functools import wraps
 from time import time as timer
 from typing import List, Optional
-
+from rich import print
 from loguru import logger as logging
 from pydantic import BaseModel, ValidationError
 from sqlmodel import select
 import json
-from sportscanner import config
+from sportscanner import config, schemas
 
 def timeit(func):
     """Calculates the execution time of the function on top of which the decorator is assigned"""
@@ -38,13 +38,11 @@ def async_timer(func):
     return wrapper
 
 
-def load_sports_venue_mappings_json() -> List[config.SportsVenueMappingSchema]:
-    with open(f"./{config.MAPPINGS}", "r") as file:
+def get_sports_venue_mappings_from_raw() -> schemas.SportsVenueMappingModel:
+    with open(f"./sportscanner/venues.json", "r") as file:
         raw_sports_centres = json.load(file)
         try:
-            sports_centre_lists: List[config.SportsVenueMappingSchema] = [
-                config.SportsVenueMappingSchema(**item) for item in raw_sports_centres
-            ]
+            sports_centre_lists: schemas.SportsVenueMappingModel = schemas.SportsVenueMappingModel(root=raw_sports_centres)
             logging.success("JSON data is valid according to the Pydantic model!")
             return sports_centre_lists
         except ValidationError as error:
@@ -55,4 +53,6 @@ def load_sports_venue_mappings_json() -> List[config.SportsVenueMappingSchema]:
 
 if __name__ == "__main__":
     """Write a test here for calculating consecutive slots"""
-    logging.info("This scripts cannot be called standalone for now")
+    logging.info("Attempting load of raw mappings from json file")
+    _tmp: schemas.SportsVenueMappingModel = get_sports_venue_mappings_from_raw()
+    print(_tmp.root[1])

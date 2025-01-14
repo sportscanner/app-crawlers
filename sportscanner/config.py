@@ -26,3 +26,18 @@ class SportsVenueMappingSchema(BaseModel):
     organisation_hash: Optional[str]
     parser_uuid: UUID4
     location: Location
+
+
+class Venue(BaseModel):
+    venue_name: str
+    slug: str
+    location: Location
+
+
+class Organisation(BaseModel):
+    organisation: str
+    organisation_website: str
+    venues: List[Venue]
+
+
+

@@ -13,11 +13,10 @@ from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.crawlers.parsers.utils import validate_api_response
 from sportscanner.utils import async_timer, timeit
-from sportscanner.config import SportsVenueMappingSchema
 
 
 @async_timer
-async def send_concurrent_requests(parameter_sets: List[Tuple[SportsVenueMappingSchema, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
+async def send_concurrent_requests(parameter_sets: List[Tuple[db.SportsVenue, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     async with httpx.AsyncClient(
@@ -32,7 +31,7 @@ async def send_concurrent_requests(parameter_sets: List[Tuple[SportsVenueMapping
     return responses
 
 
-def create_async_tasks(client, sports_centre: SportsVenueMappingSchema, fetch_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
+def create_async_tasks(client, sports_centre: db.SportsVenue, fetch_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
     """Generates Async task for concurrent calls to be made later"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     for activity_duration in ["badminton-40min", "badminton-60min"]:
@@ -44,7 +43,7 @@ def create_async_tasks(client, sports_centre: SportsVenueMappingSchema, fetch_da
 
 
 def generate_api_call_params(
-    sports_centre: SportsVenueMappingSchema, fetch_date: date, activity: str
+    sports_centre: db.SportsVenue, fetch_date: date, activity: str
 ):
     """Generates URL, Headers and Payload information for the API curl request"""
     url = (
@@ -117,7 +116,7 @@ def fetch_data_across_centres(
 ) -> List[UnifiedParserSchema]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
-    parameter_sets: List[Tuple[SportsVenueMappingSchema, date]] = [
+    parameter_sets: List[Tuple[db.SportsVenue, date]] = [
         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
     ]
     logging.debug(
@@ -139,7 +138,7 @@ def get_concurrent_requests(
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
-    parameter_sets: List[Tuple[SportsVenueMappingSchema, date]] = [
+    parameter_sets: List[Tuple[db.SportsVenue, date]] = [
         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
     ]
     logging.debug(
@@ -148,12 +147,12 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
-def pipeline(search_dates: List[date], venue_slugs: List[str]) -> List[UnifiedParserSchema]:
+def pipeline(search_dates: List[date], venue_slugs: List[str]) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     sports_centre_lists: List[db.SportsVenue] = db.get_all_rows(
         db.engine,
         table=db.SportsVenue,
         expression=select(db.SportsVenue)
-        .where(db.SportsVenue.organisation_name == "better.org.uk")
+        .where(db.SportsVenue.organisation_website == "https://www.better.org.uk")
         .where(col(db.SportsVenue.slug).in_(venue_slugs))
     )
     logging.success(
@@ -170,7 +169,7 @@ if __name__ == "__main__":
     sports_venues: List[db.SportsVenue] = db.get_all_rows(
         db.engine, db.SportsVenue,
         select(db.SportsVenue)
-        .where(db.SportsVenue.organisation_name == "better.org.uk")
+        .where(db.SportsVenue.organisation == "better.org.uk")
     )
     venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
     pipeline(_dates, venues_slugs[:4])
