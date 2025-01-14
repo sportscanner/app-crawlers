@@ -57,7 +57,7 @@ def full_data_refresh_pipeline():
         )
     )
     # Flattened 3-layer deep list nestings
-    all_slots = list(itertools.chain.from_iterable(itertools.chain.from_iterable(responses_from_all_sources)))
+    all_slots: List[UnifiedParserSchema] = list(itertools.chain.from_iterable(itertools.chain.from_iterable(responses_from_all_sources)))
     delete_all_items_and_insert_fresh_to_db(all_slots)
     update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.COMPLETED)
 

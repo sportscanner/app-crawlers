@@ -122,12 +122,16 @@ def pipeline(search_dates: List[date], venue_slugs: List[str]) -> List[UnifiedPa
         db.engine,
         table=db.SportsVenue,
         expression=select(db.SportsVenue)
-        .where(db.SportsVenue.organisation_name == "citysport.org.uk")
+        .where(db.SportsVenue.organisation_website == "https://citysport.org.uk")
         .where(col(db.SportsVenue.slug).in_(venue_slugs))
     )
-    logging.success(f"{len(sports_centre_lists)} Sports venue data loaded from database")
-    # return fetch_data_at_venue(search_dates)
-    return get_concurrent_requests(search_dates) if sports_centre_lists else []
+    if sports_centre_lists:
+        logging.info(f"{len(sports_centre_lists)} CitySports venue data loaded from database")
+        return get_concurrent_requests(search_dates)
+    else:
+        logging.warning("No query slugs matching CitySports venues")
+        return []
+
 
 if __name__ == "__main__":
     logging.info("Mocking up input data (user inputs) for pipeline")
@@ -136,7 +140,7 @@ if __name__ == "__main__":
     sports_venues: List[db.SportsVenue] = db.get_all_rows(
         db.engine, db.SportsVenue,
         select(db.SportsVenue)
-        .where(db.SportsVenue.organisation_name == "citysport.org.uk")
+        .where(db.SportsVenue.organisation == "citysport.org.uk")
     )
     venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
     pipeline(_dates, venues_slugs[:4])

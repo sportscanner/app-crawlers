@@ -1,12 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import UUID4, BaseModel
-
-MAPPINGS = "sportscanner/mappings.json"
-
-from enum import Enum
-from uuid import UUID
+from pydantic import UUID4, BaseModel, RootModel
 
 
 class Location(BaseModel):
@@ -15,17 +10,6 @@ class Location(BaseModel):
     postcode: str
     latitude: float
     longitude: float
-
-
-class SportsVenueMappingSchema(BaseModel):
-    """Sports centre list of locations"""
-
-    venue_name: str
-    slug: str
-    organisation_name: Optional[str]
-    organisation_hash: Optional[str]
-    parser_uuid: UUID4
-    location: Location
 
 
 class Venue(BaseModel):
@@ -40,4 +24,5 @@ class Organisation(BaseModel):
     venues: List[Venue]
 
 
-
+class SportsVenueMappingModel(RootModel):
+    root: List[Organisation]

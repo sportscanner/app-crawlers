@@ -13,10 +13,11 @@ from sqlalchemy import Engine, text
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select
 
 from sportscanner import config
-from sportscanner.config import SportsVenueMappingSchema
-from sportscanner.utils import load_sports_venue_mappings_json
-
-database_name: str = "sportscanner"
+from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
+from sportscanner.schemas import SportsVenueMappingModel
+from sportscanner.utils import get_sports_venue_mappings_from_raw
+from sportscanner.storage.postgres.utils import *
+database_name: str = "migration"
 connection_string = os.getenv(
     "DB_CONNECTION_STRING"
 )
@@ -51,14 +52,13 @@ class SportScanner(SQLModel, table=True):
 
 class SportsVenue(SQLModel, table=True):
     """Table containing information on Sports centres
-    Original Model: SportsCentre -> Mapped to: SportsVenue
+    Root Raw Data Model: SportsVenueMappingModel -> flattened to postgres Table: sportsvenue
     """
-
+    composite_key: str = Field(primary_key=True)
+    organisation: str
+    organisation_website: str
     venue_name: str
-    slug: str = Field(primary_key=True)
-    organisation_name: str | None
-    organisation_hash: str | None
-    parser_uuid: UUID4
+    slug: str
     postcode: str
     latitude: float
     longitude: float
@@ -140,22 +140,23 @@ def create_db_and_tables(engine):
 
 def load_sports_centre_mappings(engine):
     """Loads sports centre lookup sheet to Table: SportsVenue"""
-    sports_centre_lists: List[SportsVenueMappingSchema] = load_sports_venue_mappings_json()
+    sports_centre_lists: SportsVenueMappingModel = get_sports_venue_mappings_from_raw()
     logging.debug("Loading sports venue mappings data to database")
     with Session(engine) as session:
-        for sports_centre in sports_centre_lists:
-            session.add(
-                SportsVenue(
-                    venue_name=sports_centre.venue_name,
-                    slug=sports_centre.slug,
-                    organisation_name=sports_centre.organisation_name,
-                    organisation_hash=sports_centre.organisation_hash,
-                    parser_uuid=sports_centre.parser_uuid,
-                    postcode=sports_centre.location.postcode,
-                    latitude=sports_centre.location.latitude,
-                    longitude=sports_centre.location.longitude,
+        for organisation in sports_centre_lists.root:
+            for venue in organisation.venues:
+                session.add(
+                    SportsVenue(
+                        composite_key = generate_composite_key([organisation.organisation_website, venue.slug]),
+                        organisation = organisation.organisation,
+                        organisation_website = organisation.organisation_website,
+                        venue_name = venue.venue_name,
+                        slug = venue.slug,
+                        postcode = venue.location.postcode,
+                        latitude = venue.location.latitude,
+                        longitude = venue.location.longitude
+                    )
                 )
-            )
         session.commit()
         logging.success("Sports venue mapping successfully loaded to database")
 
@@ -199,7 +200,7 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
         session.commit()
 
 
-def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues):
+def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues: List[UnifiedParserSchema]):
     """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:
         statement = delete(SportScanner)
