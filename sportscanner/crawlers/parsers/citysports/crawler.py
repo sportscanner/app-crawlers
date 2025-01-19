@@ -94,20 +94,6 @@ def apply_raw_response_schema(api_response) -> List[CitySportsResponseSchema]:
         raise ValidationError
 
 
-# @timeit
-# def fetch_data_at_venue(search_dates: List) -> List[UnifiedParserSchema]:
-#     """Runs the Async API calls, collects and standardises responses and populate distance/postal
-#     metadata"""
-#     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
-#         send_concurrent_requests(search_dates)
-#     )
-#     all_fetched_slots: List[UnifiedParserSchema] = [
-#         item for sublist in responses_from_all_sources for item in sublist
-#     ]
-#     logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
-#     return all_fetched_slots
-
-
 @timeit
 def get_concurrent_requests(
         sports_centre_lists: List[db.SportsVenue],

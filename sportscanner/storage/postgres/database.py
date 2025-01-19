@@ -17,10 +17,11 @@ from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.schemas import SportsVenueMappingModel
 from sportscanner.utils import get_sports_venue_mappings_from_raw
 from sportscanner.storage.postgres.utils import *
-database_name: str = "migration"
-connection_string = os.getenv(
-    "DB_CONNECTION_STRING"
-)
+from sportscanner.variables import settings
+
+database_name = settings.SQL_DATABASE_NAME
+connection_string = settings.DB_CONNECTION_STRING
+
 engine_configs = {"timeout": 5}
 engine = create_engine(connection_string, pool_pre_ping=True, echo=False)
 

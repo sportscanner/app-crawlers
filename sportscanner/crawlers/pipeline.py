@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from typing import List, Union, Any
+from typing import List, Union, Any, Tuple
 import asyncio
 from loguru import logger as logging
 import itertools
@@ -55,7 +55,7 @@ def full_data_refresh_pipeline():
     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
         SportscannerCrawlerBot(
             BetterOrganisationCrawlerCoroutines,
-            CitySportsCrawlerCoroutines,
+            # CitySportsCrawlerCoroutines,
             # PlaygroundCrawlerCoroutines
         )
     )

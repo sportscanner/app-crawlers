@@ -108,28 +108,6 @@ def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
     return aligned_api_response
 
 
-# @timeit
-# def fetch_data_across_centres(
-#     sports_centre_lists: List[db.SportsVenue], dates: List[date]
-# ) -> List[UnifiedParserSchema]:
-#     """Runs the Async API calls, collects and standardises responses and populate distance/postal
-#     metadata"""
-#     parameter_sets: List[Tuple[db.SportsVenue, date]] = [
-#         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
-#     ]
-#     logging.debug(
-#         f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}"
-#     )
-#     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
-#         send_concurrent_requests(parameter_sets)
-#     )
-#     all_fetched_slots: List[UnifiedParserSchema] = [
-#         item for sublist in responses_from_all_sources for item in sublist
-#     ]
-#     logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
-#     return all_fetched_slots
-
-
 @timeit
 def get_concurrent_requests(
     sports_centre_lists: List[db.SportsVenue], dates: List[date]

@@ -1,31 +1,30 @@
 import httpx
 import os
-
-from sqlalchemy import false
-
-ROTATING_PROXY_ENDPOINT = os.getenv("ROTATING_PROXY_ENDPOINT")
-HTTPX_CLIENT_MAX_CONNECTIONS = os.getenv("HTTPX_CLIENT_MAX_CONNECTIONS")
-HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS = os.getenv("HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS")
-HTTPX_CLIENT_TIMEOUT = os.getenv("HTTPX_CLIENT_TIMEOUT")
-USE_PROXIES: bool = os.getenv("USE_PROXIES", False)
+from sportscanner.variables import settings
 
 proxies = {
-    "http://": ROTATING_PROXY_ENDPOINT,
-    "https://": ROTATING_PROXY_ENDPOINT,
+    "http://": settings.ROTATING_PROXY_ENDPOINT,
+    "https://": settings.ROTATING_PROXY_ENDPOINT,
 }
 
 def httpxAsyncClientWithProxyRotation() -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
-        timeout=httpx.Timeout(timeout=15.0),
+        limits=httpx.Limits(
+            max_connections=settings.HTTPX_CLIENT_MAX_CONNECTIONS,
+            max_keepalive_connections=settings.HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS
+        ),
+        timeout=httpx.Timeout(timeout=settings.HTTPX_CLIENT_TIMEOUT),
         proxies=proxies
     )
 
 
 def httpxAsyncClientWithoutProxyRotation() -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
-        timeout=httpx.Timeout(timeout=15.0)
+        limits=httpx.Limits(
+            max_connections=settings.HTTPX_CLIENT_MAX_CONNECTIONS,
+            max_keepalive_connections=settings.HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS
+        ),
+        timeout=httpx.Timeout(timeout=settings.HTTPX_CLIENT_TIMEOUT)
     )
 
 
@@ -33,7 +32,7 @@ def httpxAsyncClientWithoutProxyRotation() -> httpx.AsyncClient:
 def httpxAsyncClient() -> httpx.AsyncClient:
     return (
         httpxAsyncClientWithProxyRotation()
-        if USE_PROXIES
+        if settings.USE_PROXIES
         else httpxAsyncClientWithoutProxyRotation()
     )
 
