@@ -1,6 +1,5 @@
 import sys
 import os
-from dotenv import load_dotenv
 from loguru import logger as logging
 from enum import Enum
 
@@ -16,9 +15,3 @@ class Levels(Enum):
 
 logging.remove(0)
 logging.add(sys.stderr, level=Levels.INFO.name)
-
-
-# Check for an environment variable to determine the environment
-env_file = ".env" if os.getenv("ENV") == "production" else "dev.env"
-# Load the appropriate .env file
-load_dotenv(dotenv_path=env_file)

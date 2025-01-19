@@ -6,7 +6,7 @@ from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
 from sportscanner.api.routers.geolocation.external import validate_uk_postcode, get_postcode_metadata
 from sportscanner.api.routers.geolocation.utils import *
 import httpx
-from sportscanner.variables import *
+from sportscanner.variables import settings, urljoin
 
 router = APIRouter()
 
@@ -35,10 +35,10 @@ async def venues_near_postcode(
     ):
     """Get metadata associated with postcode"""
     search_postcode_metadata: Optional[PostcodesResponseModel] = get_postcode_metadata(postcode)
-    print(urljoin(API_BASE_URL, "/venues"))
+    print(urljoin(settings.API_BASE_URL, "/venues"))
     if search_postcode_metadata is not None:
         async with httpx.AsyncClient() as client:
-            response = await client.get(urljoin(API_BASE_URL, "/venues/"))
+            response = await client.get(urljoin(settings.API_BASE_URL, "/venues/"))
             print(response)
             json_response = response.json()
         sports_venues = json_response.get("venues")

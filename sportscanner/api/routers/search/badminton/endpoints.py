@@ -5,7 +5,7 @@ from sportscanner.crawlers.pipeline import *
 from datetime import date, timedelta
 import httpx
 from rich import print
-from sportscanner.variables import *
+from sportscanner.variables import settings, urljoin
 from sqlmodel import col
 from typing import List, Optional
 
@@ -25,7 +25,7 @@ class Filters(BaseModel):
 async def availability(filters: Filters):
     """Returns court availability as per advanced filters passed in payload"""
     async with httpx.AsyncClient() as client:
-        response = await client.get(urljoin(API_BASE_URL, f"/geolocation/?postcode{filters.postcode}"))
+        response = await client.get(urljoin(settings.API_BASE_URL, f"/geolocation/?postcode{filters.postcode}"))
         json_response = response.json()
     if json_response.get("data"):
         return {
@@ -49,7 +49,7 @@ async def search(
     """Returns all court availability within `x` miles of a postcode"""
     async with httpx.AsyncClient() as client:
         response = await client.get(urljoin(
-            API_BASE_URL, f"/geolocation/venues-near-postcode?postcode={postcode}&distance={distance}")
+            settings.API_BASE_URL, f"/geolocation/venues-near-postcode?postcode={postcode}&distance={distance}")
         )
         json_response = response.json()
     if json_response.get("data"):
@@ -96,7 +96,7 @@ async def search(
 #     today = date.today()
 #     dates = [today + timedelta(days=i) for i in range(6)]
 #     async with httpx.AsyncClient() as client:
-#         response = await client.get(urljoin(API_BASE_URL, "/venues/"))
+#         response = await client.get(urljoin(settings.API_BASE_URL, "/venues/"))
 #         json_response = response.json()
 #     sports_venues: List[SportsVenue] = json_response.get("venues")
 #     results = await full_data_refresh_pipeline(sports_venues)
