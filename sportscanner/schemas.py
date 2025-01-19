@@ -7,7 +7,8 @@ from pydantic import UUID4, BaseModel, RootModel
 class Location(BaseModel):
     """Location metadata, important for nearby slots searches"""
 
-    postcode: str
+    postcode: Optional[str] = None
+    address: Optional[str] = None
     latitude: float
     longitude: float
 

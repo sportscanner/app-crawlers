@@ -8,8 +8,9 @@
         "slug": "swiss-cottage-leisure-centre",
         "location": {
           "postcode": "NW3 3NF",
-          "latitude": "51.5424",
-          "longitude": "-0.173416"
+          "address": "Adelaide Road, Camden, London, NW3 3NF",
+          "latitude": 51.5424,
+          "longitude": -0.173416
         }
       },
       {
@@ -17,8 +18,9 @@
         "slug": "kensington-leisure-centre",
         "location": {
           "postcode": "W10 6EX",
-          "latitude": "51.5114309",
-          "longitude": "-0.2121396"
+          "address": "Silchester Road, Kensington, London, W10 6EX",
+          "latitude": 51.5114309,
+          "longitude": -0.2121396
         }
       },
       {
@@ -26,8 +28,9 @@
         "slug": "finsbury-leisure-centre",
         "location": {
           "postcode": "EC1V 3PU",
-          "latitude": "51.5261266",
-          "longitude": "-0.0951542"
+          "address": "Norman Street, Islington, London, EC1V 3PU",
+          "latitude": 51.5261266,
+          "longitude": -0.0951542
         }
       },
       {
@@ -35,17 +38,19 @@
         "slug": "britannia-leisure-centre",
         "location": {
           "postcode": "N1 5FT",
-          "latitude": "51.534244152029",
-          "longitude": "-0.082955257571105"
+          "address": "Pitfield  Street, London, London, N1 5FT",
+          "latitude": 51.534244152029,
+          "longitude": -0.082955257571105
         }
       },
       {
-        "venue_name": "Queensbridge Sports And Community",
+        "venue_name": "Queensbridge Sports And  Community",
         "slug": "queensbridge-sports-community-centre",
         "location": {
           "postcode": "E8 3XW",
-          "latitude": "51.542135",
-          "longitude": "-0.071475"
+          "address": "30 Holly Street, Hackney,  London, E8 3XW",
+          "latitude": 51.542135,
+          "longitude": -0.071475
         }
       },
       {
@@ -53,8 +58,9 @@
         "slug": "kings-hall-leisure-centre",
         "location": {
           "postcode": "E5 0NU",
-          "latitude": "51.5513595",
-          "longitude": "-0.0524287"
+          "address": "39 Lower Clapton Road, London, Hackney, E5 0NU",
+          "latitude": 51.5513595,
+          "longitude": -0.0524287
         }
       },
       {
@@ -62,8 +68,9 @@
         "slug": "clissold-leisure-centre",
         "location": {
           "postcode": "N16 9EX",
-          "latitude": "51.5579",
-          "longitude": "-0.084595"
+          "address": "63 Clissold Road, Hackney, London, N16 9EX",
+          "latitude": 51.5579,
+          "longitude": -0.084595
         }
       },
       {
@@ -71,17 +78,19 @@
         "slug": "talacre-community-sports-centre",
         "location": {
           "postcode": "NW5 3AF",
-          "latitude": "51.547056",
-          "longitude": "-0.147121"
+          "address": "New Dalby Street, Kentish Town, London, NW5 3AF",
+          "latitude": 51.547056,
+          "longitude": -0.147121
         }
       },
       {
-        "venue_name": "Leytonstone Leisure Centre",
+        "venue_name": "Leytonstone Leisure  Centre",
         "slug": "leytonstone-leisure-centre",
         "location": {
           "postcode": "E11 4LA",
-          "latitude": "51.5604",
-          "longitude": "0.003602"
+          "address": "Cathall road, Leytonstone, London, E11 4LA",
+          "latitude": 51.5604,
+          "longitude": 0.003602
         }
       },
       {
@@ -89,8 +98,9 @@
         "slug": "walthamstow-leisure-centre",
         "location": {
           "postcode": "E178RN",
-          "latitude": "51.5758",
-          "longitude": "-0.02884"
+          "address": "243 Markhouse Road, Walthamstow, London, E178RN",
+          "latitude": 51.5758,
+          "longitude": -0.02884
         }
       },
       {
@@ -98,8 +108,9 @@
         "slug": "crystal-palace-leisure-centre",
         "location": {
           "postcode": "SE192BB",
-          "latitude": "51.4189989",
-          "longitude": "-0.0677686"
+          "address": "Ledrington Rd, Crystal Palace, London, SE192BB",
+          "latitude": 51.4189989,
+          "longitude": -0.0677686
         }
       },
       {
@@ -107,8 +118,9 @@
         "slug": "phoenix-fitness-centre-and-janet-adegoke-swimming-pool",
         "location": {
           "postcode": "W12 7DB",
-          "latitude": "51.5127",
-          "longitude": "-0.23535"
+          "address": "Bloemfontain Road, White City, London, London, W12 7DB",
+          "latitude": 51.5127,
+          "longitude": -0.23535
         }
       },
       {
@@ -116,8 +128,9 @@
         "slug": "waltham-forest-feel-good-centre",
         "location": {
           "postcode": "E17 5AA",
-          "latitude": "51.5955114",
-          "longitude": "-0.0137085"
+          "address": "170 Chingford Road, London,  Walthamstow, E17 5AA",
+          "latitude": 51.5955114,
+          "longitude": -0.0137085
         }
       },
       {
@@ -125,8 +138,9 @@
         "slug": "copper-box-arena",
         "location": {
           "postcode": "E20 3HB",
-          "latitude": "51.5446",
-          "longitude": "-0.021522"
+          "address": "Copper Street, Stratford, London, E20 3HB",
+          "latitude": 51.5446,
+          "longitude": -0.021522
         }
       },
       {
@@ -134,8 +148,9 @@
         "slug": "hendon-leisure-centre",
         "location": {
           "postcode": "NW2 1XQ",
-          "latitude": "51.5739526",
-          "longitude": "-0.2155321"
+          "address": "Marble Drive,  Hendon, London, NW2 1XQ",
+          "latitude": 51.5739526,
+          "longitude": -0.2155321
         }
       },
       {
@@ -143,8 +158,9 @@
         "slug": "gunnersbury-park-sports-hub",
         "location": {
           "postcode": "W3 8LQ",
-          "latitude": "51.500481",
-          "longitude": "-0.28953"
+          "address": "Popes Lanes, Acton, London, W3 8LQ",
+          "latitude": 51.500481,
+          "longitude": -0.28953
         }
       },
       {
@@ -152,8 +168,9 @@
         "slug": "canons-leisure-centre",
         "location": {
           "postcode": "CR4 4HD",
-          "latitude": "51.3997",
-          "longitude": "-0.161339"
+          "address": "Madeira Road, Mitcham, London, CR4 4HD",
+          "latitude": 51.3997,
+          "longitude": -0.161339
         }
       },
       {
@@ -161,8 +178,9 @@
         "slug": "the-plumstead-centre",
         "location": {
           "postcode": "CR4 4HD",
-          "latitude": "51.39959",
-          "longitude": "-0.161533"
+          "address": "232 Plumstead High Street, Plumstead, London, SE18 1JL",
+          "latitude": 51.39959,
+          "longitude": -0.161533
         }
       },
       {
@@ -170,8 +188,9 @@
         "slug": "waterfront-leisure-centre",
         "location": {
           "postcode": "SE18 6DL",
-          "latitude": "51.494047",
-          "longitude": "0.063403"
+          "address": "Woolwich High Street, Woolwich, Greenwich, SE18 6DL",
+          "latitude": 51.494047,
+          "longitude": 0.063403
         }
       },
       {
@@ -179,8 +198,9 @@
         "slug": "barking-sporthouse-and-gym",
         "location": {
           "postcode": "RM8 2JR",
-          "latitude": "51.545368",
-          "longitude": "0.113014"
+          "address": "Mayesbrook Park, Lodge Avenue, Dagenham, London, RM8 2JR",
+          "latitude": 51.545368,
+          "longitude": 0.113014
         }
       },
       {
@@ -188,8 +208,9 @@
         "slug": "east-ham-leisure-cente",
         "location": {
           "postcode": "E6 2RT",
-          "latitude": "51.533443",
-          "longitude": "0.058953"
+          "address": "East Ham Leisure Centre, 324 Barking  Road, East Ham, London, E6 2RT",
+          "latitude": 51.533443,
+          "longitude": 0.058953
         }
       },
       {
@@ -197,8 +218,9 @@
         "slug": "newham-leisure-centre",
         "location": {
           "postcode": "E13 8SD",
-          "latitude": "51.5196997336241",
-          "longitude": "0.037804863874695845"
+          "address": "281 Prince Regent Lane, Newham, London, E13 8SD",
+          "latitude": 51.5196997336241,
+          "longitude": 0.037804863874695845
         }
       },
       {
@@ -206,8 +228,9 @@
         "slug": "thornton-heath-leisure-centre",
         "location": {
           "postcode": "CR7 8LF",
-          "latitude": "51.399032",
-          "longitude": "-0.096946"
+          "address": "100 High Street, Thornton Heath, Croydon, CR7 8LF",
+          "latitude": 51.399032,
+          "longitude": -0.096946
         }
       },
       {
@@ -215,8 +238,9 @@
         "slug": "new-addington-leisure-centre",
         "location": {
           "postcode": "CR0 0JB",
-          "latitude": "51.340679",
-          "longitude": "-0.016029"
+          "address": "88 Centrel Parade, New Addington, Croydon, London, CR0  0JB",
+          "latitude": 51.340679,
+          "longitude": -0.016029
         }
       }
     ]
@@ -224,14 +248,15 @@
   {
     "organisation": "Be Well (Tower Hamlets)",
     "organisation_website": "https://be-well.org.uk/",
-    "venues":[
+    "venues": [
       {
         "venue_name": "John Orwell Sports Centre",
         "slug": "john-orwell",
         "location": {
-          "postcode": "E1W 2QD",
-          "latitude": "51.5049",
-          "longitude": "-0.061617"
+          "postcode": "E1W  2QD",
+          "address": null,
+          "latitude": 51.5049,
+          "longitude": -0.061617
         }
       },
       {
@@ -239,8 +264,9 @@
         "slug": "whitechapel-sports-centre",
         "location": {
           "postcode": "E1 5BA",
-          "latitude": "51.5199",
-          "longitude": "-0.060763"
+          "address": null,
+          "latitude": 51.5199,
+          "longitude": -0.060763
         }
       },
       {
@@ -248,8 +274,9 @@
         "slug": "poplar-baths-leisure-centre",
         "location": {
           "postcode": "E14 0ED",
-          "latitude": "51.511139",
-          "longitude": "-0.014445"
+          "address": null,
+          "latitude": 51.511139,
+          "longitude": -0.014445
         }
       },
       {
@@ -257,23 +284,25 @@
         "slug": "mile-end-park-leisure-centre",
         "location": {
           "postcode": "E3 4HL",
-          "latitude": "51.5193",
-          "longitude": "-0.032319"
+          "address": null,
+          "latitude": 51.5193,
+          "longitude": -0.032319
         }
       }
     ]
   },
   {
-    "organisation": "CitySport - City University London",
+    "organisation": "CitySport - City  University London",
     "organisation_website": "https://citysport.org.uk",
-    "venues":[
+    "venues": [
       {
         "venue_name": "CitySport - City University London",
         "slug": "citysport",
         "location": {
           "postcode": "EC1V 7DP",
-          "latitude": "51.524709",
-          "longitude": "-0.099123"
+          "address": null,
+          "latitude": 51.524709,
+          "longitude": -0.099123
         }
       }
     ]
@@ -283,336 +312,373 @@
     "organisation_website": "https://schoolhire.co.uk/",
     "venues": [
       {
-        "venue_name": "Notre Dame Roman Catholic Girls' School",
+        "venue_name": "Notre Dame Roman Catholic  Girls' School",
         "slug": "/london-southwark/notredame/28057",
         "location": {
-          "postcode": "",
-          "latitude": "51.4969796",
-          "longitude": "-0.1061375"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4969796,
+          "longitude": -0.1061375
         }
       },
       {
         "venue_name": "Somers Town Community Sports Centre",
         "slug": "/london-camden/somers-town-community-sports-centre/18595",
         "location": {
-          "postcode": "",
-          "latitude": "51.5330569",
-          "longitude": "-0.1334227"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5330569,
+          "longitude": -0.1334227
         }
       },
       {
         "venue_name": "Sacred Heart Catholic School",
         "slug": "/london-southwark/shcs/13824",
         "location": {
-          "postcode": "",
-          "latitude": "51.4762891",
-          "longitude": "-0.0989191"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4762891,
+          "longitude": -0.0989191
         }
       },
       {
         "venue_name": "St John Bosco College",
         "slug": "/london-wandsworth/saint-john-bosco-college/3966",
         "location": {
-          "postcode": "",
-          "latitude": "51.47473429999999",
-          "longitude": "-0.1719347"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.47473429999999,
+          "longitude": -0.1719347
         }
       },
       {
         "venue_name": "Kensington Primary Academy",
         "slug": "/london-kensington-and-chelsea/kensington-primary-academy/17021",
         "location": {
-          "postcode": "",
-          "latitude": "51.4954344",
-          "longitude": "-0.2038819"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4954344,
+          "longitude": -0.2038819
         }
       },
       {
         "venue_name": "Streatham & Clapham High School",
         "slug": "/london-lambeth/schs/14893",
         "location": {
-          "postcode": "",
-          "latitude": "51.4347582",
-          "longitude": "-0.137432"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4347582,
+          "longitude": -0.137432
         }
       },
       {
         "venue_name": "Bow School",
         "slug": "/london-tower-hamlets/bow-school/4425",
         "location": {
-          "postcode": "",
-          "latitude": "51.5233928",
-          "longitude": "-0.009469"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5233928,
+          "longitude": -0.009469
         }
       },
       {
         "venue_name": "Putney High School",
         "slug": "/london-wandsworth/putney/29408",
         "location": {
-          "postcode": "",
-          "latitude": "51.4568471",
-          "longitude": "-0.2180875"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4568471,
+          "longitude": -0.2180875
         }
       },
       {
         "venue_name": "Gladesmore Community School",
         "slug": "/london-haringey/gladesmore-community-school/3162",
         "location": {
-          "postcode": "",
-          "latitude": "51.5801253",
-          "longitude": "-0.0652606"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5801253,
+          "longitude": -0.0652606
         }
       },
       {
         "venue_name": "Sydenham High School GDST",
         "slug": "/london-lewisham/sydenhamgdst/31413",
         "location": {
-          "postcode": "",
-          "latitude": "51.4268333",
-          "longitude": "-0.06407489999999999"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4268333,
+          "longitude": -0.06407489999999999
         }
       },
       {
         "venue_name": "Heartlands High School",
         "slug": "/london-haringey/heartlands/4389",
         "location": {
-          "postcode": "",
-          "latitude": "51.5976401",
-          "longitude": "-0.1192685"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5976401,
+          "longitude": -0.1192685
         }
       },
       {
         "venue_name": "Blackheath High School",
         "slug": "/london-greenwich/bhs/3972",
         "location": {
-          "postcode": "",
-          "latitude": "51.4778393",
-          "longitude": "0.0155328"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4778393,
+          "longitude": 0.0155328
         }
       },
       {
         "venue_name": "Royal Docks Academy",
         "slug": "/london-newham/royal-docks-academy/4319",
         "location": {
-          "postcode": "",
-          "latitude": "51.5109917",
-          "longitude": "0.0350263"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5109917,
+          "longitude": 0.0350263
         }
       },
       {
         "venue_name": "Forest Gate Community School",
         "slug": "/london-newham/forest-gate-community-school/17102",
         "location": {
-          "postcode": "",
-          "latitude": "51.5493616",
-          "longitude": "0.0221845"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5493616,
+          "longitude": 0.0221845
         }
       },
       {
         "venue_name": "Leyton Sixth Form College",
         "slug": "/london-waltham-forest/leyton-sixth-form-college/11263",
         "location": {
-          "postcode": "",
-          "latitude": "51.57606759999999",
-          "longitude": "-0.0028677"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.57606759999999,
+          "longitude": -0.0028677
         }
       },
       {
         "venue_name": "Haringey Sixth Form College",
         "slug": "/london-haringey/haringey-sixth-form-college/947",
         "location": {
-          "postcode": "",
-          "latitude": "51.6067974",
-          "longitude": "-0.0729368"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6067974,
+          "longitude": -0.0729368
         }
       },
       {
         "venue_name": "Duke's Aldridge Academy",
         "slug": "/london-haringey/dukes/3855",
         "location": {
-          "postcode": "",
-          "latitude": "51.6049123",
-          "longitude": "-0.0633121"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6049123,
+          "longitude": -0.0633121
         }
       },
       {
         "venue_name": "Wren Academy North Finchley",
         "slug": "/london-barnet/wren-academy/16045",
         "location": {
-          "postcode": "",
-          "latitude": "51.6126673",
-          "longitude": "-0.1682176"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6126673,
+          "longitude": -0.1682176
         }
       },
       {
         "venue_name": "Walthamstow Academy",
         "slug": "/london-waltham-forest/walthamstow/20864",
         "location": {
-          "postcode": "",
-          "latitude": "51.5994891",
-          "longitude": "-0.0244396"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5994891,
+          "longitude": -0.0244396
         }
       },
       {
         "venue_name": "Preston Manor School",
         "slug": "/wembley/preston-manor/2800",
         "location": {
-          "postcode": "",
-          "latitude": "51.5659201",
-          "longitude": "-0.288875"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5659201,
+          "longitude": -0.288875
         }
       },
       {
         "venue_name": "Preston Manor School",
         "slug": "/wembley/preston-manor/2799",
         "location": {
-          "postcode": "",
-          "latitude": "51.5659201",
-          "longitude": "-0.288875"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5659201,
+          "longitude": -0.288875
         }
       },
       {
         "venue_name": "3d Health & Fitness @ Oasis Academy Arena",
         "slug": "/croydon/3d-health-fitness-oasis-academy-arena/1916",
         "location": {
-          "postcode": "",
-          "latitude": "51.39312349999999",
-          "longitude": "-0.0621488"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.39312349999999,
+          "longitude": -0.0621488
         }
       },
       {
         "venue_name": "Kingsbury High School (Upper)",
         "slug": "/london-brent/kingsbury-high-school-upper/4532",
         "location": {
-          "postcode": "",
-          "latitude": "51.5897316",
-          "longitude": "-0.2747271"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.5897316,
+          "longitude": -0.2747271
         }
       },
       {
         "venue_name": "The Latymer School",
         "slug": "/london-enfield/latymer/4706",
         "location": {
-          "postcode": "",
-          "latitude": "51.6260249",
-          "longitude": "-0.0741158"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6260249,
+          "longitude": -0.0741158
         }
       },
       {
         "venue_name": "The Latymer School",
         "slug": "/london-enfield/latymer/4704",
         "location": {
-          "postcode": "",
-          "latitude": "51.6260249",
-          "longitude": "-0.0741158"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6260249,
+          "longitude": -0.0741158
         }
       },
       {
         "venue_name": "Alperton Community School",
         "slug": "/london-brent/alperton/21566",
         "location": {
-          "postcode": "",
-          "latitude": "51.561918",
-          "longitude": "-0.312378"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.561918,
+          "longitude": -0.312378
         }
       },
       {
         "venue_name": "Mill Hill School",
         "slug": "/london-barnet/mill-hill-school/2195",
         "location": {
-          "postcode": "",
-          "latitude": "51.6219383",
-          "longitude": "-0.2333156"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6219383,
+          "longitude": -0.2333156
         }
       },
       {
         "venue_name": "Mill Hill School",
         "slug": "/london-barnet/mill-hill-school/2207",
         "location": {
-          "postcode": "",
-          "latitude": "51.6219383",
-          "longitude": "-0.2333156"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6219383,
+          "longitude": -0.2333156
         }
       },
       {
         "venue_name": "St Thomas More Catholic Comprehensive School",
         "slug": "/london-greenwich/stmcomprehensive/28060",
         "location": {
-          "postcode": "",
-          "latitude": "51.4473636",
-          "longitude": "0.06247739999999999"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4473636,
+          "longitude": 0.06247739999999999
         }
       },
       {
         "venue_name": "Carshalton Boys Sports College",
         "slug": "/sutton/carshalton-boys-sports-college/3751",
         "location": {
-          "postcode": "",
-          "latitude": "51.3776585",
-          "longitude": "-0.1748844"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.3776585,
+          "longitude": -0.1748844
         }
       },
       {
         "venue_name": "Plumstead Manor School",
         "slug": "/london-greenwich/plumstead-manor-school/1562",
         "location": {
-          "postcode": "",
-          "latitude": "51.4819095",
-          "longitude": "0.0846441"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4819095,
+          "longitude": 0.0846441
         }
       },
       {
         "venue_name": "Plumstead Manor School",
         "slug": "/london-greenwich/plumstead-manor-school/1563",
         "location": {
-          "postcode": "",
-          "latitude": "51.4819095",
-          "longitude": "0.0846441"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4819095,
+          "longitude": 0.0846441
         }
       },
       {
         "venue_name": "Plumstead Manor School",
         "slug": "/london-greenwich/plumstead-manor-school/1570",
         "location": {
-          "postcode": "",
-          "latitude": "51.4819095",
-          "longitude": "0.0846441"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4819095,
+          "longitude": 0.0846441
         }
       },
       {
         "venue_name": "Woodford County High School",
         "slug": "/woodford-green/woodford-county-high-school/1895",
         "location": {
-          "postcode": "",
-          "latitude": "51.60762039999999",
-          "longitude": "0.0187634"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.60762039999999,
+          "longitude": 0.0187634
         }
       },
       {
         "venue_name": "AIM North London",
         "slug": "/london-enfield/aimnorthlondon/12002",
         "location": {
-          "postcode": "",
-          "latitude": "51.63286009999999",
-          "longitude": "-0.0458938"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.63286009999999,
+          "longitude": -0.0458938
         }
       },
       {
         "venue_name": "The Tiffin Girls' School",
         "slug": "/kingston-upon-thames/tiffingirls/28180",
         "location": {
-          "postcode": "",
-          "latitude": "51.4255714",
-          "longitude": "-0.3029342"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.4255714,
+          "longitude": -0.3029342
         }
       },
       {
         "venue_name": "The Totteridge Academy",
         "slug": "/london-barnet/totteridge/417",
         "location": {
-          "postcode": "",
-          "latitude": "51.6388325",
-          "longitude": "-0.2006194"
+          "postcode": null,
+          "address": null,
+          "latitude": 51.6388325,
+          "longitude": -0.2006194
         }
       }
     ]

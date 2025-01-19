@@ -4,7 +4,8 @@ import uuid
 from datetime import date, datetime, time, timedelta
 from enum import Enum
 from functools import cache
-from typing import List
+from typing import List, Optional
+from urllib.response import addinfo
 
 import sqlmodel
 from loguru import logger as logging
@@ -59,7 +60,8 @@ class SportsVenue(SQLModel, table=True):
     organisation_website: str
     venue_name: str
     slug: str
-    postcode: str
+    postcode: Optional[str]
+    address: Optional[str]
     latitude: float
     longitude: float
 
@@ -153,6 +155,7 @@ def load_sports_centre_mappings(engine):
                         venue_name = venue.venue_name,
                         slug = venue.slug,
                         postcode = venue.location.postcode,
+                        address = venue.location.address,
                         latitude = venue.location.latitude,
                         longitude = venue.location.longitude
                     )
