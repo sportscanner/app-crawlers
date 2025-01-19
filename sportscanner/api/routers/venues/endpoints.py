@@ -1,6 +1,7 @@
 from sportscanner.api.routers.venues.utils import get_venues_from_database
 from fastapi import APIRouter, Query
 from datetime import datetime
+from sportscanner.variables import *
 
 router = APIRouter()
 

@@ -15,13 +15,13 @@ from sportscanner.crawlers.parsers.utils import validate_api_response
 from sportscanner.utils import async_timer, timeit
 from sportscanner.crawlers.parsers.utils import formatted_date_list
 from sportscanner.crawlers.parsers.better.helper import filter_search_dates_for_allowable
-from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
+from sportscanner.crawlers.anonymize.proxies import httpxAsyncClientWithProxiesAndLimits
 
 @async_timer
 async def send_concurrent_requests(parameter_sets: List[Tuple[db.SportsVenue, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
-    async with httpxAsyncClient() as client:
+    async with httpxAsyncClientWithProxiesAndLimits() as client:
         for sports_centre, fetch_date in parameter_sets:
             async_tasks = create_async_tasks(client, sports_centre, fetch_date)
             tasks.extend(async_tasks)
@@ -37,7 +37,7 @@ def create_async_tasks(client, sports_centre: db.SportsVenue, fetch_date: date) 
         url, headers, _ = generate_api_call_params(
             sports_centre, fetch_date, activity=activity_duration
         )
-        tasks.append(fetch_data(client, url, headers, metadata = sports_centre))
+        tasks.append(fetch_data(client, url, headers))
     return tasks
 
 
@@ -45,22 +45,25 @@ def generate_api_call_params(
     sports_centre: db.SportsVenue, fetch_date: date, activity: str
 ):
     """Generates URL, Headers and Payload information for the API curl request"""
+    """https://schoolhire.co.uk/calendar.json?facility_id=28057&date=Thu%2C+23+Jan+2025"""
+    RFC850_date_format = fetch_date.strftime("%a%2C+%d+%b+%Y")
     url = (
-        f"https://better-admin.org.uk/api/activities/venue/"
-        f"{sports_centre.slug}/activity/{activity}/times?date={fetch_date}"
+        f"https://schoolhire.co.uk/calendar.json?facility_id={sports_centre.slug}&date={RFC850_date_format}"
     )
     logging.debug(url)
     headers = {
-        "origin": "https://bookings.better.org.uk",
-        "referer": f"https://bookings.better.org.uk/location/{sports_centre.slug}/{activity}/{fetch_date}/by-time",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'en-US,en;q=0.9',
+        'cache-control': 'no-cache',
+        'referer': 'https://schoolhire.co.uk/london-southwark/notredame/badminton-court/28057?date=',
+        'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36'
     }
     payload: Dict = {}
     return url, headers, payload
 
 
 @async_timer
-async def fetch_data(client, url: str, headers: Dict, metadata: db.SportsVenue) -> List[UnifiedParserSchema]:
+async def fetch_data(client, url: str, headers: Dict) -> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
     content_type = response.headers.get("content-type", "")
@@ -69,7 +72,7 @@ async def fetch_data(client, url: str, headers: Dict, metadata: db.SportsVenue) 
     if validated_response_data is not None:
         raw_responses_with_schema = apply_raw_response_schema(validated_response_data)
         return [
-            UnifiedParserSchema.from_better_api_response(response, metadata)
+            UnifiedParserSchema.from_better_api_response(response)
             for response in raw_responses_with_schema
         ]
     else:
@@ -108,26 +111,26 @@ def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
     return aligned_api_response
 
 
-# @timeit
-# def fetch_data_across_centres(
-#     sports_centre_lists: List[db.SportsVenue], dates: List[date]
-# ) -> List[UnifiedParserSchema]:
-#     """Runs the Async API calls, collects and standardises responses and populate distance/postal
-#     metadata"""
-#     parameter_sets: List[Tuple[db.SportsVenue, date]] = [
-#         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
-#     ]
-#     logging.debug(
-#         f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}"
-#     )
-#     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
-#         send_concurrent_requests(parameter_sets)
-#     )
-#     all_fetched_slots: List[UnifiedParserSchema] = [
-#         item for sublist in responses_from_all_sources for item in sublist
-#     ]
-#     logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
-#     return all_fetched_slots
+@timeit
+def fetch_data_across_centres(
+    sports_centre_lists: List[db.SportsVenue], dates: List[date]
+) -> List[UnifiedParserSchema]:
+    """Runs the Async API calls, collects and standardises responses and populate distance/postal
+    metadata"""
+    parameter_sets: List[Tuple[db.SportsVenue, date]] = [
+        (x, y) for x, y in itertools.product(sports_centre_lists, dates)
+    ]
+    logging.debug(
+        f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}"
+    )
+    responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
+        send_concurrent_requests(parameter_sets)
+    )
+    all_fetched_slots: List[UnifiedParserSchema] = [
+        item for sublist in responses_from_all_sources for item in sublist
+    ]
+    logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
+    return all_fetched_slots
 
 
 @timeit

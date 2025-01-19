@@ -43,11 +43,10 @@ class SportScanner(SQLModel, table=True):
     date: date
     price: str
     spaces: int
-    organisation: str
     last_refreshed: datetime
     booking_url: str | None
 
-    venue_slug: str = Field(default=None, foreign_key="sportsvenue.slug")
+    composite_key: str = Field(default=None, foreign_key="sportsvenue.composite_key")
 
 
 class SportsVenue(SQLModel, table=True):

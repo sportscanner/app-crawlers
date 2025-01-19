@@ -8,25 +8,31 @@ from pydantic import BaseModel
 from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 
+class SportsVenue(BaseModel):
+    composite_key: str
+    organisation: str
+    organisation_website: str
+    venue_name: str
+    slug: str
+    postcode: str
+    latitude: float
+    longitude: float
+
 
 class UnifiedParserSchema(BaseModel):
-    name: Optional[str]
-    venue_slug: Optional[str]
     category: str
     starting_time: time
     ending_time: time
     date: date
     price: str
     spaces: int
-    organisation: str
+    composite_key: str
     last_refreshed: datetime
     booking_url: Optional[str]
 
     @classmethod
-    def from_better_api_response(cls, response: BetterApiResponseSchema):
+    def from_better_api_response(cls, response: BetterApiResponseSchema, metadata: SportsVenue):
         return cls(
-            name=None,
-            venue_slug=response.venue_slug,
             category=response.name,
             starting_time=datetime.strptime(
                 response.starts_at.format_24_hour, "%H:%M"
@@ -37,7 +43,7 @@ class UnifiedParserSchema(BaseModel):
             date=datetime.strptime(response.date, "%Y-%m-%d").date(),
             price=response.price.formatted_amount,
             spaces=response.spaces,
-            organisation="better.org.uk",
+            composite_key=metadata.composite_key,
             last_refreshed=datetime.now(),
             booking_url="https://bookings.better.org.uk/location/{}/{}/{}/by-time/".format(
                 response.venue_slug,
@@ -47,10 +53,8 @@ class UnifiedParserSchema(BaseModel):
         )
 
     @classmethod
-    def from_citysports_api_response(cls, response: CitySportsResponseSchema):
+    def from_citysports_api_response(cls, response: CitySportsResponseSchema, metadata: SportsVenue):
         return cls(
-            name="CitySports Leisure Hub",
-            venue_slug="citysport",
             category=response.ActivityGroupDescription,
             starting_time=datetime.strptime(
                 response.StartTime, "%Y-%m-%dT%H:%M:%S"
@@ -59,7 +63,7 @@ class UnifiedParserSchema(BaseModel):
             date=datetime.strptime(response.StartTime, "%Y-%m-%dT%H:%M:%S").date(),
             price="£" + str(response.Price),
             spaces=response.AvailablePlaces,
-            organisation="citysport.org.uk",
+            composite_key=metadata.composite_key,
             last_refreshed=datetime.now(),
             booking_url="https://bookings.citysport.org.uk/LhWeb/en/Public/Bookings/",
         )
