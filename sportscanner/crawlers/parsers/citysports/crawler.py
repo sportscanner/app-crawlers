@@ -6,34 +6,32 @@ import httpx
 from loguru import logger as logging
 from pydantic import ValidationError
 from sqlmodel import select, col
+import itertools
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.utils import async_timer, timeit
-
+from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 
 @async_timer
-async def send_concurrent_requests(search_dates: List[date]) -> Tuple[List[UnifiedParserSchema], ...]:
+async def send_concurrent_requests(parameter_sets: List[Tuple[db.SportsVenue, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
-    tasks = []
-    async with httpx.AsyncClient(
-        limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
-        timeout=httpx.Timeout(timeout=15.0),
-    ) as client:
-        for search_date in search_dates:
-            async_tasks = create_async_tasks(client, search_date)
+    tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
+    async with httpxAsyncClient() as client:
+        for sports_centre, fetch_date in parameter_sets:
+            async_tasks = create_async_tasks(client, sports_centre, fetch_date)
             tasks.extend(async_tasks)
         logging.info(f"Total number of concurrent request tasks: {len(tasks)}")
         responses = await asyncio.gather(*tasks)
     return responses
 
 
-def create_async_tasks(client, search_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
+def create_async_tasks(client, sports_centre: db.SportsVenue, search_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
     """Generates Async task for concurrent calls to be made later"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     url, headers, _ = generate_api_call_params(search_date)
-    tasks.append(fetch_data(client, url, headers))
+    tasks.append(fetch_data(client, url, headers, metadata = sports_centre))
     return tasks
 
 
@@ -54,7 +52,7 @@ def generate_api_call_params(search_date: date):
 
 
 @async_timer
-async def fetch_data(client, url, headers)-> List[UnifiedParserSchema]:
+async def fetch_data(client, url, headers, metadata: db.SportsVenue)-> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
     content_type = response.headers.get("content-type", "")
@@ -73,7 +71,7 @@ async def fetch_data(client, url, headers)-> List[UnifiedParserSchema]:
     if len(response.json()) > 0:
         raw_responses_with_schema = apply_raw_response_schema(response.json())
         return [
-            UnifiedParserSchema.from_citysports_api_response(response)
+            UnifiedParserSchema.from_citysports_api_response(response, metadata)
             for response in raw_responses_with_schema
             if response.ActivityGroupDescription == "Badminton"
         ]
@@ -96,28 +94,37 @@ def apply_raw_response_schema(api_response) -> List[CitySportsResponseSchema]:
         raise ValidationError
 
 
+# @timeit
+# def fetch_data_at_venue(search_dates: List) -> List[UnifiedParserSchema]:
+#     """Runs the Async API calls, collects and standardises responses and populate distance/postal
+#     metadata"""
+#     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
+#         send_concurrent_requests(search_dates)
+#     )
+#     all_fetched_slots: List[UnifiedParserSchema] = [
+#         item for sublist in responses_from_all_sources for item in sublist
+#     ]
+#     logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
+#     return all_fetched_slots
+
+
 @timeit
-def fetch_data_at_venue(search_dates: List) -> List[UnifiedParserSchema]:
+def get_concurrent_requests(
+        sports_centre_lists: List[db.SportsVenue],
+        search_dates: List
+) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
-    responses_from_all_sources: List[List[UnifiedParserSchema]] = asyncio.run(
-        send_concurrent_requests(search_dates)
-    )
-    all_fetched_slots: List[UnifiedParserSchema] = [
-        item for sublist in responses_from_all_sources for item in sublist
+    parameter_sets: List[Tuple[db.SportsVenue, date]] = [
+        (x, y) for x, y in itertools.product(sports_centre_lists, search_dates)
     ]
-    logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
-    return all_fetched_slots
+    logging.debug(
+        f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}"
+    )
+    return send_concurrent_requests(parameter_sets)
 
 
-@timeit
-def get_concurrent_requests(search_dates: List) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
-    """Runs the Async API calls, collects and standardises responses and populate distance/postal
-    metadata"""
-    return send_concurrent_requests(search_dates)
-
-
-def pipeline(search_dates: List[date], venue_slugs: List[str]) -> List[UnifiedParserSchema]:
+def pipeline(search_dates: List[date], venue_slugs: List[str]) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     sports_centre_lists = db.get_all_rows(
         db.engine,
         table=db.SportsVenue,
@@ -127,7 +134,7 @@ def pipeline(search_dates: List[date], venue_slugs: List[str]) -> List[UnifiedPa
     )
     if sports_centre_lists:
         logging.info(f"{len(sports_centre_lists)} CitySports venue data loaded from database")
-        return get_concurrent_requests(search_dates)
+        return get_concurrent_requests(sports_centre_lists, search_dates)
     else:
         logging.warning("No query slugs matching CitySports venues")
         return []

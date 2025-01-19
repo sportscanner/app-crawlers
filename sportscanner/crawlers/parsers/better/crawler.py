@@ -13,16 +13,15 @@ from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.crawlers.parsers.utils import validate_api_response
 from sportscanner.utils import async_timer, timeit
-
+from sportscanner.crawlers.parsers.utils import formatted_date_list
+from sportscanner.crawlers.parsers.better.helper import filter_search_dates_for_allowable
+from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 
 @async_timer
 async def send_concurrent_requests(parameter_sets: List[Tuple[db.SportsVenue, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
-    async with httpx.AsyncClient(
-        limits=httpx.Limits(max_connections=250, max_keepalive_connections=20),
-        timeout=httpx.Timeout(timeout=15.0),
-    ) as client:
+    async with httpxAsyncClient() as client:
         for sports_centre, fetch_date in parameter_sets:
             async_tasks = create_async_tasks(client, sports_centre, fetch_date)
             tasks.extend(async_tasks)
@@ -38,7 +37,7 @@ def create_async_tasks(client, sports_centre: db.SportsVenue, fetch_date: date) 
         url, headers, _ = generate_api_call_params(
             sports_centre, fetch_date, activity=activity_duration
         )
-        tasks.append(fetch_data(client, url, headers))
+        tasks.append(fetch_data(client, url, headers, metadata = sports_centre))
     return tasks
 
 
@@ -53,8 +52,7 @@ def generate_api_call_params(
     logging.debug(url)
     headers = {
         "origin": "https://bookings.better.org.uk",
-        "referer": f"https://bookings.better.org.uk/location/{sports_centre.slug}"
-        f"/{activity}",
+        "referer": f"https://bookings.better.org.uk/location/{sports_centre.slug}/{activity}/{fetch_date}/by-time",
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     }
     payload: Dict = {}
@@ -62,7 +60,7 @@ def generate_api_call_params(
 
 
 @async_timer
-async def fetch_data(client, url: str, headers: Dict) -> List[UnifiedParserSchema]:
+async def fetch_data(client, url: str, headers: Dict, metadata: db.SportsVenue) -> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
     content_type = response.headers.get("content-type", "")
@@ -71,7 +69,7 @@ async def fetch_data(client, url: str, headers: Dict) -> List[UnifiedParserSchem
     if validated_response_data is not None:
         raw_responses_with_schema = apply_raw_response_schema(validated_response_data)
         return [
-            UnifiedParserSchema.from_better_api_response(response)
+            UnifiedParserSchema.from_better_api_response(response, metadata)
             for response in raw_responses_with_schema
         ]
     else:
@@ -110,26 +108,26 @@ def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
     return aligned_api_response
 
 
-@timeit
-def fetch_data_across_centres(
-    sports_centre_lists: List[db.SportsVenue], dates: List[date]
-) -> List[UnifiedParserSchema]:
-    """Runs the Async API calls, collects and standardises responses and populate distance/postal
-    metadata"""
-    parameter_sets: List[Tuple[db.SportsVenue, date]] = [
-        (x, y) for x, y in itertools.product(sports_centre_lists, dates)
-    ]
-    logging.debug(
-        f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}"
-    )
-    responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
-        send_concurrent_requests(parameter_sets)
-    )
-    all_fetched_slots: List[UnifiedParserSchema] = [
-        item for sublist in responses_from_all_sources for item in sublist
-    ]
-    logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
-    return all_fetched_slots
+# @timeit
+# def fetch_data_across_centres(
+#     sports_centre_lists: List[db.SportsVenue], dates: List[date]
+# ) -> List[UnifiedParserSchema]:
+#     """Runs the Async API calls, collects and standardises responses and populate distance/postal
+#     metadata"""
+#     parameter_sets: List[Tuple[db.SportsVenue, date]] = [
+#         (x, y) for x, y in itertools.product(sports_centre_lists, dates)
+#     ]
+#     logging.debug(
+#         f"VENUES: {[sports_centre.venue_name for sports_centre in sports_centre_lists]}"
+#     )
+#     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
+#         send_concurrent_requests(parameter_sets)
+#     )
+#     all_fetched_slots: List[UnifiedParserSchema] = [
+#         item for sublist in responses_from_all_sources for item in sublist
+#     ]
+#     logging.debug(f"Unified parser schema mapped responses:\n{all_fetched_slots}")
+#     return all_fetched_slots
 
 
 @timeit
@@ -148,6 +146,8 @@ def get_concurrent_requests(
 
 
 def pipeline(search_dates: List[date], venue_slugs: List[str]) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
+    allowable_search_dates = filter_search_dates_for_allowable(search_dates)
+    logging.warning(f"Search dates for Better.Org crawler narrowed down to: {formatted_date_list(allowable_search_dates)}")
     sports_centre_lists: List[db.SportsVenue] = db.get_all_rows(
         db.engine,
         table=db.SportsVenue,
@@ -158,8 +158,8 @@ def pipeline(search_dates: List[date], venue_slugs: List[str]) -> Coroutine[Any,
     logging.success(
         f"{len(sports_centre_lists)} Sports venue data queried from database"
     )
-    # return fetch_data_across_centres(sports_centre_lists, search_dates)
-    return get_concurrent_requests(sports_centre_lists, search_dates)
+
+    return get_concurrent_requests(sports_centre_lists, allowable_search_dates)
 
 
 if __name__ == "__main__":
