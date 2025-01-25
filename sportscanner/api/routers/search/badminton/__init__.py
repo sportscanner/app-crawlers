@@ -1,1 +1,0 @@
-from sportscanner.api.routers.search.badminton import endpoints

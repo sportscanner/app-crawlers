@@ -66,7 +66,6 @@ async def fetch_data(client, url, headers)-> List[UnifiedParserSchema]:
                 f"Response status code is not: Response [200 OK]"
                 f"\nResponse: {response}"
             )
-    print(response.json())
     return response.json()
 
 

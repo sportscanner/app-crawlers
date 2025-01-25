@@ -56,7 +56,3 @@ class CitySportsResponseSchema(BaseModel):
     Instructor: Optional[str]
 
 
-# Example usage:
-# activity_data = { ... }  # Your JSON data here
-# activity_instance = Activity(**activity_data)
-# print(activity_instance)

@@ -1,6 +1,9 @@
 from fastapi import FastAPI
-from sportscanner.api.routers import venues, geolocation
-from sportscanner.api.routers.search import badminton
+from fastapi.middleware.cors import CORSMiddleware
+from sportscanner.api.routers.geolocation.endpoints import router as GeolocationRouter
+from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
+from sportscanner.api.routers.search.badminton.endpoints import router as SearchBadmintonRouter
+from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from datetime import datetime
 
 description = """
@@ -30,22 +33,37 @@ app = FastAPI(
     },
 )
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace '*' with specific origins if needed
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
 app.include_router(
-    router= badminton.endpoints.router,
+    router= SearchBadmintonRouter,
     prefix="/search/badminton",
     tags=["Search"]
 )
 
 app.include_router(
-    router= venues.endpoints.router,
+    router= VenuesRouter,
     prefix="/venues",
     tags=["Venues"]
 )
 
 app.include_router(
-    router= geolocation.endpoints.router,
+    router= GeolocationRouter,
     prefix="/geolocation",
     tags=["Geolocation"]
+)
+
+app.include_router(
+    router= UsersRouter,
+    prefix="/users",
+    tags=["Authentication"]
 )
 
 @app.get("/", tags=["Root"])
