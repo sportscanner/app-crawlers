@@ -1,3 +1,4 @@
+from PIL.TiffTags import lookup
 
 import sportscanner.storage.postgres.database as db
 from pydantic import BaseModel
@@ -9,6 +10,20 @@ from itertools import groupby
 from operator import attrgetter
 from typing import List
 import json
+
+
+def generate_venue_lookup() -> dict:
+    venues: List[db.SportsVenue] = db.get_all_sports_venues(db.engine)
+    reference_dict = {
+        venue.composite_key: {
+            "organisation": venue.organisation,
+            "venue_name": venue.venue_name,
+            "address": venue.address,
+        }
+        for venue in venues
+    }
+    return reference_dict
+
 
 def group_slots_by_attributes(slots, attributes):
     """
@@ -28,8 +43,8 @@ def group_slots_by_attributes(slots, attributes):
     grouped_slots = [list(group) for _, group in grouped]
     return grouped_slots
 
-def sort_and_format_grouped_slots_for_ui(grouped_slots):
-    # print(grouped_slots)
+
+def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_reference):
     processed_slots: List = []
     for groups in grouped_slots:
         # Sort the groups based on 'date' and 'starting_time'
@@ -45,6 +60,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots):
             continue
         # Get the earliest slot in the group (the first element in sorted list with spaces > 0)
         earliest_slot_in_group: db.SportScanner = sorted_slots_with_spaces[0]
+
         sorted_slots_without_element_zero: List[db.SportScanner] = [x for i, x in enumerate(sorted_slots_in_group) if i != 0]
         otherSlots = []
         for x in sorted_slots_without_element_zero:
@@ -55,31 +71,22 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots):
                     "available": _available
                 }
             )
+
+        # Populating metadata from venues into main availability items
+        lookup_dict = generate_venue_lookup()
+        lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key, None)
+
         processed_slots.append(
             {
                 "startTime": earliest_slot_in_group.starting_time.strftime('%H:%M'),
                 "endTime": earliest_slot_in_group.ending_time.strftime('%H:%M'),
-                "location": earliest_slot_in_group.venue_slug,
-                "distance": 1.8,
-                "price": 15.0,
-                "organization": earliest_slot_in_group.organisation,
+                "location": lookup_data.get('venue_name', ''),
+                "address": lookup_data.get('address', ''),
+                "distance": distance_from_venues_reference.get(earliest_slot_in_group.composite_key, 99),
+                "price": earliest_slot_in_group.price,
+                "organization": lookup_data.get('organisation', ''),
                 "date": earliest_slot_in_group.date.strftime('%a, %b %d'),
                 "otherSlots": otherSlots
             }
         )
-    print(json.dumps(processed_slots, indent=4))
-
-
-slots = db.get_all_rows(
-    engine,
-    db.SportScanner,
-    db.select(db.SportScanner)
-    # .where(db.SportScanner.spaces > 0)
-    # .order_by(db.SportScanner.date)
-    # .order_by(db.SportScanner.starting_time)
-)
-
-grouped_slots = group_slots_by_attributes(slots, attributes=("organisation", "venue_slug", "date"))
-# print(grouped_slots)
-sort_and_format_grouped_slots_for_ui(grouped_slots)
-# print(grouped_slots)
+    return processed_slots

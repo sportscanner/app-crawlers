@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     USE_PROXIES: bool = False
     ROTATING_PROXY_ENDPOINT: str
     API_BASE_URL: Optional[str] = "http://localhost:8000/"
+    CLOUD_FIRESTORE_CREDENTIALS_PATH: Optional[str]
+    CLOUD_FIRESTORE_PROJECT_ID: Optional[str]
+    FIRESTORE_USER_COLLECTION: Optional[str] = "users"
+    JWT_SECRET: str
+    JWT_ALGORITHM: str
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding='utf-8')
 

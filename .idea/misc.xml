@@ -4,4 +4,7 @@
     <option name="sdkName" value="sportscanner" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="sportscanner" project-jdk-type="Python SDK" />
+  <component name="PyCharmProfessionalAdvertiser">
+    <option name="shown" value="true" />
+  </component>
 </project>

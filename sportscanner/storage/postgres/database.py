@@ -214,14 +214,13 @@ def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues: List[UnifiedP
         for slots in slots_from_all_venues:
             orm_object = SportScanner(
                 uuid=str(uuid.uuid4()),
-                venue_slug=slots.venue_slug,
+                composite_key=slots.composite_key,
                 category=slots.category,
                 starting_time=slots.starting_time,
                 ending_time=slots.ending_time,
                 date=slots.date,
                 price=slots.price,
                 spaces=slots.spaces,
-                organisation=slots.organisation,
                 last_refreshed=slots.last_refreshed,
                 booking_url=slots.booking_url,
             )
