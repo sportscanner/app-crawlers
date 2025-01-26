@@ -4,13 +4,13 @@ with open("requirements.txt") as f:
     install_requires = f.read().strip().split("\n")
 
 setup(
-    name="shuttlebot",
+    name="sportscanner",
     version="0.1.0",
     description="Webapp that helps badminton players in London find consecutively available badminton slots for the "
                 "upcoming week",
     author="Yasir Khalid",
     author_email="yasir_khalid@outlook.com",
-    url="https://github.com/yasir-khalid/shuttlebot",
+    url="https://github.com/yasir-khalid/sportscanner",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     packages=find_packages(),

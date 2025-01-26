@@ -18,9 +18,11 @@ credentials/
 *.logs
 secrets.toml
 
-# dotenv-vault credentials to store environment variables securely
-.env
+# Project specific files
+*.env
+*.json
 .flaskenv*
 !.env.project
 !.env.vault
 *.db
+datasets

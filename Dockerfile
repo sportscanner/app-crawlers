@@ -14,7 +14,7 @@ COPY . /app
 RUN make setup
 
 # Expose the port that Streamlit will run on
-EXPOSE 8501
-HEALTHCHECK CMD CURL --fail http://localhost:8501/_stcore/health
+EXPOSE 80
 
-ENTRYPOINT ["python", "-m", "streamlit", "run", "shuttlebot/frontend/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["fastapi", "run", "sportscanner/api/", "--port", "80"]
+
