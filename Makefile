@@ -30,6 +30,9 @@ run:
 		-v $(pwd)/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
 		-p 8080:80 app-crawlers
 
+build:
+	@docker build -t app-crawlers .
+
 develop:
 	@echo "Launching in development mode (connected to SQLiteDB)"
 	@DB_CONNECTION_STRING=sqlite:///sportscanner.db \
