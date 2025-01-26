@@ -1,14 +1,17 @@
 import itertools
+import json
 from datetime import date, datetime, time, timedelta
 from functools import wraps
 from time import time as timer
 from typing import List, Optional
-from rich import print
+
 from loguru import logger as logging
 from pydantic import BaseModel, ValidationError
+from rich import print
 from sqlmodel import select
-import json
+
 from sportscanner import config, schemas
+
 
 def timeit(func):
     """Calculates the execution time of the function on top of which the decorator is assigned"""
@@ -42,7 +45,9 @@ def get_sports_venue_mappings_from_raw() -> schemas.SportsVenueMappingModel:
     with open(f"./sportscanner/venues.json", "r") as file:
         raw_sports_centres = json.load(file)
         try:
-            sports_centre_lists: schemas.SportsVenueMappingModel = schemas.SportsVenueMappingModel(root=raw_sports_centres)
+            sports_centre_lists: schemas.SportsVenueMappingModel = (
+                schemas.SportsVenueMappingModel(root=raw_sports_centres)
+            )
             logging.success("JSON data is valid according to the Pydantic model!")
             return sports_centre_lists
         except ValidationError as error:
@@ -50,6 +55,7 @@ def get_sports_venue_mappings_from_raw() -> schemas.SportsVenueMappingModel:
                 f"JSON data is not valid according to the Pydantic model:\n {error}"
             )
             raise RuntimeError
+
 
 if __name__ == "__main__":
     """Write a test here for calculating consecutive slots"""

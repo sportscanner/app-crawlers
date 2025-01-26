@@ -1,10 +1,16 @@
 beautifulsoup4==4.12.3
-fastapi==0.115.6
+fastapi==0.114.2
+fastapi-cli==0.0.7
 firebase_admin==6.6.0
 geopy==2.4.1
 httpx==0.28.1
 loguru==0.7.2
-pydantic==2.10.5
+Pillow==11.1.0
+playwright==1.49.1
+pydantic==2.10.6
+pydantic-extra-types==2.10.1
+email-validator==2.2.0
+python-dateutil==2.9.0
 pydantic_settings==2.7.1
 PyJWT==2.10.1
 bcrypt==4.2.1
@@ -12,4 +18,5 @@ Requests==2.32.3
 rich==13.9.4
 SQLAlchemy==2.0.29
 sqlmodel==0.0.22
-starlette==0.45.2
+starlette==0.38.6
+psycopg2-binary==2.9.9

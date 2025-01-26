@@ -1,10 +1,24 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, Header, HTTPException, status
-
-from sportscanner.api.routers.users.schema.user import UserInCreate, UserInLogin, UserWithToken, UserOutput
-from sportscanner.api.routers.users.service.userService import UserService
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    status,
+)
 from loguru import logger as logging
-from sportscanner.core.security.authHandler import AuthHandler
 from rich import print
+
+from sportscanner.api.routers.users.schema.user import (
+    UserInCreate,
+    UserInLogin,
+    UserOutput,
+    UserWithToken,
+)
+from sportscanner.api.routers.users.service.userService import UserService
+from sportscanner.core.security.authHandler import AuthHandler
 
 router = APIRouter()
 
@@ -14,6 +28,7 @@ def login(loginDetails: UserInLogin):
     try:
         return UserService().login(login_details=loginDetails)
     except Exception as error:
+        print(error)
         logging.error(error)
         raise error
 
@@ -31,7 +46,9 @@ def signUp(signUpDetails: UserInCreate):
 @router.get("/{user_id}", status_code=200)
 async def get_user_info(
     user_id: str = Path(..., title="Fetch information regarding this user id"),
-    Authorization: str = Header(default=None, title="Bearer JWT token to authenticate user")
+    Authorization: str = Header(
+        default=None, title="Bearer JWT token to authenticate user"
+    ),
 ):
     if Authorization:
         jwt_token = AuthHandler.extract_token_from_bearer(Authorization)
@@ -43,12 +60,12 @@ async def get_user_info(
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Authentication Credentials"
+                detail="Invalid Authentication Credentials",
             )
     else:
         raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = "Authenticate this endpoint using a user-specific JWT token"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticate this endpoint using a user-specific JWT token",
         )
 
 
@@ -56,7 +73,9 @@ async def get_user_info(
 async def update_user_info(
     request: Request,
     # user_id: str = Path(..., description="The ID of the user to update"),
-    Authorization: str = Header(default=None, description="Bearer token to authenticate user")
+    Authorization: str = Header(
+        default=None, description="Bearer token to authenticate user"
+    ),
 ):
     updates = await request.json()
     if Authorization:
@@ -64,20 +83,17 @@ async def update_user_info(
         payload = AuthHandler.decode_jwt(token=jwt_token)
         print(payload)
         if payload and payload["user_id"]:
-            UserService().update_user_info(
-                user_id=payload["user_id"],
-                updates=updates
-            )
+            UserService().update_user_info(user_id=payload["user_id"], updates=updates)
             return {"success": True}
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Authentication Credentials"
+                detail="Invalid Authentication Credentials",
             )
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authenticate this endpoint using a user-specific JWT token"
+            detail="Authenticate this endpoint using a user-specific JWT token",
         )
 
 

@@ -1,13 +1,16 @@
 """For fetching environment variables used across all modules"""
+
+import os
 from typing import Optional
 from urllib.parse import urljoin
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import BaseModel, Field, HttpUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from rich import print
-import os
 
 # Check for an environment variable to determine the environment
 env_file = ".env" if os.getenv("ENV") == "prod" else "dev.env"
+
 
 class Settings(BaseSettings):
     DB_CONNECTION_STRING: str
@@ -24,6 +27,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str
 
-    model_config = SettingsConfigDict(env_file=env_file, env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8")
+
 
 settings = Settings()

@@ -16,8 +16,8 @@ from sqlmodel import Field, Session, SQLModel, create_engine, delete, select
 from sportscanner import config
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.schemas import SportsVenueMappingModel
-from sportscanner.utils import get_sports_venue_mappings_from_raw
 from sportscanner.storage.postgres.utils import *
+from sportscanner.utils import get_sports_venue_mappings_from_raw
 from sportscanner.variables import settings
 
 database_name = settings.SQL_DATABASE_NAME
@@ -55,6 +55,7 @@ class SportsVenue(SQLModel, table=True):
     """Table containing information on Sports centres
     Root Raw Data Model: SportsVenueMappingModel -> flattened to postgres Table: sportsvenue
     """
+
     composite_key: str = Field(primary_key=True)
     organisation: str
     organisation_website: str
@@ -149,15 +150,17 @@ def load_sports_centre_mappings(engine):
             for venue in organisation.venues:
                 session.add(
                     SportsVenue(
-                        composite_key = generate_composite_key([organisation.organisation_website, venue.slug]),
-                        organisation = organisation.organisation,
-                        organisation_website = organisation.organisation_website,
-                        venue_name = venue.venue_name,
-                        slug = venue.slug,
-                        postcode = venue.location.postcode,
-                        address = venue.location.address,
-                        latitude = venue.location.latitude,
-                        longitude = venue.location.longitude
+                        composite_key=generate_composite_key(
+                            [organisation.organisation_website, venue.slug]
+                        ),
+                        organisation=organisation.organisation,
+                        organisation_website=organisation.organisation_website,
+                        venue_name=venue.venue_name,
+                        slug=venue.slug,
+                        postcode=venue.location.postcode,
+                        address=venue.location.address,
+                        latitude=venue.location.latitude,
+                        longitude=venue.location.longitude,
                     )
                 )
         session.commit()
@@ -203,14 +206,14 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
         session.commit()
 
 
-def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues: List[UnifiedParserSchema]):
+def delete_all_items_and_insert_fresh_to_db(
+    slots_from_all_venues: List[UnifiedParserSchema],
+):
     """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:
         statement = delete(SportScanner)
         results = session.exec(statement)
-        logging.debug(
-            f"Loading fresh data items to db: {len(slots_from_all_venues)}"
-        )
+        logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
         for slots in slots_from_all_venues:
             orm_object = SportScanner(
                 uuid=str(uuid.uuid4()),
@@ -237,7 +240,6 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
     return rows
 
 
-
 @cache
 def initialize_db_and_tables(engine):
     logging.info(f"Creating database: `{database_name}`")
@@ -252,8 +254,7 @@ def initialize_db_and_tables(engine):
 
 def get_all_sports_venues(engine) -> List[SportsVenue]:
     sports_venues: List[db.SportsVenue] = get_all_rows(
-        engine, SportsVenue,
-        select(SportsVenue)
+        engine, SportsVenue, select(SportsVenue)
     )
     return sports_venues
 

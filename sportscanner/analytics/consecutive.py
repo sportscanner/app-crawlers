@@ -6,7 +6,12 @@ from loguru import logger as logging
 from pydantic import BaseModel
 from sqlmodel import select
 
-from sportscanner.storage.postgres.database import SportScanner, SportsVenue, engine, get_all_rows
+from sportscanner.storage.postgres.database import (
+    SportScanner,
+    SportsVenue,
+    engine,
+    get_all_rows,
+)
 from sportscanner.utils import timeit
 
 
@@ -22,6 +27,7 @@ class ConsecutiveSlotsCarousalDisplay(BaseModel):
     group_end_time: time
     slots_starting_times: str
     bookings_url: Optional[str]
+
 
 @timeit
 def find_consecutive_slots(
@@ -139,4 +145,3 @@ def format_consecutive_slots_groupings(
         f"Top formatted consecutive slot grouping for Carousal:\n{sorted_groupings_for_consecutive_slots[:1]}"
     )
     return sorted_groupings_for_consecutive_slots
-
