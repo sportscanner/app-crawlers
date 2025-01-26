@@ -23,10 +23,12 @@ test:
 
 reset:
 	@echo "Truncates database tables and sets metadata to Obsolete"
-	@python sportscanner/crawlers/database.py
+	@python sportscanner/storage/postgres/database.py
 
 run:
-	@docker run --env-file .env -p 8501:8501 sportscanner
+	@docker run --env-file .env \
+		-v $(pwd)/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
+		-p 8080:80 app-crawlers
 
 develop:
 	@echo "Launching in development mode (connected to SQLiteDB)"

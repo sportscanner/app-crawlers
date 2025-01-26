@@ -1,24 +1,31 @@
 import asyncio
 import itertools
 from datetime import date, timedelta
-from typing import Tuple
+from typing import Any, Coroutine, Dict, List, Tuple
 
 import httpx
 from loguru import logger as logging
 from pydantic import ValidationError
-from sqlmodel import select, col
-from typing import List, Dict, Coroutine, Any
+from sqlmodel import col, select
+
 import sportscanner.storage.postgres.database as db
+from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
+from sportscanner.crawlers.parsers.better.helper import (
+    filter_search_dates_for_allowable,
+)
 from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
-from sportscanner.crawlers.parsers.utils import validate_api_response
+from sportscanner.crawlers.parsers.utils import (
+    formatted_date_list,
+    validate_api_response,
+)
 from sportscanner.utils import async_timer, timeit
-from sportscanner.crawlers.parsers.utils import formatted_date_list
-from sportscanner.crawlers.parsers.better.helper import filter_search_dates_for_allowable
-from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
+
 
 @async_timer
-async def send_concurrent_requests(parameter_sets: List[Tuple[db.SportsVenue, date]]) -> Tuple[List[UnifiedParserSchema], ...]:
+async def send_concurrent_requests(
+    parameter_sets: List[Tuple[db.SportsVenue, date]]
+) -> Tuple[List[UnifiedParserSchema], ...]:
     """Core logic to generate Async tasks and collect responses"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     async with httpxAsyncClient() as client:
@@ -30,14 +37,16 @@ async def send_concurrent_requests(parameter_sets: List[Tuple[db.SportsVenue, da
     return responses
 
 
-def create_async_tasks(client, sports_centre: db.SportsVenue, fetch_date: date) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
+def create_async_tasks(
+    client, sports_centre: db.SportsVenue, fetch_date: date
+) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
     """Generates Async task for concurrent calls to be made later"""
     tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
     for activity_duration in ["badminton-40min", "badminton-60min"]:
         url, headers, _ = generate_api_call_params(
             sports_centre, fetch_date, activity=activity_duration
         )
-        tasks.append(fetch_data(client, url, headers, metadata = sports_centre))
+        tasks.append(fetch_data(client, url, headers, metadata=sports_centre))
     return tasks
 
 
@@ -60,7 +69,9 @@ def generate_api_call_params(
 
 
 @async_timer
-async def fetch_data(client, url: str, headers: Dict, metadata: db.SportsVenue) -> List[UnifiedParserSchema]:
+async def fetch_data(
+    client, url: str, headers: Dict, metadata: db.SportsVenue
+) -> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
     response = await client.get(url, headers=headers)
     content_type = response.headers.get("content-type", "")
@@ -123,15 +134,19 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
-def pipeline(search_dates: List[date], venue_slugs: List[str]) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
+def pipeline(
+    search_dates: List[date], venue_slugs: List[str]
+) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     allowable_search_dates = filter_search_dates_for_allowable(search_dates)
-    logging.warning(f"Search dates for Better.Org crawler narrowed down to: {formatted_date_list(allowable_search_dates)}")
+    logging.warning(
+        f"Search dates for Better.Org crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
+    )
     sports_centre_lists: List[db.SportsVenue] = db.get_all_rows(
         db.engine,
         table=db.SportsVenue,
         expression=select(db.SportsVenue)
         .where(db.SportsVenue.organisation_website == "https://www.better.org.uk")
-        .where(col(db.SportsVenue.slug).in_(venue_slugs))
+        .where(col(db.SportsVenue.slug).in_(venue_slugs)),
     )
     logging.success(
         f"{len(sports_centre_lists)} Sports venue data queried from database"
@@ -145,9 +160,9 @@ if __name__ == "__main__":
     today = date.today()
     _dates = [today + timedelta(days=i) for i in range(3)]
     sports_venues: List[db.SportsVenue] = db.get_all_rows(
-        db.engine, db.SportsVenue,
-        select(db.SportsVenue)
-        .where(db.SportsVenue.organisation == "better.org.uk")
+        db.engine,
+        db.SportsVenue,
+        select(db.SportsVenue).where(db.SportsVenue.organisation == "better.org.uk"),
     )
     venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
     pipeline(_dates, venues_slugs[:4])

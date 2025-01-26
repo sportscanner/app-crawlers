@@ -1,10 +1,14 @@
+from datetime import datetime
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from sportscanner.api.routers.geolocation.endpoints import router as GeolocationRouter
-from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
-from sportscanner.api.routers.search.badminton.endpoints import router as SearchBadmintonRouter
+from sportscanner.api.routers.search.badminton.endpoints import (
+    router as SearchBadmintonRouter,
+)
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
-from datetime import datetime
+from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 
 description = """
 Discover, Compare, and Book Sports Facilities Across London
@@ -23,9 +27,9 @@ app = FastAPI(
     summary="API to fetch sports booking availability, analytics, and advanced filters",
     version="0.0.1",
     contact={
-        "name": "Yasir khalid",
-        "url": "https://www.linkedin.com/in/yasir-khalid",
-        "email": "yasir_khalid@outlook.com",
+        "name": "Sportscanner (dev)",
+        "url": "https://www.linkedin.com/company/sportscanner/",
+        "email": "info@sportscanner.co.uk",
     },
     license_info={
         "name": "Apache 2.0",
@@ -43,28 +47,17 @@ app.add_middleware(
 )
 
 app.include_router(
-    router= SearchBadmintonRouter,
-    prefix="/search/badminton",
-    tags=["Search"]
+    router=SearchBadmintonRouter, prefix="/search/badminton", tags=["Search"]
 )
 
-app.include_router(
-    router= VenuesRouter,
-    prefix="/venues",
-    tags=["Venues"]
-)
+app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])
 
 app.include_router(
-    router= GeolocationRouter,
-    prefix="/geolocation",
-    tags=["Geolocation"]
+    router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"]
 )
 
-app.include_router(
-    router= UsersRouter,
-    prefix="/users",
-    tags=["Authentication"]
-)
+app.include_router(router=UsersRouter, prefix="/users", tags=["Authentication"])
+
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -76,6 +69,5 @@ async def root():
             "/search/": "Endpoint to find available sports bookings",
             "/venue/": "Endpoint to find Venues covered by Sportscanner monitoring",
             "/docs": "Documentation for API endpoints",
-        }
+        },
     }
-

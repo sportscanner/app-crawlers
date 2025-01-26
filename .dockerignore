@@ -18,10 +18,11 @@ credentials/
 *.logs
 secrets.toml
 
-# dotenv-vault credentials to store environment variables securely
-.env
-sportscanner-21f2f-firebase-adminsdk-g391o-8982b01a20.json
+# Project specific files
+*.env
+*.json
 .flaskenv*
 !.env.project
 !.env.vault
 *.db
+datasets

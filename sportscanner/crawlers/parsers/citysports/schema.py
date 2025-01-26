@@ -54,5 +54,3 @@ class CitySportsResponseSchema(BaseModel):
     UntilEndWarningEnabled: bool
     UntilEndWarningText: Optional[str]
     Instructor: Optional[str]
-
-

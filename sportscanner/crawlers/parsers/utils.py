@@ -1,6 +1,8 @@
-from loguru import logger as logging
 from datetime import date, timedelta
 from typing import List
+
+from loguru import logger as logging
+
 
 def validate_api_response(response, content_type: str, url: str):
     """Validating API response based on the status codes and content type"""
@@ -27,5 +29,6 @@ def validate_api_response(response, content_type: str, url: str):
 
 from datetime import date
 
+
 def formatted_date_list(search_dates: List[date]):
-    return [x.strftime('%Y-%m-%d') for x in search_dates]
+    return [x.strftime("%Y-%m-%d") for x in search_dates]

@@ -1,6 +1,6 @@
-from datetime import date
-from typing import List
 from datetime import date, timedelta
+from typing import List
+
 
 def filter_search_dates_for_allowable(search_dates: List[date]) -> List[date]:
     """
@@ -15,4 +15,6 @@ def filter_search_dates_for_allowable(search_dates: List[date]) -> List[date]:
     """
     today = date.today()
     allowable_dates = [today + timedelta(days=i) for i in range(6)]
-    return [search_date for search_date in search_dates if search_date in allowable_dates]
+    return [
+        search_date for search_date in search_dates if search_date in allowable_dates
+    ]
