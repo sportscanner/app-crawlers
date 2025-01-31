@@ -38,6 +38,14 @@ develop:
 	@DB_CONNECTION_STRING=sqlite:///sportscanner.db \
 		python -m streamlit run sportscanner/frontend/app.py
 
+
+pipeline:
+	@docker pull ghcr.io/sportscanner/app-crawlers:latest
+	@docker run --env-file .env \
+		-v $(pwd)/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
+		ghcr.io/sportscanner/app-crawlers:latest \
+		python sportscanner/crawlers/pipeline.py
+
 format:
 	@isort -r sportscanner/ *.py
 	@black sportscanner/

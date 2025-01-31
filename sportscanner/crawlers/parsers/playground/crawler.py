@@ -13,7 +13,7 @@ from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.utils import async_timer, timeit
-
+from prefect import task
 
 @async_timer
 async def send_concurrent_requests(
@@ -92,7 +92,7 @@ def get_concurrent_requests(
     metadata"""
     return send_concurrent_requests(search_dates)
 
-
+@task
 def pipeline(
     search_dates: List[date], venue_slugs: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
