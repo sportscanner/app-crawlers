@@ -5,6 +5,7 @@ from typing import Any, Coroutine, Dict, List, Tuple
 
 import httpx
 from loguru import logger as logging
+from prefect.cache_policies import NO_CACHE
 from pydantic import ValidationError
 from sqlmodel import col, select
 
@@ -13,8 +14,9 @@ from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.utils import async_timer, timeit
+from prefect import flow, task
 
-
+@task(cache_policy=NO_CACHE)
 @async_timer
 async def send_concurrent_requests(
     parameter_sets: List[Tuple[db.SportsVenue, date]]
@@ -26,10 +28,19 @@ async def send_concurrent_requests(
             async_tasks = create_async_tasks(client, sports_centre, fetch_date)
             tasks.extend(async_tasks)
         logging.info(f"Total number of concurrent request tasks: {len(tasks)}")
-        responses = await asyncio.gather(*tasks)
-    return responses
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        # Filter out exceptions
+        successful_responses = []
+        for idx, response in enumerate(responses):
+            if isinstance(response, Exception):
+                logging.error(f"Task {idx} failed with error: {response}")
+            else:
+                successful_responses.append(response)
+        # Flatten successful responses (removes nested list layers)
+        flattened_responses = list(itertools.chain.from_iterable(successful_responses))
+    return flattened_responses
 
-
+@task(cache_policy=NO_CACHE)
 def create_async_tasks(
     client, sports_centre: db.SportsVenue, search_date: date
 ) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
@@ -55,7 +66,7 @@ def generate_api_call_params(search_date: date):
     payload: Dict = {}
     return url, headers, payload
 
-
+@task(cache_policy=NO_CACHE)
 @async_timer
 async def fetch_data(
     client, url, headers, metadata: db.SportsVenue
@@ -98,7 +109,7 @@ def apply_raw_response_schema(api_response) -> List[CitySportsResponseSchema]:
         logging.error(f"Unable to apply CitySportsResponseSchema to raw API json:\n{e}")
         raise ValidationError
 
-
+@task(cache_policy=NO_CACHE)
 @timeit
 def get_concurrent_requests(
     sports_centre_lists: List[db.SportsVenue], search_dates: List
@@ -114,6 +125,7 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
+@task
 def pipeline(
     search_dates: List[date], venue_slugs: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
@@ -144,4 +156,4 @@ if __name__ == "__main__":
         select(db.SportsVenue).where(db.SportsVenue.organisation == "citysport.org.uk"),
     )
     venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
-    pipeline(_dates, venues_slugs[:4])
+    pipeline(_dates, venues_slugs)
