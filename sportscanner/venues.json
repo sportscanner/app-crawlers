@@ -246,6 +246,52 @@
     ]
   },
   {
+    "organisation": "Be Well (Tower Hamlets)",
+    "organisation_website": "https://be-well.org.uk/",
+    "venues": [
+      {
+        "venue_name": "John Orwell Sports Centre",
+        "slug": "JOSC",
+        "location": {
+          "postcode": "E1W 2QD",
+          "address": "Tench St, London E1W 2QD",
+          "latitude": 51.5049,
+          "longitude": -0.061617
+        }
+      },
+      {
+        "venue_name": "Whitechapel Sports Centre",
+        "slug": "WSC",
+        "location": {
+          "postcode": "E1 5BA",
+          "address": "55 Durward Street, Whitechapel, Tower Hamlets, London, E1 5BA",
+          "latitude": 51.5199,
+          "longitude": -0.060763
+        }
+      },
+      {
+        "venue_name": "Poplar Leisure Centre",
+        "slug": "PBLC",
+        "location": {
+          "postcode": "E14 0ED",
+          "address": "170 East India Dock Road Poplar, E14 0ED",
+          "latitude": 51.511139,
+          "longitude": -0.014445
+        }
+      },
+      {
+        "venue_name": "Mile End Park Leisure Centre",
+        "slug": "MEPLS",
+        "location": {
+          "postcode": "E3 4HL",
+          "address": "190 Burdett Rd, London E3 4HL",
+          "latitude": 51.5193,
+          "longitude": -0.032319
+        }
+      }
+    ]
+  },
+  {
     "organisation": "CitySport - City  University London",
     "organisation_website": "https://citysport.org.uk",
     "venues": [

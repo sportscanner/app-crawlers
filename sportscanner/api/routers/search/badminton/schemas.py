@@ -9,11 +9,6 @@ class AnalyticsCriteria(BaseModel):
     searchUserPreferredLocations: Optional[bool] = False
 
 
-class DateFilter(BaseModel):
-    starting: date
-    ending: date
-
-
 class TimeFilter(BaseModel):
     starting: time
     ending: time
@@ -22,7 +17,7 @@ class TimeFilter(BaseModel):
 class SearchCriteria(BaseModel):
     postcode: str
     sport: str
-    dateRange: DateFilter
+    dates: List[date]
     timeRange: TimeFilter
     radius: float
     analytics: Optional[AnalyticsCriteria] = None

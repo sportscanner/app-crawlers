@@ -14,11 +14,11 @@ from sqlalchemy import Engine, text
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select
 
 from sportscanner import config
-from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.schemas import SportsVenueMappingModel
 from sportscanner.storage.postgres.utils import *
-from sportscanner.utils import get_sports_venue_mappings_from_raw
+from sportscanner.utils import get_sports_venue_mappings_from_raw, timeit
 from sportscanner.variables import settings
+from prefect import task
 
 database_name = settings.SQL_DATABASE_NAME
 connection_string = settings.DB_CONNECTION_STRING
@@ -206,8 +206,10 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
         session.commit()
 
 
+@task(name="Load to Postgres")
+@timeit
 def delete_all_items_and_insert_fresh_to_db(
-    slots_from_all_venues: List[UnifiedParserSchema],
+    slots_from_all_venues
 ):
     """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:

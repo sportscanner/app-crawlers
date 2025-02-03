@@ -1,13 +1,14 @@
 """Contains dataclasses for the API call schema"""
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Optional
 
 from pydantic import BaseModel
 
 from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
-
+from sportscanner.crawlers.parsers.towerhamlets.schema import AggregatedTowerHamletsResponse
+from sportscanner.crawlers.parsers.towerhamlets.mappings import Parameters
 
 class SportsVenue(BaseModel):
     composite_key: str
@@ -71,4 +72,24 @@ class UnifiedParserSchema(BaseModel):
             composite_key=metadata.composite_key,
             last_refreshed=datetime.now(),
             booking_url="https://bookings.citysport.org.uk/LhWeb/en/Public/Bookings/",
+        )
+
+    @classmethod
+    def from_towerhamlets_rolledup_response(
+            cls, response: AggregatedTowerHamletsResponse, metadata: Parameters
+    ):
+        formatted_date = response.date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        previous_day = response.date - timedelta(days=1)
+        formatted_previous_day = previous_day.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+        return cls(
+            category=response.category,
+            starting_time=response.starting_time,
+            ending_time=response.ending_time,
+            date=response.date,
+            price=response.price,
+            spaces=response.spaces,
+            composite_key=metadata.venue.composite_key,
+            last_refreshed=datetime.now(),
+            booking_url=f"https://towerhamletscouncil.gladstonego.cloud/book/calendar/{metadata.activityId}?activityDate={formatted_date}&previousActivityDate={formatted_previous_day}",
         )

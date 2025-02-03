@@ -4,11 +4,12 @@ from datetime import date, timedelta
 from typing import Any, List, Tuple, Union
 
 from loguru import logger as logging
+from prefect.tasks import task_input_hash
 from rich import print
-
 from sportscanner.crawlers.parsers.better import crawler as BetterOrganisation
 from sportscanner.crawlers.parsers.citysports import crawler as CitySports
 from sportscanner.crawlers.parsers.playground import crawler as Playground
+from sportscanner.crawlers.parsers.towerhamlets import crawler as TowerHamlets
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.storage.postgres.database import (
     PipelineRefreshStatus,
@@ -18,59 +19,56 @@ from sportscanner.storage.postgres.database import (
     update_refresh_status_for_pipeline,
 )
 from sportscanner.utils import timeit
+from sportscanner.crawlers.helpers import SportscannerCrawlerBot
+from prefect import flow, get_run_logger, task
 
 
-async def SportscannerCrawlerBot(
-    *coroutine_lists: Union[List[Any], Any]
-) -> List[UnifiedParserSchema]:
-    # Normalize inputs: wrap single coroutines in a list
-    normalized_inputs = [
-        coro_list if isinstance(coro_list, list) else [coro_list]
-        for coro_list in coroutine_lists
+@task(name="Validate and flatten responses")
+def flatten_responses(responses_from_all_sources) -> List[UnifiedParserSchema]:
+    _validation_check: List[UnifiedParserSchema] = [
+        slot for response in responses_from_all_sources if response for slot in response
     ]
-
-    # Flatten the coroutine lists and filter out invalid inputs
-    coroutines = [coro for coro_list in normalized_inputs for coro in coro_list]
-
-    # Ensure all inputs are valid coroutines
-    assert all(asyncio.iscoroutine(c) for c in coroutines), "Invalid coroutine in input"
-
-    if not coroutines:
-        return []
-
-    # Run only non-empty coroutines with asyncio.gather
-    return await asyncio.gather(*coroutines)
+    if not all(isinstance(slot, UnifiedParserSchema) for slot in _validation_check):
+        raise TypeError("One or more elements in `_validation_check` are not of type: `UnifiedParserSchema`")
+    return _validation_check
 
 
+@flow(name="Srapper pipeline", description="All coroutines launched from here")
 @timeit
 def full_data_refresh_pipeline():
-    update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.RUNNING)
+    logging = get_run_logger()
+    # update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.RUNNING)
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(7)]
+    dates = [today + timedelta(days=i) for i in range(15)]
     logging.info(f"Finding slots for dates: {dates}")
     sports_venues = get_all_sports_venues(engine)
-    venues_slugs = [sports_venue.slug for sports_venue in sports_venues]
+    composite_identifiers: List[str] = [sports_venue.composite_key for sports_venue in sports_venues]
+    logging.info(composite_identifiers)
     BetterOrganisationCrawlerCoroutines = BetterOrganisation.pipeline(
-        dates, venues_slugs
+        dates, composite_identifiers
     )
-    CitySportsCrawlerCoroutines = CitySports.pipeline(dates, venues_slugs)
-    PlaygroundCrawlerCoroutines = Playground.pipeline(dates, venues_slugs)
+    CitySportsCrawlerCoroutines = CitySports.pipeline(dates, composite_identifiers)
+    PlaygroundCrawlerCoroutines = Playground.pipeline(dates, composite_identifiers)
+    TowerHamletsCrawlerCoroutines = TowerHamlets.pipeline(dates, composite_identifiers)
 
     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
         SportscannerCrawlerBot(
+            TowerHamletsCrawlerCoroutines,
             BetterOrganisationCrawlerCoroutines,
             CitySportsCrawlerCoroutines,
             # PlaygroundCrawlerCoroutines
         )
     )
-    # Flattened 3-layer deep list nestings
-    all_slots: List[UnifiedParserSchema] = list(
-        itertools.chain.from_iterable(
-            itertools.chain.from_iterable(responses_from_all_sources)
-        )
-    )
+    # Flatten nested list structure and remove empty or failed responses
+    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    # Check if the final list has valid entries
+    if not all_slots:
+        logging.warning("No valid slots were found. Exiting pipeline.")
+    else:
+        logging.info(f"Total slots collected: {len(all_slots)}")
     delete_all_items_and_insert_fresh_to_db(all_slots)
-    update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.COMPLETED)
+    # update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.COMPLETED)
+    return True
 
 
 @timeit

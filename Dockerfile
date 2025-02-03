@@ -2,7 +2,7 @@
 FROM python:3.10-slim-bookworm
 
 # Install make and any other dependencies
-RUN apt-get update && apt-get install -y make
+RUN apt-get update && apt-get install -y make curl iputils-ping
 
 # Set the working directory to /app
 WORKDIR /app

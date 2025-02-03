@@ -3,10 +3,11 @@ from typing import List, Optional
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Query, Request
-from pydantic import BaseModel
 from rich import print
+from sqlalchemy import func, case, text
 from sqlmodel import col
 from starlette import status
+from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.api.routers.search.badminton.schemas import SearchCriteria
@@ -21,6 +22,17 @@ from sportscanner.variables import settings, urljoin
 
 router = APIRouter()
 
+is_postgres = "postgresql" in settings.DB_CONNECTION_STRING
+if is_postgres:
+    # PostgreSQL: Use to_timestamp() with CONCAT
+    datetime_expr = func.to_timestamp(
+        func.concat(db.SportScanner.date, text("' '"), db.SportScanner.starting_time),
+        text("'YYYY-MM-DD HH24:MI:SS'")
+    )
+else:
+    # SQLite: Use datetime() to combine date + time
+    datetime_expr = func.datetime(db.SportScanner.date, db.SportScanner.starting_time)
+
 
 @router.post("/")
 async def search(
@@ -32,15 +44,20 @@ async def search(
     """Returns all court availability relevant to specified filters passed via payload"""
     print(filters.model_dump())
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            urljoin(
-                settings.API_BASE_URL,
-                f"/venues/near?postcode={filters.postcode}&distance={filters.radius}",
+        try:
+            response = await client.get(
+                urljoin(
+                    settings.API_BASE_URL,
+                    f"/venues/near?postcode={filters.postcode}&distance={filters.radius}",
+                )
             )
-        )
-        json_response = response.json()
+            json_response = response.json()
+        except:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one."
+            )
     data = json_response.get("data")  # Should have this `data` key as per contract
-
     if filters.analytics.searchUserPreferredLocations:
         jwt_token = AuthHandler.extract_token_from_bearer(Authorization)
         payload = AuthHandler.decode_jwt(token=jwt_token)
@@ -50,27 +67,22 @@ async def search(
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Authentication Credentials",
+                detail="Expired/Invalid Authentication Credentials. Sign out and sign back in so your authentication can be refreshed",
             )
     else:
         composite_keys = [x["venue"]["composite_key"] for x in data]
 
+    current_timestamp = datetime.now()
     slots = db.get_all_rows(
         engine,
         db.SportScanner,
         db.select(db.SportScanner)
         .where(db.SportScanner.composite_key.in_(composite_keys))
-        .where(
-            db.SportScanner.spaces > 0
-        )  # For now ignoring any empty courts (might use for analytics)
-        # .where(db.SportScanner.starting_time >= datetime.now().time()) # Shouldn't show any historic values
+        .where(db.SportScanner.spaces > 0)  # Ignore empty courts
         .where(db.SportScanner.starting_time >= filters.timeRange.starting)
         .where(db.SportScanner.ending_time <= filters.timeRange.ending)
-        .where(
-            db.SportScanner.date >= datetime.now().date()
-        )  # Shouldn't show any historic values
-        .where(db.SportScanner.date >= filters.dateRange.starting)
-        .where(db.SportScanner.date <= filters.dateRange.ending),
+        .where(db.SportScanner.date.in_(filters.dates))
+        .where(datetime_expr > current_timestamp)  # Ensures only future slots are returned
     )
     grouped_slots = group_slots_by_attributes(
         slots, attributes=("composite_key", "date")

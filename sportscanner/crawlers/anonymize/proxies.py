@@ -16,7 +16,11 @@ def httpxAsyncClientWithProxyRotation() -> httpx.AsyncClient:
             max_connections=settings.HTTPX_CLIENT_MAX_CONNECTIONS,
             max_keepalive_connections=settings.HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS,
         ),
-        timeout=httpx.Timeout(timeout=settings.HTTPX_CLIENT_TIMEOUT),
+        timeout=httpx.Timeout(
+            timeout=settings.HTTPX_CLIENT_TIMEOUT,
+            connect=10.0,  # Max time to establish a connection
+            read=10.0,     # Max time to read a response
+        ),
         proxies=proxies,
     )
 
@@ -27,7 +31,11 @@ def httpxAsyncClientWithoutProxyRotation() -> httpx.AsyncClient:
             max_connections=settings.HTTPX_CLIENT_MAX_CONNECTIONS,
             max_keepalive_connections=settings.HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS,
         ),
-        timeout=httpx.Timeout(timeout=settings.HTTPX_CLIENT_TIMEOUT),
+        timeout=httpx.Timeout(
+            timeout=settings.HTTPX_CLIENT_TIMEOUT,
+            connect=10.0,  # Max time to establish a connection
+            read=10.0,     # Max time to read a response
+        ),
     )
 
 
