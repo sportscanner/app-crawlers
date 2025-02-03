@@ -1,5 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from datetime import datetime, date, time
+
 
 class LocationDetails(BaseModel):
     locationId: str
@@ -37,7 +39,7 @@ class GroupActivityDetails(BaseModel):
     isGroupActivity: bool
     priceLevels: List
 
-class Activity(BaseModel):
+class TowerHamletsResponseSchema(BaseModel):
     activityGroupId: str
     activityGroupDescription: str
     id: str
@@ -55,3 +57,13 @@ class Activity(BaseModel):
     slotCount: int
     groupActivityDetails: GroupActivityDetails
     locations: List[Location]
+
+
+class AggregatedTowerHamletsResponse(BaseModel):
+    date: date
+    category: str
+    price: str
+    starting_time: time
+    ending_time: time
+    spaces: int
+

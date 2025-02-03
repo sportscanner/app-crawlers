@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from loguru import logger as logging
 
 from sportscanner.crawlers.parsers.towerhamlets.Authenticate import get_authorization_token
-from sportscanner.crawlers.parsers.towerhamlets.schemas import Activity
+from sportscanner.crawlers.parsers.towerhamlets.schema import TowerHamletsResponseSchema
 
 token = get_authorization_token()
 
@@ -31,7 +31,7 @@ content_type = response.headers.get("content-type", "")
 match response.status_code:
     case 200:
         json_response = response.json()
-        _modelling: List[Activity] = [Activity(**x) for x in json_response]
+        _modelling: List[TowerHamletsResponseSchema] = [TowerHamletsResponseSchema(**x) for x in json_response]
         print([x.capacity for x in _modelling])
         logging.debug(
             f"Request success: Raw response for url: {generate_url()} \n{json_response}"
