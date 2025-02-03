@@ -3,7 +3,7 @@ import sys
 from enum import Enum
 
 from loguru import logger as logging
-
+from prefect import get_run_logger
 
 class Levels(Enum):
     """Loguru log levels and severity config"""
@@ -19,3 +19,4 @@ class Levels(Enum):
 
 logging.remove(0)
 logging.add(sys.stderr, level=Levels.INFO.name)
+
