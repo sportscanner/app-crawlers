@@ -16,5 +16,5 @@ RUN make setup
 # Expose the port that Streamlit will run on
 EXPOSE 80
 
-CMD ["fastapi", "run", "sportscanner/api/", "--port", "80"]
+CMD ["fastapi", "run", "sportscanner/api/root.py", "--port", "80"]
 

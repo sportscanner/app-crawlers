@@ -28,7 +28,7 @@ reset:
 run:
 	@docker run --env-file .env \
 		-v $(pwd)/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
-		-p 8080:80 app-crawlers
+		-p 8000:80 app-crawlers:latest
 
 build:
 	@docker build -t app-crawlers .
