@@ -77,7 +77,11 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
         for x in sorted_slots_without_element_zero:
             _available: bool = True if x.spaces > 0 else False
             otherSlots.append(
-                {"time": x.starting_time.strftime("%H:%M"), "available": _available}
+                {
+                    "startingTime": x.starting_time.strftime("%H:%M"),
+                    "endingTime": x.ending_time.strftime("%H:%M"),
+                    "available": _available
+                }
             )
 
         # Populating metadata from venues into main availability items

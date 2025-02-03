@@ -67,7 +67,8 @@ def generate_api_call_params(
 ):
     """Generates URL, Headers and Payload information for the API curl request"""
     url = (
-        f"https://api.sportscanner.co.uk/near?postcde=se29qq"
+        f"https://better-admin.org.uk/api/activities/venue/"
+        f"{sports_centre.slug}/activity/{activity}/times?date={fetch_date}"
     )
     logging.debug(url)
     headers = {
@@ -78,19 +79,20 @@ def generate_api_call_params(
     payload: Dict = {}
     return url, headers, payload
 
+
 @async_timer
-@task(cache_policy=NO_CACHE, retries=2, name="Better API calls", persist_result=True, retry_delay_seconds=2, tags=["better"])
+@task(cache_policy=NO_CACHE, retries=2, name="Better API", persist_result=True, retry_delay_seconds=2)
 async def fetch_data(
     client, url: str, headers: Dict, metadata: db.SportsVenue
 ) -> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
     logging = get_run_logger()
-    task_run_id = runtime.task_run.id  # Get the current task run ID
-    await create_markdown_artifact(
-        key=f"better-crawler-x{task_run_id[:3]}",
-        markdown=f"**URL:** {url}\n**Headers:** {headers}\n**Metadata:** {metadata}",
-        description="Task inputs for fetch_data"
-    )
+    # task_run_id = runtime.task_run.id  # Get the current task run ID
+    # await create_markdown_artifact(
+    #     key=f"better-crawler-x{task_run_id[:3]}",
+    #     markdown=f"**URL:** {url}\n**Headers:** {headers}\n**Metadata:** {metadata}",
+    #     description="Task inputs for fetch_data"
+    # )
     logging.debug(f"Fetching data from {url} with headers {headers} and metadata {metadata}")
     response = await client.get(url, headers=headers)
     response.raise_for_status()  # Ensure non-200 responses are treated as exceptions
@@ -153,9 +155,9 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
-@task(name="Better Crawler coroutines")
+@task(name="Better coroutines")
 def pipeline(
-    search_dates: List[date], venue_slugs: List[str]
+    search_dates: List[date], composite_identifiers: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     allowable_search_dates = filter_search_dates_for_allowable(search_dates)
     logging.warning(
@@ -165,8 +167,8 @@ def pipeline(
         db.engine,
         table=db.SportsVenue,
         expression=select(db.SportsVenue)
-        .where(db.SportsVenue.organisation_website == "https://www.better.org.uk")
-        .where(col(db.SportsVenue.slug).in_(venue_slugs)),
+        .where(col(db.SportsVenue.composite_key).in_(composite_identifiers))
+        .where(db.SportsVenue.organisation_website == "https://www.better.org.uk"),
     )
     logging.success(
         f"{len(sports_centre_lists)} Sports venue data queried from database"

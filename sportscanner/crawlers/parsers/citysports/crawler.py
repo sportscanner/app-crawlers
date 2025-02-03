@@ -16,7 +16,6 @@ from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.utils import async_timer, timeit
 from prefect import flow, task
 
-@task(cache_policy=NO_CACHE)
 @async_timer
 async def send_concurrent_requests(
     parameter_sets: List[Tuple[db.SportsVenue, date]]
@@ -40,7 +39,7 @@ async def send_concurrent_requests(
         flattened_responses = list(itertools.chain.from_iterable(successful_responses))
     return flattened_responses
 
-@task(cache_policy=NO_CACHE)
+
 def create_async_tasks(
     client, sports_centre: db.SportsVenue, search_date: date
 ) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
@@ -66,7 +65,7 @@ def generate_api_call_params(search_date: date):
     payload: Dict = {}
     return url, headers, payload
 
-@task(cache_policy=NO_CACHE)
+@task(cache_policy=NO_CACHE, retries=2, name="CitySports API", persist_result=True, retry_delay_seconds=2)
 @async_timer
 async def fetch_data(
     client, url, headers, metadata: db.SportsVenue
@@ -109,7 +108,6 @@ def apply_raw_response_schema(api_response) -> List[CitySportsResponseSchema]:
         logging.error(f"Unable to apply CitySportsResponseSchema to raw API json:\n{e}")
         raise ValidationError
 
-@task(cache_policy=NO_CACHE)
 @timeit
 def get_concurrent_requests(
     sports_centre_lists: List[db.SportsVenue], search_dates: List
@@ -125,16 +123,16 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
-@task
+@task(name="CitySports Coroutines")
 def pipeline(
-    search_dates: List[date], venue_slugs: List[str]
+    search_dates: List[date], composite_identifiers: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
     sports_centre_lists = db.get_all_rows(
         db.engine,
         table=db.SportsVenue,
         expression=select(db.SportsVenue)
-        .where(db.SportsVenue.organisation_website == "https://citysport.org.uk")
-        .where(col(db.SportsVenue.slug).in_(venue_slugs)),
+        .where(col(db.SportsVenue.composite_key).in_(composite_identifiers))
+        .where(db.SportsVenue.organisation_website == "https://citysport.org.uk"),
     )
     if sports_centre_lists:
         logging.info(
