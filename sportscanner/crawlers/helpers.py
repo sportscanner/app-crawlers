@@ -1,12 +1,9 @@
 import asyncio
 from typing import Any, List, Tuple, Union
 
-from prefect.cache_policies import NO_CACHE
-
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
-from prefect import task
 
-@task(cache_policy=NO_CACHE)
+
 async def SportscannerCrawlerBot(
     *coroutine_lists: Union[List[Any], Any]
 ) -> List[UnifiedParserSchema]:

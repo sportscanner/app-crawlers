@@ -19,7 +19,7 @@ def httpxAsyncClientWithProxyRotation() -> httpx.AsyncClient:
         timeout=httpx.Timeout(
             timeout=settings.HTTPX_CLIENT_TIMEOUT,
             connect=10.0,  # Max time to establish a connection
-            read=10.0,     # Max time to read a response
+            read=10.0,  # Max time to read a response
         ),
         proxies=proxies,
     )
@@ -34,7 +34,7 @@ def httpxAsyncClientWithoutProxyRotation() -> httpx.AsyncClient:
         timeout=httpx.Timeout(
             timeout=settings.HTTPX_CLIENT_TIMEOUT,
             connect=10.0,  # Max time to establish a connection
-            read=10.0,     # Max time to read a response
+            read=10.0,  # Max time to read a response
         ),
     )
 

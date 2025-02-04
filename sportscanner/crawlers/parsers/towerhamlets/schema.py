@@ -1,19 +1,23 @@
+from datetime import date, datetime, time
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from datetime import datetime, date, time
 
 
 class LocationDetails(BaseModel):
     locationId: str
     locationName: str
 
+
 class Availability(BaseModel):
     inCentre: int
     virtual: int
 
+
 class SlotReferences(BaseModel):
     inCentre: Optional[str]
     virtual: Optional[str]
+
 
 class Slot(BaseModel):
     startTime: str
@@ -26,18 +30,22 @@ class Slot(BaseModel):
     status: str
     slotReferences: SlotReferences
 
+
 class Location(BaseModel):
     locationNameToDisplay: str
     locationDetails: List[LocationDetails]
     slots: List[Slot]
 
+
 class Capacity(BaseModel):
     maxInCentreBookees: int
     maxVirtualBookees: int
 
+
 class GroupActivityDetails(BaseModel):
     isGroupActivity: bool
     priceLevels: List
+
 
 class TowerHamletsResponseSchema(BaseModel):
     activityGroupId: str
@@ -66,4 +74,3 @@ class AggregatedTowerHamletsResponse(BaseModel):
     starting_time: time
     ending_time: time
     spaces: int
-

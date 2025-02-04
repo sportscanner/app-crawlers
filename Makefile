@@ -26,12 +26,14 @@ reset:
 	@python sportscanner/storage/postgres/database.py
 
 run:
-	@docker run --env-file .env \
-		-v $(pwd)/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
-		-p 8000:80 app-crawlers:latest
+	@docker run --platform=linux/amd64 --env-file .env \
+		-v ~/developer/repository/sportscanner/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
+		-p 8000:80 ghcr.io/sportscanner/app-crawlers:latest
 
 build:
-	@docker build -t app-crawlers .
+	@docker build --no-cache --platform linux/amd64 \
+		-t ghcr.io/sportscanner/app-crawlers:latest \
+		-t ghcr.io/sportscanner/app-crawlers:$(VERSION) .
 
 develop:
 	@echo "Launching in development mode (connected to SQLiteDB)"

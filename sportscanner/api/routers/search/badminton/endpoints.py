@@ -4,7 +4,7 @@ from typing import List, Optional
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from rich import print
-from sqlalchemy import func, case, text
+from sqlalchemy import case, func, text
 from sqlmodel import col
 from starlette import status
 from starlette.responses import JSONResponse
@@ -27,7 +27,7 @@ if is_postgres:
     # PostgreSQL: Use to_timestamp() with CONCAT
     datetime_expr = func.to_timestamp(
         func.concat(db.SportScanner.date, text("' '"), db.SportScanner.starting_time),
-        text("'YYYY-MM-DD HH24:MI:SS'")
+        text("'YYYY-MM-DD HH24:MI:SS'"),
     )
 else:
     # SQLite: Use datetime() to combine date + time
@@ -55,7 +55,7 @@ async def search(
         except:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one."
+                detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one.",
             )
     data = json_response.get("data")  # Should have this `data` key as per contract
     if filters.analytics.searchUserPreferredLocations:
@@ -82,7 +82,9 @@ async def search(
         .where(db.SportScanner.starting_time >= filters.timeRange.starting)
         .where(db.SportScanner.ending_time <= filters.timeRange.ending)
         .where(db.SportScanner.date.in_(filters.dates))
-        .where(datetime_expr > current_timestamp)  # Ensures only future slots are returned
+        .where(
+            datetime_expr > current_timestamp
+        ),  # Ensures only future slots are returned
     )
     grouped_slots = group_slots_by_attributes(
         slots, attributes=("composite_key", "date")

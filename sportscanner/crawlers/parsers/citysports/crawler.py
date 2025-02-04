@@ -5,16 +5,16 @@ from typing import Any, Coroutine, Dict, List, Tuple
 
 import httpx
 from loguru import logger as logging
-from prefect.cache_policies import NO_CACHE
 from pydantic import ValidationError
 from sqlmodel import col, select
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.utils import async_timer, timeit
-from prefect import flow, task
+
 
 @async_timer
 async def send_concurrent_requests(
@@ -65,7 +65,8 @@ def generate_api_call_params(search_date: date):
     payload: Dict = {}
     return url, headers, payload
 
-@task(cache_policy=NO_CACHE, retries=2, name="CitySports API", persist_result=True, retry_delay_seconds=2)
+
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(2))
 @async_timer
 async def fetch_data(
     client, url, headers, metadata: db.SportsVenue
@@ -108,6 +109,7 @@ def apply_raw_response_schema(api_response) -> List[CitySportsResponseSchema]:
         logging.error(f"Unable to apply CitySportsResponseSchema to raw API json:\n{e}")
         raise ValidationError
 
+
 @timeit
 def get_concurrent_requests(
     sports_centre_lists: List[db.SportsVenue], search_dates: List
@@ -123,7 +125,6 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
-@task(name="CitySports Coroutines")
 def pipeline(
     search_dates: List[date], composite_identifiers: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
@@ -136,7 +137,7 @@ def pipeline(
     )
     if sports_centre_lists:
         logging.info(
-            f"{len(sports_centre_lists)} CitySports venue data loaded from database"
+            f"{len(sports_centre_lists)} CitySports venues loaded from database"
         )
         return get_concurrent_requests(sports_centre_lists, search_dates)
     else:
