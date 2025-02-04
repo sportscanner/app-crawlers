@@ -6,10 +6,10 @@ from typing import Any, Coroutine, Dict, List, Tuple
 import httpx
 from httpx import ConnectError
 from loguru import logger as logging
-from prefect.cache_policies import NO_CACHE
 from pydantic import ValidationError
 from sqlalchemy import True_
 from sqlmodel import col, select
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
@@ -23,8 +23,7 @@ from sportscanner.crawlers.parsers.utils import (
     validate_api_response,
 )
 from sportscanner.utils import async_timer, timeit
-from prefect import flow, task, get_run_logger, runtime
-from prefect.artifacts import create_markdown_artifact
+
 
 @async_timer
 async def send_concurrent_requests(
@@ -48,6 +47,7 @@ async def send_concurrent_requests(
         # Flatten successful responses (removes nested list layers)
         flattened_responses = list(itertools.chain.from_iterable(successful_responses))
     return flattened_responses
+
 
 def create_async_tasks(
     client, sports_centre: db.SportsVenue, fetch_date: date
@@ -81,19 +81,14 @@ def generate_api_call_params(
 
 
 @async_timer
-@task(cache_policy=NO_CACHE, retries=2, name="Better API", persist_result=True, retry_delay_seconds=2)
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(2))
 async def fetch_data(
     client, url: str, headers: Dict, metadata: db.SportsVenue
 ) -> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
-    logging = get_run_logger()
-    # task_run_id = runtime.task_run.id  # Get the current task run ID
-    # await create_markdown_artifact(
-    #     key=f"better-crawler-x{task_run_id[:3]}",
-    #     markdown=f"**URL:** {url}\n**Headers:** {headers}\n**Metadata:** {metadata}",
-    #     description="Task inputs for fetch_data"
-    # )
-    logging.debug(f"Fetching data from {url} with headers {headers} and metadata {metadata}")
+    logging.debug(
+        f"Fetching data from {url} with headers {headers} and metadata {metadata}"
+    )
     response = await client.get(url, headers=headers)
     response.raise_for_status()  # Ensure non-200 responses are treated as exceptions
     content_type = response.headers.get("content-type", "")
@@ -140,6 +135,7 @@ def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
     logging.debug(f"Data aligned with overall schema: {BetterApiResponseSchema}")
     return aligned_api_response
 
+
 @timeit
 def get_concurrent_requests(
     sports_centre_lists: List[db.SportsVenue], dates: List[date]
@@ -155,7 +151,6 @@ def get_concurrent_requests(
     return send_concurrent_requests(parameter_sets)
 
 
-@task(name="Better coroutines")
 def pipeline(
     search_dates: List[date], composite_identifiers: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
@@ -170,8 +165,8 @@ def pipeline(
         .where(col(db.SportsVenue.composite_key).in_(composite_identifiers))
         .where(db.SportsVenue.organisation_website == "https://www.better.org.uk"),
     )
-    logging.success(
-        f"{len(sports_centre_lists)} Sports venue data queried from database"
+    logging.info(
+        f"{len(sports_centre_lists)} Better/GLL Sports venues queried from database"
     )
 
     return get_concurrent_requests(sports_centre_lists, allowable_search_dates)

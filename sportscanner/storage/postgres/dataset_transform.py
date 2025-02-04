@@ -80,7 +80,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
                 {
                     "startingTime": x.starting_time.strftime("%H:%M"),
                     "endingTime": x.ending_time.strftime("%H:%M"),
-                    "available": _available
+                    "available": _available,
                 }
             )
 

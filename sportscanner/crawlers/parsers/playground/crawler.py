@@ -13,7 +13,7 @@ from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.utils import async_timer, timeit
-from prefect import task
+
 
 @async_timer
 async def send_concurrent_requests(
@@ -91,6 +91,7 @@ def get_concurrent_requests(
     """Runs the Async API calls, collects and standardises responses and populate distance/postal
     metadata"""
     return send_concurrent_requests(search_dates)
+
 
 @task
 def pipeline(

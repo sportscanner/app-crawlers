@@ -7,8 +7,11 @@ from pydantic import BaseModel
 
 from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
-from sportscanner.crawlers.parsers.towerhamlets.schema import AggregatedTowerHamletsResponse
 from sportscanner.crawlers.parsers.towerhamlets.mappings import Parameters
+from sportscanner.crawlers.parsers.towerhamlets.schema import (
+    AggregatedTowerHamletsResponse,
+)
+
 
 class SportsVenue(BaseModel):
     composite_key: str
@@ -76,7 +79,7 @@ class UnifiedParserSchema(BaseModel):
 
     @classmethod
     def from_towerhamlets_rolledup_response(
-            cls, response: AggregatedTowerHamletsResponse, metadata: Parameters
+        cls, response: AggregatedTowerHamletsResponse, metadata: Parameters
     ):
         formatted_date = response.date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         previous_day = response.date - timedelta(days=1)

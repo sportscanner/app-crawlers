@@ -1,8 +1,9 @@
-from rich import print
+import time
 from typing import Optional
+
 from playwright.sync_api import sync_playwright
 from rich import print
-import time
+
 
 # Start Playwright in a headless browser context
 def get_authorization_token() -> Optional[str]:
@@ -15,17 +16,16 @@ def get_authorization_token() -> Optional[str]:
         # Create a new browser page (tab)
         page = browser.new_page()
         # Navigate to the target website
-        page.goto(
-            "https://towerhamletscouncil.gladstonego.cloud/book"
-        )
+        page.goto("https://towerhamletscouncil.gladstonego.cloud/book")
         # Wait for the page to load (you may need to adjust this depending on the site)
         time.sleep(1)
         # Fetch the token from localStorage
-        token: Optional[str] = page.evaluate("window.localStorage.getItem('token');")  # Correct syntax
+        token: Optional[str] = page.evaluate(
+            "window.localStorage.getItem('token');"
+        )  # Correct syntax
         browser.close()
         return f"Bearer {token}"
 
+
 if __name__ == "__main__":
-    print(
-        get_authorization_token()
-    )
+    print(get_authorization_token())

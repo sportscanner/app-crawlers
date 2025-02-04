@@ -3,7 +3,6 @@ from typing import List
 
 from loguru import logger as logging
 
-from prefect import task
 
 def validate_api_response(response, content_type: str, url: str):
     """Validating API response based on the status codes and content type"""

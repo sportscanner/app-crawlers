@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     FIRESTORE_USER_COLLECTION: Optional[str] = "users"
     JWT_SECRET: str
     JWT_ALGORITHM: str
+    ENV: str
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8")
 
