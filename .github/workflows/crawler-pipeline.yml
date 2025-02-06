@@ -21,6 +21,10 @@ jobs:
         run: |
           echo "${{ secrets.FIREBASE_ADMIN_SDK_JSON }}" > /tmp/sportscanner-firebase-adminsdk.json
 
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env  # Store the content of your .env file in the secret "ENV_FILE_CONTENT"
+
       - name: Run crawler pipeline container
         run: |
           echo "Running container for image (tag: latest) to run data crawlers pipeline"
