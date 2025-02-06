@@ -14,7 +14,9 @@ freeze:
 
 setup: health
 	@python -m pip install --upgrade pip
-	@pip install -r requirements.txt
+	@pip install --no-cache-dir -r requirements.txt
+	@pip install playwright
+	@playwright install chromium
 	@pip install -e .
 	@$(support-libs)
 
@@ -26,14 +28,16 @@ reset:
 	@python sportscanner/storage/postgres/database.py
 
 run:
-	@docker run --platform=linux/amd64 --env-file .env \
+	@docker run --platform=linux/amd64 --network=host --env-file .env \
 		-v ~/developer/repository/sportscanner/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
 		-p 8000:80 ghcr.io/sportscanner/app-crawlers:latest
 
 build:
-	@docker build --no-cache --platform linux/amd64 \
+	@LATEST_COMMIT_ID=$(git rev-parse --short HEAD)
+	@echo Starting image build with ID: $LATEST_COMMIT_ID
+	@docker build --no-cache --platform=linux/amd64 \
 		-t ghcr.io/sportscanner/app-crawlers:latest \
-		-t ghcr.io/sportscanner/app-crawlers:$(VERSION) .
+		-t ghcr.io/sportscanner/app-crawlers:$(LATEST_COMMIT_ID) .
 
 develop:
 	@echo "Launching in development mode (connected to SQLiteDB)"
