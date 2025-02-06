@@ -4,49 +4,58 @@ define support-libs
 	@pip install pytest
 endef
 
-health:
+LATEST_COMMIT_ID := $(shell git rev-parse --short HEAD)
+
+version:
 	@make --version
 	@python --version
+
 
 freeze:
 	@pip install pipreqs
 	@pipreqs sportscanner/ --savepath "requirements.txt" --force --encoding=utf-8
 
-setup: health
+
+setup: version
 	@python -m pip install --upgrade pip
-	@pip install -r requirements.txt
+	@pip install --no-cache-dir -r requirements.txt
+	@playwright install chromium
 	@pip install -e .
 	@$(support-libs)
 
 test:
 	@pytest . -v --disable-warnings
 
-reset:
+
+reset-database-tables:
 	@echo "Truncates database tables and sets metadata to Obsolete"
 	@python sportscanner/storage/postgres/database.py
 
-run:
-	@docker run --platform=linux/amd64 --env-file .env \
+
+api-server-container:
+	@echo "Running container for image (tag: latest) to launch API server"
+	@docker run --network=host --rm --platform=linux/amd64 --env-file .env \
 		-v ~/developer/repository/sportscanner/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
 		-p 8000:80 ghcr.io/sportscanner/app-crawlers:latest
 
-build:
-	@docker build --no-cache --platform linux/amd64 \
-		-t ghcr.io/sportscanner/app-crawlers:latest \
-		-t ghcr.io/sportscanner/app-crawlers:$(VERSION) .
-
-develop:
-	@echo "Launching in development mode (connected to SQLiteDB)"
-	@DB_CONNECTION_STRING=sqlite:///sportscanner.db \
-		python -m streamlit run sportscanner/frontend/app.py
-
-
-pipeline:
-	@docker pull ghcr.io/sportscanner/app-crawlers:latest
-	@docker run --env-file .env \
-		-v $(pwd)/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
+crawler-pipeline-container:
+	@echo "Running container for image (tag: latest) to run data crawlers pipeline"
+	@docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+		-v ~/developer/repository/sportscanner/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
 		ghcr.io/sportscanner/app-crawlers:latest \
 		python sportscanner/crawlers/pipeline.py
+
+build-docker-image:
+	@echo "Starting image build with ID: $(LATEST_COMMIT_ID)"
+	@docker build --no-cache --platform=linux/amd64 \
+		-t ghcr.io/sportscanner/app-crawlers:latest \
+		-t ghcr.io/sportscanner/app-crawlers:$(LATEST_COMMIT_ID) .
+
+push-image-to-repository:
+	@echo "Pushing image to Image repository with tags: [latest, $(LATEST_COMMIT_ID)]"
+	@docker push ghcr.io/sportscanner/app-crawlers:latest
+	@docker push ghcr.io/sportscanner/app-crawlers:$(LATEST_COMMIT_ID)
+
 
 format:
 	@isort -r sportscanner/ *.py

@@ -93,7 +93,6 @@ def get_concurrent_requests(
     return send_concurrent_requests(search_dates)
 
 
-@task
 def pipeline(
     search_dates: List[date], venue_slugs: List[str]
 ) -> Coroutine[Any, Any, tuple[list[UnifiedParserSchema], ...]]:
