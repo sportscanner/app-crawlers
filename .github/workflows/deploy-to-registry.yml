@@ -30,11 +30,8 @@ jobs:
         run: docker login ghcr.io -u yasir-khalid -p ${{ secrets.GHCR }}
       - name: Build & Push the image
         run: |
-          LATEST_COMMIT_ID=$(git rev-parse --short HEAD)
-          echo "Building Image with tag:latest / tag:"${LATEST_COMMIT_ID}
-          docker build . -t ghcr.io/sportscanner/app-crawlers:latest -t ghcr.io/sportscanner/app-crawlers:${LATEST_COMMIT_ID}
-          docker push ghcr.io/sportscanner/app-crawlers:latest
-          docker push ghcr.io/sportscanner/app-crawlers:${LATEST_COMMIT_ID}
+          make build-docker-image
+          make push-image-to-repository
   deploy-to-cloud:
     needs: push-to-registry
     runs-on: ubuntu-latest

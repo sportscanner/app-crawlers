@@ -74,11 +74,16 @@ async def fetch_data(
     """Initiates request to server asynchronous using httpx"""
     try:
         response = await client.get(url, headers=headers)
-        response.raise_for_status()
-    except Exception as e:
-        logging.error(f"Exception while request: {url} \n{e}")
+        response.raise_for_status()  # raises httpx.HTTPStatusError for 4xx/5xx responses
+    except httpx.RequestError as e:
+        logging.error(f"Request error while fetching {url}: {e}")
         raise
-    content_type = response.headers.get("content-type", "")
+    except httpx.HTTPStatusError as e:
+        logging.error(f"HTTP error for {url}: Status code {e.response.status_code}")
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error while requesting {url}: {e}")
+        raise
     match response.status_code:
         case 200:
             json_response = response.json()
