@@ -66,13 +66,18 @@ def generate_api_call_params(search_date: date):
     return url, headers, payload
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(2), reraise=True)
 @async_timer
 async def fetch_data(
     client, url, headers, metadata: db.SportsVenue
 ) -> List[UnifiedParserSchema]:
     """Initiates request to server asynchronous using httpx"""
-    response = await client.get(url, headers=headers)
+    try:
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()
+    except Exception as e:
+        logging.error(f"Exception while request: {url} \n{e}")
+        raise
     content_type = response.headers.get("content-type", "")
     match response.status_code:
         case 200:
