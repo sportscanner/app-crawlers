@@ -49,7 +49,7 @@ def full_data_refresh_pipeline():
         dates, composite_identifiers
     )
     CitySportsCrawlerCoroutines = CitySports.pipeline(dates, composite_identifiers)
-    PlaygroundCrawlerCoroutines = Playground.pipeline(dates, composite_identifiers)
+    # PlaygroundCrawlerCoroutines = Playground.pipeline(dates, composite_identifiers)
     TowerHamletsCrawlerCoroutines = TowerHamlets.pipeline(dates, composite_identifiers)
 
     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
