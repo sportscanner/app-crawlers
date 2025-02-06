@@ -4,18 +4,15 @@ FROM python:3.10-slim-bookworm
 # Set the working directory to /app
 WORKDIR /app
 
-# Ensure apt package list is up-to-date and install dependencies
-RUN apt-get update && apt-get install -y \
-    curl ca-certificates gnupg \
-    make iputils-ping \
-    libdbus-1-3 \
-    libatk-bridge2.0-0 \
-    libatspi2.0-0 \
-    libxfixes3 \
-    libxkbcommon0 \
-    libnss3 libatk1.0-0 libxcomposite1 libxrandr2 \
-    libasound2 libpangocairo-1.0-0 libxdamage1 libgbm1 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*  # Clean up cache
+# Install necessary system dependencies for Playwright's Chromium
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl vim dnsutils ca-certificates gnupg make iputils-ping \
+    libglib2.0-0 libnss3 libnspr4 libdbus-1-3 libatk1.0-0 \
+    libatk-bridge2.0-0 libexpat1 libatspi2.0-0 libx11-6 \
+    libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 \
+    libgbm1 libdrm2 libxcb1 libxkbcommon0 libasound2 \
+    fonts-liberation libcurl4 xdg-utils \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*  # Clean up
 
 COPY . .
 
