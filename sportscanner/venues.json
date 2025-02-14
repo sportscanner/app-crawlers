@@ -306,5 +306,51 @@
         }
       }
     ]
+  },
+  {
+    "organisation": "Active Lambeth",
+    "organisation_website": "https://active.lambeth.gov.uk/",
+    "venues": [
+      {
+        "venue_name": "Brixton Recreation Centre",
+        "slug": "brixton-recreation-centre",
+        "location": {
+          "postcode": "SW9 8QQ",
+          "address": "27 Brixton Station Road, London SW9 8QQP",
+          "latitude": 51.46382,
+          "longitude": -0.113125
+        }
+      },
+      {
+        "venue_name": "Clapham Recreation Centre",
+        "slug": "clapham-leisure-centre",
+        "location": {
+          "postcode": "SW4 6DB",
+          "address": "141 Clapham Manor Street, London SW4 6DB",
+          "latitude": 51.463651,
+          "longitude": -0.134557
+        }
+      },
+      {
+        "venue_name": "Flaxman Sports Centre",
+        "slug": "flaxman-sports-centre",
+        "location": {
+          "postcode": "SE5 9DF",
+          "address": "Carew Street, London SE5 9DF",
+          "latitude": 51.471872,
+          "longitude": -0.099938
+        }
+      },
+      {
+        "venue_name": "Streatham Ice And Leisure Centre",
+        "slug": "streatham-ice-and-leisure-centre",
+        "location": {
+          "postcode": "SW16 6HX",
+          "address": "390 Streatham High Road, London SW16 6HX",
+          "longitude": -0.130486,
+          "latitude": 51.423757
+        }
+      }
+    ]
   }
 ]
