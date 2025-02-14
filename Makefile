@@ -32,6 +32,10 @@ reset-database-tables:
 	@python sportscanner/storage/postgres/database.py
 
 
+dev-server:
+	@echo "Running development (dev) API server"
+	@fastapi dev sportscanner/api/root.py
+
 api-server-container:
 	@echo "Running container for image (tag: latest) to launch API server"
 	@docker run --network=host --rm --platform=linux/amd64 --env-file .env \
