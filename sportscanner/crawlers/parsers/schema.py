@@ -60,6 +60,30 @@ class UnifiedParserSchema(BaseModel):
         )
 
     @classmethod
+    def from_active_lambeth_api_response(
+            cls, response: BetterApiResponseSchema, metadata: SportsVenue
+    ):
+        return cls(
+            category=response.name,
+            starting_time=datetime.strptime(
+                response.starts_at.format_24_hour, "%H:%M"
+            ).time(),
+            ending_time=datetime.strptime(
+                response.ends_at.format_24_hour, "%H:%M"
+            ).time(),
+            date=datetime.strptime(response.date, "%Y-%m-%d").date(),
+            price=response.price.formatted_amount,
+            spaces=response.spaces,
+            composite_key=metadata.composite_key,
+            last_refreshed=datetime.now(),
+            booking_url="https://lambethcouncil.bookings.flow.onl/location/{}/{}/{}/by-time/".format(
+                response.venue_slug,
+                response.category_slug,
+                datetime.strptime(response.date, "%Y-%m-%d").date(),
+            ),
+        )
+
+    @classmethod
     def from_citysports_api_response(
         cls, response: CitySportsResponseSchema, metadata: SportsVenue
     ):

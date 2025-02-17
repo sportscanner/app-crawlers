@@ -8,6 +8,7 @@ from rich import print
 
 from sportscanner.crawlers.helpers import SportscannerCrawlerBot
 from sportscanner.crawlers.parsers.better import crawler as BetterOrganisation
+from sportscanner.crawlers.parsers.activelambeth import crawler as ActiveLambeth
 from sportscanner.crawlers.parsers.citysports import crawler as CitySports
 from sportscanner.crawlers.parsers.playground import crawler as Playground
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
@@ -51,12 +52,14 @@ def full_data_refresh_pipeline():
     CitySportsCrawlerCoroutines = CitySports.pipeline(dates, composite_identifiers)
     # PlaygroundCrawlerCoroutines = Playground.pipeline(dates, composite_identifiers)
     TowerHamletsCrawlerCoroutines = TowerHamlets.pipeline(dates, composite_identifiers)
+    ActiveLambethCrawlerCoroutines = ActiveLambeth.pipeline(dates, composite_identifiers)
 
     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
         SportscannerCrawlerBot(
             TowerHamletsCrawlerCoroutines,
             BetterOrganisationCrawlerCoroutines,
             CitySportsCrawlerCoroutines,
+            ActiveLambethCrawlerCoroutines
             # PlaygroundCrawlerCoroutines
         )
     )
