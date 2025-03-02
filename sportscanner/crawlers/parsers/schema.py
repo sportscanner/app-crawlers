@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 from sportscanner.crawlers.parsers.better.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.citysports.schema import CitySportsResponseSchema
+from sportscanner.crawlers.parsers.everyoneactive.schema import EveryoneActiveRawSchema, AggregatedAvailabilityResponse, \
+    SlotAvailability
 from sportscanner.crawlers.parsers.towerhamlets.mappings import Parameters
 from sportscanner.crawlers.parsers.towerhamlets.schema import (
     AggregatedTowerHamletsResponse,
@@ -119,4 +121,20 @@ class UnifiedParserSchema(BaseModel):
             composite_key=metadata.venue.composite_key,
             last_refreshed=datetime.now(),
             booking_url=f"https://towerhamletscouncil.gladstonego.cloud/book/calendar/{metadata.activityId}?activityDate={formatted_date}&previousActivityDate={formatted_previous_day}",
+        )
+
+    @classmethod
+    def from_everyoneActive_rolledup_response(
+            cls, response: EveryoneActiveRawSchema, metadata: SportsVenue, slotAvailability: SlotAvailability
+    ):
+        return cls(
+            category="Badminton",
+            starting_time=slotAvailability.start_time,
+            ending_time=slotAvailability.end_time,
+            date=slotAvailability.slot_date,
+            price="£18.0",
+            spaces=slotAvailability.available_slots,
+            composite_key=metadata.composite_key,
+            last_refreshed=datetime.now(),
+            booking_url=f"https://www.everyoneactive.com/centre/{metadata.composite_key}/",
         )

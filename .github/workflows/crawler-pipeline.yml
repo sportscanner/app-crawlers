@@ -6,30 +6,8 @@ on:
   workflow_dispatch:  # Allows you to manually trigger the workflow if needed
 
 jobs:
-  backup-and-store-historical:
-    name: "Backup current datasets"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fetch/Dump postgres data
-        run: |
-          OUTPUT_FILE=/tmp/sportscanner_$(date +'%Y%m%d_%H%M%S').json
-          echo "Dumping outputs as: ${OUTPUT_FILE} from postgres DB"
-          psql "${{ secrets.POSTGRES_CONNECTION_STRING }}" -c "COPY (SELECT row_to_json(t) FROM sportscanner t) TO STDOUT;" > $OUTPUT_FILE
-
-      - name: Install Filen CLI
-        run: |
-          wget -q https://github.com/FilenCloudDienste/filen-cli/releases/download/v0.0.29/filen-cli-v0.0.29-linux-x64 -O filen
-          chmod +x filen
-
-      - name: Upload data dump to cloud storage
-        run: |
-          OUTPUT_FILE=$(ls /tmp/sportscanner_*.json)
-          echo "Uploading outputs from: ${OUTPUT_FILE} to cloud storage"
-          ./filen --email "${{ secrets.FILEN_EMAIL }}" --password "${{ secrets.FILEN_PASSWORD }}" upload $OUTPUT_FILE datasets/
-
   run-crawler-pipeline:
     runs-on: ubuntu-latest
-    needs: backup-and-store-historical
     name: "Fetch latest data"
     steps:
       - name: Checkout code
