@@ -242,6 +242,16 @@
           "latitude": 51.340679,
           "longitude": -0.016029
         }
+      },
+      {
+        "venue_name": "Score Leisure Centre",
+        "slug": "score-leisure-centre",
+        "location": {
+          "postcode": "E10 5UN",
+          "address": "2 Coronation Square, London, E10 5UN",
+          "longitude": -0.012969,
+          "latitude": 51.558892
+        }
       }
     ]
   },
@@ -349,6 +359,92 @@
           "address": "390 Streatham High Road, London SW16 6HX",
           "longitude": -0.130486,
           "latitude": 51.423757
+        }
+      }
+    ]
+  },
+  {
+    "organisation": "Everyone Active",
+    "organisation_website": "https://www.everyoneactive.com/",
+    "venues": [
+      {
+        "venue_name": "Academy Sport",
+        "slug": "academy-sport",
+        "location": {
+          "postcode": "W2 5EW",
+          "address": "Torquay Street, London, W2 5EW",
+          "longitude": -0.192178,
+          "latitude": 51.520567
+        }
+      },
+      {
+        "venue_name": "Church Street Community Leisure Centre",
+        "slug": "church-street-community-leisure-centre",
+        "location": {
+          "postcode": "NW8 8BF",
+          "address": "Fisherton Street, London, NW8 8BF",
+          "longitude": -0.171077,
+          "latitude": 51.524226
+        }
+      },
+      {
+        "venue_name": "Jubilee Community Leisure Centre",
+        "slug": "jubilee-community-leisure-centre",
+        "location": {
+          "postcode": "W10 4NW",
+          "address": "Lancefield Street, London, W10 4NW",
+          "longitude": -0.20576,
+          "latitude": 51.528655
+        }
+      },
+      {
+        "venue_name": "Little Venice Sports Centre",
+        "slug": "little-venice-sports-centre",
+        "location": {
+          "postcode": "W2 1ND",
+          "address": "10 Crompton Street, London, W2 1ND",
+          "longitude": -0.176757,
+          "latitude": 51.523763
+        }
+      },
+      {
+        "venue_name": "Moberly Sports Centre",
+        "slug": "moberly-sports-centre",
+        "location": {
+          "postcode": "NW10 3NB",
+          "address": "25 Chamberlayne Road, London, NW10 3NB",
+          "longitude": -0.216731,
+          "latitude": 51.531241
+        }
+      },
+      {
+        "venue_name": "Reynolds Sports Centre",
+        "slug": "reynolds-sports-centre",
+        "location": {
+          "postcode": "W3 8EY",
+          "address": "Gunnersbury Lane, London, W3 8EY",
+          "longitude": -0.281007,
+          "latitude": 51.50541
+        }
+      },
+      {
+        "venue_name": "St Augustine’s Sports Centre",
+        "slug": "st-augustines-sports-centre",
+        "location": {
+          "postcode": "NW6 5AW",
+          "address": "Oxford Road, London, NW6 5AW",
+          "longitude": -0.198036,
+          "latitude": 51.533321
+        }
+      },
+      {
+        "venue_name": "Queen Mother Sports Centre",
+        "slug": "queen-mother-sports-centre",
+        "location": {
+          "postcode": "SW1V 1EL",
+          "address": "Vauxhall Bridge, London, SW1V 1EL",
+          "longitude": -0.140864,
+          "latitude": 51.493642
         }
       }
     ]
