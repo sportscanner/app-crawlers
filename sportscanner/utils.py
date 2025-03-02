@@ -41,8 +41,8 @@ def async_timer(func):
     return wrapper
 
 
-def get_sports_venue_mappings_from_raw() -> schemas.SportsVenueMappingModel:
-    with open(f"./sportscanner/venues.json", "r") as file:
+def get_sports_venue_mappings_from_raw(path: str = "./sportscanner/venues.json",) -> schemas.SportsVenueMappingModel:
+    with open(path, "r") as file:
         raw_sports_centres = json.load(file)
         try:
             sports_centre_lists: schemas.SportsVenueMappingModel = (
