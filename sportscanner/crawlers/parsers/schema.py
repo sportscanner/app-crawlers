@@ -136,5 +136,5 @@ class UnifiedParserSchema(BaseModel):
             spaces=slotAvailability.available_slots,
             composite_key=metadata.composite_key,
             last_refreshed=datetime.now(),
-            booking_url=f"https://www.everyoneactive.com/centre/{metadata.composite_key}/",
+            booking_url=f"https://www.everyoneactive.com/centre/{metadata.slug}/",
         )
