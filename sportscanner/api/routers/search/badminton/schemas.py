@@ -4,9 +4,10 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-class AnalyticsCriteria(BaseModel):
+class AdvancedFiltersCriteria(BaseModel):
     consecutiveSlots: Optional[int] = None
     searchUserPreferredLocations: Optional[bool] = False
+    specifiedVenues: Optional[List[str]] = None
 
 
 class TimeFilter(BaseModel):
@@ -20,4 +21,4 @@ class SearchCriteria(BaseModel):
     dates: List[date]
     timeRange: TimeFilter
     radius: float
-    analytics: Optional[AnalyticsCriteria] = None
+    analytics: Optional[AdvancedFiltersCriteria] = None
