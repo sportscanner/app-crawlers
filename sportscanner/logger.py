@@ -1,6 +1,6 @@
 # logger.py
 from loguru import logger
-
+import sys
 # Configure the logger
 logger.remove()  # Removes the default logger configuration
 logger.add(sys.stdout, level="INFO")  # Adds a custom handler (e.g., stdout)

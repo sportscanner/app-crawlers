@@ -65,6 +65,7 @@ async def root():
     return {
         "timestamp": datetime.now(),
         "message": "Welcome to the Sportscanner API",
+        "version": "v1.3.0",
         "actions": {
             "/search/": "Endpoint to find available sports bookings",
             "/venue/": "Endpoint to find Venues covered by Sportscanner monitoring",

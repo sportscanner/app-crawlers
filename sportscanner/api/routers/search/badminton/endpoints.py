@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
@@ -58,7 +59,9 @@ async def search(
                 detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one.",
             )
     data = json_response.get("data")  # Should have this `data` key as per contract
-    if filters.analytics.searchUserPreferredLocations:
+    if filters.analytics.specifiedVenues:
+        composite_keys: List[str] = filters.analytics.specifiedVenues
+    elif filters.analytics.searchUserPreferredLocations:
         jwt_token = AuthHandler.extract_token_from_bearer(Authorization)
         payload = AuthHandler.decode_jwt(token=jwt_token)
         if payload and payload["user_id"]:
@@ -103,6 +106,7 @@ async def search(
             x["distance"],  # Shortest location
         ),
     )
+    logging.warning(f"Time taken for retrieval, transformations, sorting: {datetime.now() - current_timestamp}")
     return {
         "success": True,
         "resultId": f"e34f27a2-d591-486c-9a38-11111",

@@ -13,6 +13,7 @@ from sportscanner.crawlers.parsers.citysports import crawler as CitySports
 from sportscanner.crawlers.parsers.playground import crawler as Playground
 from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
 from sportscanner.crawlers.parsers.towerhamlets import crawler as TowerHamlets
+from sportscanner.crawlers.parsers.everyoneactive import crawler as EveryoneActive
 from sportscanner.storage.postgres.database import (
     PipelineRefreshStatus,
     delete_all_items_and_insert_fresh_to_db,
@@ -53,13 +54,15 @@ def full_data_refresh_pipeline():
     # PlaygroundCrawlerCoroutines = Playground.pipeline(dates, composite_identifiers)
     TowerHamletsCrawlerCoroutines = TowerHamlets.pipeline(dates, composite_identifiers)
     ActiveLambethCrawlerCoroutines = ActiveLambeth.pipeline(dates, composite_identifiers)
+    EveryoneActiveCrawlerCoroutines = EveryoneActive.pipeline(dates, composite_identifiers)
 
     responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
         SportscannerCrawlerBot(
             TowerHamletsCrawlerCoroutines,
             BetterOrganisationCrawlerCoroutines,
             CitySportsCrawlerCoroutines,
-            ActiveLambethCrawlerCoroutines
+            ActiveLambethCrawlerCoroutines,
+            EveryoneActiveCrawlerCoroutines
             # PlaygroundCrawlerCoroutines
         )
     )
