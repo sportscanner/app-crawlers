@@ -13,7 +13,6 @@ from starlette.responses import JSONResponse
 import sportscanner.storage.postgres.database as db
 from sportscanner.api.routers.search.badminton.schemas import SearchCriteria
 from sportscanner.api.routers.users.service.userService import UserService
-from sportscanner.core.security.authHandler import AuthHandler
 from sportscanner.crawlers.pipeline import *
 from sportscanner.storage.postgres.dataset_transform import (
     group_slots_by_attributes,
@@ -62,16 +61,17 @@ async def search(
     if filters.analytics.specifiedVenues:
         composite_keys: List[str] = filters.analytics.specifiedVenues
     elif filters.analytics.searchUserPreferredLocations:
-        jwt_token = AuthHandler.extract_token_from_bearer(Authorization)
-        payload = AuthHandler.decode_jwt(token=jwt_token)
-        if payload and payload["user_id"]:
-            user = UserService().get_user_info(payload["user_id"])
-            composite_keys = user.get("preferredVenues", [])
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Expired/Invalid Authentication Credentials. Sign out and sign back in so your authentication can be refreshed",
-            )
+        pass
+        # jwt_token = AuthHandler.extract_token_from_bearer(Authorization)
+        # payload = AuthHandler.decode_jwt(token=jwt_token)
+        # if payload and payload["user_id"]:
+        #     user = UserService().get_user_info(payload["user_id"])
+        #     composite_keys = user.get("preferredVenues", [])
+        # else:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_401_UNAUTHORIZED,
+        #         detail="Expired/Invalid Authentication Credentials. Sign out and sign back in so your authentication can be refreshed",
+        #     )
     else:
         composite_keys = [x["venue"]["composite_key"] for x in data]
 

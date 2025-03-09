@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str
     ENV: str
+    KINDE_DOMAIN: str
+    KINDE_CLIENT_ID: str
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8")
 
