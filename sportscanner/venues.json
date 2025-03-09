@@ -177,10 +177,10 @@
         "venue_name": "The Plumstead Centre",
         "slug": "the-plumstead-centre",
         "location": {
-          "postcode": "CR4 4HD",
+          "postcode": "SE18 1JL",
           "address": "232 Plumstead High Street, Plumstead, London, SE18 1JL",
-          "latitude": 51.39959,
-          "longitude": -0.161533
+          "longitude": 0.09666,
+          "latitude": 51.486362
         }
       },
       {
@@ -445,6 +445,16 @@
           "address": "Vauxhall Bridge, London, SW1V 1EL",
           "longitude": -0.140864,
           "latitude": 51.493642
+        }
+      },
+      {
+        "venue_name": "Vale Farm Sports Centre",
+        "slug": "vale-farm-sports-centre",
+        "location": {
+          "postcode": "HA0 3HG",
+          "address": "Watford Road Wembley West London",
+          "longitude": -0.316373,
+          "latitude": 51.558198
         }
       }
     ]

@@ -1,25 +1,31 @@
 from datetime import datetime
 from typing import Union
 from uuid import UUID
+from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr
 
 
 class User(BaseModel):
-    id: str
-    fullName: str
+    kindeUserId: str
+    created_at: datetime
+    fullName: Optional[str]
     email: EmailStr
-    password: str
-    created_at: str
+    postcode: str
+    preferredVenues: Optional[List[str]] = None
+    onboarding: bool = False
 
 
 class UserInCreate(BaseModel):
-    fullName: str
+    kindeUserId: str
+    fullName: Optional[str]
     email: EmailStr
-    password: str
+    postcode: str
+    preferredVenues: Optional[List[str]] = None
+    onboarding: bool = False
 
 
-class UserOutput(BaseModel):
-    id: str
-    fullName: str
+class UserInCreateConfirmation(BaseModel):
+    kindeUserId: str
     email: EmailStr
+    created_at: datetime
