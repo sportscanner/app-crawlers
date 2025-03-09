@@ -1,13 +1,6 @@
-from typing import Union
+from typing import Union, List, Optional
 
 from pydantic import BaseModel, EmailStr
-
-
-class UserInCreate(BaseModel):
-    fullName: str
-    email: EmailStr
-    postcode: str
-    password: str
 
 
 class UserOutput(BaseModel):
@@ -15,19 +8,10 @@ class UserOutput(BaseModel):
     fullName: str
     email: EmailStr
 
-
-class UserInUpdate(BaseModel):
-    id: str
-    fullName: Union[str, None] = None
-    email: Union[EmailStr, None] = None
-    password: Union[str, None] = None
-
-
-class UserInLogin(BaseModel):
+class UserInCreate(BaseModel):
+    kindeUserId: str
+    fullName: Optional[str]
     email: EmailStr
-    password: str
-
-
-class UserWithToken(BaseModel):
-    id: str
-    token: str
+    postcode: str
+    preferredVenues: Optional[List[str]] = None
+    onboarding: bool = False

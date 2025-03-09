@@ -1,7 +1,11 @@
+import json
 from datetime import datetime
+from typing import List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, Path, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from starlette.requests import Request
 
 from sportscanner.api.routers.geolocation.endpoints import router as GeolocationRouter
 from sportscanner.api.routers.search.badminton.endpoints import (
@@ -9,6 +13,8 @@ from sportscanner.api.routers.search.badminton.endpoints import (
 )
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
+import httpx
+
 
 description = """
 Discover, Compare, and Book Sports Facilities Across London
@@ -56,7 +62,7 @@ app.include_router(
     router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"]
 )
 
-app.include_router(router=UsersRouter, prefix="/users", tags=["Authentication"])
+app.include_router(router=UsersRouter, prefix="/user", tags=["Authentication"])
 
 
 @app.get("/", tags=["Root"])
