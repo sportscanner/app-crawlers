@@ -32,3 +32,11 @@ jobs:
             -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
             ghcr.io/sportscanner/app-crawlers:latest \
             python sportscanner/crawlers/pipeline.py
+  
+  update-hearbeart-monitor:
+    needs: run-crawler-pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update heartbeat monitor
+        run: |
+          curl ${{ secrets.CRAWLER_CRONJOB_HEARTBEAT }}
