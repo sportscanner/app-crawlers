@@ -252,6 +252,26 @@
           "longitude": -0.012969,
           "latitude": 51.558892
         }
+      },
+      {
+        "venue_name": "Barnet Copthall Leisure Centre",
+        "slug": "barnet-copthall-leisure-centre",
+        "location": {
+          "postcode": "NW4 1PX",
+          "address": "Champions Way, London NW4 1PX",
+          "longitude": -0.224559,
+          "latitude": 51.604946
+        }
+      },
+      {
+        "venue_name": "Barnet Burnt Oak Leisure Centre",
+        "slug": "barnet-burnt-oak-leisure-centre",
+        "location": {
+          "postcode": "HA8 0NP",
+          "address": "Watling Ave, Edgware HA8 0NP",
+          "longitude": -0.255371,
+          "latitude": 51.60499
+        }
       }
     ]
   },
