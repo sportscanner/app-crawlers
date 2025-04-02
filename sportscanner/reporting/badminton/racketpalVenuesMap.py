@@ -9,7 +9,7 @@ from sportscanner.utils import get_sports_venue_mappings_from_raw
 from rich import print
 # Load sports venues data
 sports_centres_mapping: schemas.SportsVenueMappingModel = get_sports_venue_mappings_from_raw(
-    path="./sportscanner/venues.json",
+    path="./sportscanner/futures.json",
 )
 
 # Initialize GeoJSON structure
@@ -101,5 +101,5 @@ for organisation in sports_centres_mapping.root:
         ).add_to(m)
 
 # Save and display map
-m.save("racketpal-badminton-venues-map.html")
-print("Map saved to racketpal-badminton-venues-map.html")
+m.save("racketpal-badminton-venues-map-futuristic.html")
+print("Map saved to racketpal-badminton-venues-map-futuristic.html")
