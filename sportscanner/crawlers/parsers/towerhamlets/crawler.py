@@ -33,7 +33,10 @@ from sportscanner.crawlers.parsers.towerhamlets.schema import (
 )
 from sportscanner.crawlers.parsers.utils import validate_api_response
 from sportscanner.utils import async_timer, timeit
+import pytz
 
+utc_zone = pytz.utc
+uk_zone = pytz.timezone('Europe/London')
 
 class HyperlinkWithMetadata(BaseModel):
     siteId: str
@@ -148,11 +151,16 @@ async def fetch_data(
 
 def round_to_nearest_minute(time_str) -> datetime:
     """rounds str date-time to datetime python object"""
-    dt = datetime.fromisoformat(time_str.rstrip("Z"))  # Remove 'Z' and parse as UTC
-    if dt.second > 0:  # Round up if there are any seconds
-        dt = dt.replace(second=0) + timedelta(minutes=1)
+    utc_time = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ")
+    # Attach UTC timezone info
+    utc_time = utc_zone.localize(utc_time)
+    # Convert to UK local time (handles BST automatically)
+    local_time = utc_time.astimezone(uk_zone)
+
+    if local_time.second > 0:  # Round up if there are any seconds
+        dt = local_time.replace(second=0) + timedelta(minutes=1)
     else:
-        dt = dt.replace(second=0)
+        dt = local_time.replace(second=0)
     return dt
 
 
