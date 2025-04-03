@@ -272,6 +272,16 @@
           "longitude": -0.255371,
           "latitude": 51.60499
         }
+      },
+      {
+        "venue_name": "Queensmead Sports Centre",
+        "slug": "queensmead-sports-centre",
+        "location": {
+          "postcode": "HA4 0JE",
+          "address": "Victoria Rd, Ruislip HA4 0JE",
+          "longitude": -0.395031,
+          "latitude": 51.557382
+        }
       }
     ]
   },
@@ -475,6 +485,26 @@
           "address": "Watford Road Wembley West London",
           "longitude": -0.316373,
           "latitude": 51.558198
+        }
+      },
+      {
+        "venue_name": "Greenford Sports Centre",
+        "slug": "greenford-sports-centre",
+        "location": {
+          "postcode": "UB1 2NP",
+          "address": "Greenford Sports Centre,Lady Margaret Road, UB1 2NP",
+          "longitude": -0.37196,
+          "latitude": 51.53043
+        }
+      },
+      {
+        "venue_name": "Harrow Leisure Centre",
+        "slug": "harrow-leisure-centre",
+        "location": {
+          "postcode": "HA3 5BD",
+          "address": "Christchurch Avenue, Harrow, HA3 5BD",
+          "longitude": -0.327441,
+          "latitude": 51.592524
         }
       }
     ]

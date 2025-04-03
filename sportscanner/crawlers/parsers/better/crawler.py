@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from typing import Any, Coroutine, Dict, List, Tuple
 
 import httpx
-from httpx import ConnectError
+from httpx import ConnectError, HTTPError
 from loguru import logger as logging
 from pydantic import ValidationError
 from sqlalchemy import True_
@@ -41,7 +41,7 @@ async def send_concurrent_requests(
         successful_responses = []
         for idx, response in enumerate(responses):
             if isinstance(response, Exception):
-                logging.error(f"Task {idx} failed with error: {response}")
+                logging.warning(f"Task {idx} failed with error: {response}")
             else:
                 successful_responses.append(response)
         # Flatten successful responses (removes nested list layers)
@@ -89,19 +89,23 @@ async def fetch_data(
     logging.debug(
         f"Fetching data from {url} with headers {headers} and metadata {metadata}"
     )
-    response = await client.get(url, headers=headers)
-    response.raise_for_status()  # Ensure non-200 responses are treated as exceptions
-    content_type = response.headers.get("content-type", "")
-    validated_response = validate_api_response(response, content_type, url)
-    validated_response_data = validated_response.get("data")
-    if validated_response_data is not None:
-        raw_responses_with_schema = apply_raw_response_schema(validated_response_data)
-        return [
-            UnifiedParserSchema.from_better_api_response(response, metadata)
-            for response in raw_responses_with_schema
-        ]
-    else:
-        return []
+    try:
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()  # Ensure non-200 responses are treated as exceptions
+        content_type = response.headers.get("content-type", "")
+        validated_response = validate_api_response(response, content_type, url)
+        validated_response_data = validated_response.get("data")
+        if validated_response_data is not None:
+            raw_responses_with_schema = apply_raw_response_schema(validated_response_data)
+            return [
+                UnifiedParserSchema.from_better_api_response(response, metadata)
+                for response in raw_responses_with_schema
+            ]
+        else:
+            return []
+    except HTTPError as e:
+        logging.error(e)
+        raise HTTPError
 
 
 def apply_raw_response_schema(api_response) -> List[BetterApiResponseSchema]:
