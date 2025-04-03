@@ -27,7 +27,11 @@ from sportscanner.crawlers.parsers.utils import (
     validate_api_response,
 )
 from sportscanner.utils import async_timer, timeit
+import pytz
 
+# Define the UTC and UK timezones
+utc_zone = pytz.utc
+uk_zone = pytz.timezone('Europe/London')
 
 @async_timer
 async def send_concurrent_requests(
@@ -104,11 +108,14 @@ def generate_api_call_params(
 def populate_date_and_booking_timings(response: EveryoneActiveRawSchema):
     for bookableItem in response.bookableItems:
         for slot in bookableItem.slots:
-            datetime_object = datetime.utcfromtimestamp(slot.datetimeUTC)
-            slot.parsedDate = datetime_object.date()
-            slot.parsedStartTime = datetime_object.time()
-            new_dt = datetime_object + timedelta(minutes=response.duration)
-            slot.parsedEndTime = new_dt.time()
+            # Convert the UTC timestamp to a timezone-aware datetime object in UTC
+            utc_time = datetime.utcfromtimestamp(slot.datetimeUTC).replace(tzinfo=utc_zone)
+            # Convert the UTC time to the UK's local time
+            local_time = utc_time.astimezone(uk_zone)
+            slot.parsedDate = local_time.date()
+            slot.parsedStartTime = local_time.time()
+            end_time = local_time + timedelta(minutes=response.duration)
+            slot.parsedEndTime = end_time.time()
     return response
 
 
