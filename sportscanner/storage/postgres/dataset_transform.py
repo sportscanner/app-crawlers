@@ -69,14 +69,10 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
             continue
         # Get the earliest slot in the group (the first element in sorted list with spaces > 0)
         earliest_slot_in_group: db.SportScanner = sorted_slots_with_spaces[0]
-
-        sorted_slots_without_element_zero: List[db.SportScanner] = [
-            x for i, x in enumerate(sorted_slots_in_group) if i != 0
-        ]
-        otherSlots = []
-        for x in sorted_slots_without_element_zero:
+        availabilities = []
+        for x in sorted_slots_with_spaces:
             _available: bool = True if x.spaces > 0 else False
-            otherSlots.append(
+            availabilities.append(
                 {
                     "startingTime": x.starting_time.strftime("%H:%M"),
                     "endingTime": x.ending_time.strftime("%H:%M"),
@@ -90,9 +86,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
         lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key, None)
         processed_slots.append(
             {
-                "startTime": earliest_slot_in_group.starting_time.strftime("%H:%M"),
-                "endTime": earliest_slot_in_group.ending_time.strftime("%H:%M"),
-                "location": lookup_data.get("venue_name", ""),
+                "venue": lookup_data.get("venue_name", ""),
                 "address": lookup_data.get("address", ""),
                 "distance": distance_from_venues_reference.get(
                     earliest_slot_in_group.composite_key, 99
@@ -100,8 +94,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
                 "price": earliest_slot_in_group.price,
                 "organization": lookup_data.get("organisation", ""),
                 "date": earliest_slot_in_group.date.strftime("%a, %b %d"),
-                "otherSlots": otherSlots,
-                "bookingUrl": earliest_slot_in_group.booking_url,
+                "availability": availabilities,
             }
         )
     return processed_slots
