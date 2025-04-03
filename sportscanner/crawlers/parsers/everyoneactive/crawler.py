@@ -65,7 +65,10 @@ activityIds = {
     "little-venice-sports-centre": "158BADMINTON1",
     "jubilee-community-leisure-centre": "282BADM060SH001",
     "church-street-community-leisure-centre": "270BADM060SH001",
-    "academy-sport": "262BADM060SH001"
+    "academy-sport": "262BADM060SH001",
+    "vale-farm-sports-centre": "101BADMINTON1",
+    "greenford-sports-centre": "118BADM050SH001",
+    "harrow-leisure-centre": "091BADMINT001"
 }
 
 
