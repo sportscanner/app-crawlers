@@ -21,3 +21,4 @@ sqlmodel==0.0.22
 starlette==0.38.6
 psycopg2-binary==2.9.9
 tenacity==8.5.0
+pytz==2024.1
