@@ -1,26 +1,28 @@
 import asyncio
 import itertools
 from datetime import date, timedelta
+from math import lgamma
 from typing import Any, List, Tuple, Union
 
 from loguru import logger as logging
+from pandas.core.interchange.dataframe_protocol import DataFrame
 from rich import print
 
 from sportscanner.crawlers.helpers import SportscannerCrawlerBot
-from sportscanner.crawlers.parsers.better import crawler as BetterOrganisation
-from sportscanner.crawlers.parsers.activelambeth import crawler as ActiveLambeth
-from sportscanner.crawlers.parsers.citysports import crawler as CitySports
-from sportscanner.crawlers.parsers.playground import crawler as Playground
-from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
-from sportscanner.crawlers.parsers.towerhamlets import crawler as TowerHamlets
-from sportscanner.crawlers.parsers.everyoneactive import crawler as EveryoneActive
+from sportscanner.crawlers.parsers.better.badminton.scraper import coroutines as BetterLeisureBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.activelambeth.badminton.scraper import coroutines as ActiveLambethBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.citysports.badminton.scraper import coroutines as CitySportsBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
+from sportscanner.crawlers.parsers.everyoneactive.badminton.scraper import coroutines as EveryoneActiveBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import coroutines as TowerHamletsBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
+from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
+
 from sportscanner.storage.postgres.database import (
-    PipelineRefreshStatus,
-    delete_all_items_and_insert_fresh_to_db,
-    engine,
-    get_all_sports_venues,
-    update_refresh_status_for_pipeline,
+truncate_and_reload_all, BadmintonStagingTable, swap_tables,
+    initialise_squash_staging, initialise_badminton_staging
 )
+from sportscanner.storage.postgres.tables import SquashStagingTable
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
 
@@ -37,42 +39,29 @@ def flatten_responses(responses_from_all_sources) -> List[UnifiedParserSchema]:
 
 
 @timeit
-def full_data_refresh_pipeline():
+def badminton_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(15)]
     logging.info(f"Finding slots for dates: {dates}")
-    sports_venues = get_all_sports_venues(engine)
-    composite_identifiers: List[str] = [
-        sports_venue.composite_key for sports_venue in sports_venues
-    ]
-    logging.info(composite_identifiers)
-    BetterOrganisationCrawlerCoroutines = BetterOrganisation.pipeline(
-        dates, composite_identifiers
-    )
-    CitySportsCrawlerCoroutines = CitySports.pipeline(dates, composite_identifiers)
-    # PlaygroundCrawlerCoroutines = Playground.pipeline(dates, composite_identifiers)
-    TowerHamletsCrawlerCoroutines = TowerHamlets.pipeline(dates, composite_identifiers)
-    ActiveLambethCrawlerCoroutines = ActiveLambeth.pipeline(dates, composite_identifiers)
-    EveryoneActiveCrawlerCoroutines = EveryoneActive.pipeline(dates, composite_identifiers)
-
-    responses_from_all_sources: Tuple[List[UnifiedParserSchema], ...] = asyncio.run(
+    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
         SportscannerCrawlerBot(
-            TowerHamletsCrawlerCoroutines,
-            BetterOrganisationCrawlerCoroutines,
-            CitySportsCrawlerCoroutines,
-            ActiveLambethCrawlerCoroutines,
-            EveryoneActiveCrawlerCoroutines
-            # PlaygroundCrawlerCoroutines
+            BetterLeisureBadmintonScraperCoroutines(dates),
+            ActiveLambethBadmintonScraperCoroutines(dates),
+            CitySportsBadmintonScraperCoroutines(dates),
+            EveryoneActiveBadmintonScraperCoroutines(dates),
+            TowerHamletsBadmintonScraperCoroutines(dates)
         )
     )
     # Flatten nested list structure and remove empty or failed responses
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
-    # Check if the final list has valid entries
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        delete_all_items_and_insert_fresh_to_db(all_slots)
-        # update_refresh_status_for_pipeline(engine, PipelineRefreshStatus.COMPLETED)
+        initialise_badminton_staging()
+        logging.info(f"Truncating and loading all data to staging table: {BadmintonStagingTable.__tablename__}")
+        truncate_and_reload_all(all_slots, BadmintonStagingTable)
+        logging.warning(f"Swapping staging table, with Main table")
+        swap_tables(master = "badminton", staging = "staging.badminton", archive = "archive.badminton")
         return True
     else:
         logging.warning(
@@ -82,24 +71,35 @@ def full_data_refresh_pipeline():
 
 
 @timeit
-async def standalone_refresh_trigger(
-    dates: List[date], venues_slugs: List[str]
-) -> List[UnifiedParserSchema]:
+def squash_scraping_pipeline():
+    logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    today = date.today()
+    dates = [today + timedelta(days=i) for i in range(15)]
     logging.info(f"Finding slots for dates: {dates}")
-    BetterOrganisationCrawlerCoroutines = BetterOrganisation.pipeline(
-        dates, venues_slugs
+    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
+        SportscannerCrawlerBot(
+            BetterLeisureSquashScraperCoroutines(dates),
+            ActiveLambethSquashScraperCoroutines(dates),
+        )
     )
-    CitySportsCrawlerCoroutines = CitySports.pipeline(dates, venues_slugs)
-
-    all_fetched_slots = await SportscannerCrawlerBot(
-        BetterOrganisationCrawlerCoroutines, CitySportsCrawlerCoroutines
-    )
-    all_slots: List[UnifiedParserSchema] = list(
-        itertools.chain.from_iterable(itertools.chain.from_iterable(all_fetched_slots))
-    )
-    return all_slots
+    # Flatten nested list structure and remove empty or failed responses
+    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    if all_slots:
+        logging.success(f"Total slots collected: {len(all_slots)}")
+        initialise_squash_staging()
+        logging.info(f"Truncating and loading all data to staging table: {SquashStagingTable.__tablename__}")
+        truncate_and_reload_all(all_slots, SquashStagingTable)
+        logging.warning(f"Swapping staging table, with Main table")
+        swap_tables(master = "squash", staging = "staging.squash", archive = "archive.squash")
+        return True
+    else:
+        logging.warning(
+            "No valid slots were found. Database update skipped (might be an issue)"
+        )
+        return False
 
 
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
-    full_data_refresh_pipeline()
+    squash_scraping_pipeline()
+    badminton_scraping_pipeline()

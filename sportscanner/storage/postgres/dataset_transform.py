@@ -10,11 +10,12 @@ from pydantic import BaseModel
 from rich import print
 
 import sportscanner.storage.postgres.database as db
+import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.pipeline import *
 
 
 def generate_venue_lookup() -> dict:
-    venues: List[db.SportsVenue] = db.get_all_sports_venues(db.engine)
+    venues: List[sportscanner.storage.postgres.tables.SportsVenue] = db.get_all_sports_venues(db.engine)
     reference_dict = {
         venue.composite_key: {
             "organisation": venue.organisation,
@@ -51,7 +52,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
     processed_slots: List = []
     for groups in grouped_slots:
         # Sort the groups based on 'date' and 'starting_time'
-        sorted_slots_in_group: List[db.SportScanner] = sorted(
+        sorted_slots_in_group: List[sportscanner.storage.postgres.tables.BadmintonMasterTable] = sorted(
             groups, key=attrgetter("date", "starting_time")
         )
 
@@ -68,7 +69,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
         if not sorted_slots_with_spaces:
             continue
         # Get the earliest slot in the group (the first element in sorted list with spaces > 0)
-        earliest_slot_in_group: db.SportScanner = sorted_slots_with_spaces[0]
+        earliest_slot_in_group: sportscanner.storage.postgres.tables.BadmintonMasterTable = sorted_slots_with_spaces[0]
         availabilities = []
         for x in sorted_slots_with_spaces:
             _available: bool = True if x.spaces > 0 else False
