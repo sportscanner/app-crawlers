@@ -5,7 +5,6 @@ from math import lgamma
 from typing import Any, List, Tuple, Union
 
 from loguru import logger as logging
-from pandas.core.interchange.dataframe_protocol import DataFrame
 from rich import print
 
 from sportscanner.crawlers.helpers import SportscannerCrawlerBot
