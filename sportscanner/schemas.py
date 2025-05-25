@@ -17,6 +17,7 @@ class Venue(BaseModel):
     venue_name: str
     slug: str
     location: Location
+    sports: List[str]
 
 
 class Organisation(BaseModel):

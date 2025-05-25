@@ -11,7 +11,8 @@
           "address": "Adelaide Road, Camden, London, NW3 3NF",
           "latitude": 51.5424,
           "longitude": -0.173416
-        }
+        },
+        "sports": ["badminton", "squash", "pickleball"]
       },
       {
         "venue_name": "Kensington Leisure Centre",
@@ -21,7 +22,8 @@
           "address": "Silchester Road, Kensington, London, W10 6EX",
           "latitude": 51.5114309,
           "longitude": -0.2121396
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "Finsbury Leisure Centre",
@@ -31,7 +33,8 @@
           "address": "Norman Street, Islington, London, EC1V 3PU",
           "latitude": 51.5261266,
           "longitude": -0.0951542
-        }
+        },
+        "sports": ["badminton", "squash", "pickleball"]
       },
       {
         "venue_name": "Britannia Leisure Centre",
@@ -41,7 +44,8 @@
           "address": "Pitfield  Street, London, London, N1 5FT",
           "latitude": 51.534244152029,
           "longitude": -0.082955257571105
-        }
+        },
+        "sports": ["badminton", "squash", "tennis"]
       },
       {
         "venue_name": "Queensbridge Sports And  Community",
@@ -51,7 +55,8 @@
           "address": "30 Holly Street, Hackney,  London, E8 3XW",
           "latitude": 51.542135,
           "longitude": -0.071475
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Kings Hall Leisure Centre",
@@ -61,7 +66,8 @@
           "address": "39 Lower Clapton Road, London, Hackney, E5 0NU",
           "latitude": 51.5513595,
           "longitude": -0.0524287
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Clissold Leisure Centre",
@@ -71,7 +77,8 @@
           "address": "63 Clissold Road, Hackney, London, N16 9EX",
           "latitude": 51.5579,
           "longitude": -0.084595
-        }
+        },
+        "sports": ["badminton", "squash", "tennis"]
       },
       {
         "venue_name": "Talacre Community Sports Centre",
@@ -81,7 +88,8 @@
           "address": "New Dalby Street, Kentish Town, London, NW5 3AF",
           "latitude": 51.547056,
           "longitude": -0.147121
-        }
+        },
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Leytonstone Leisure  Centre",
@@ -91,7 +99,8 @@
           "address": "Cathall road, Leytonstone, London, E11 4LA",
           "latitude": 51.5604,
           "longitude": 0.003602
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Walthamstow Leisure Centre",
@@ -101,7 +110,8 @@
           "address": "243 Markhouse Road, Walthamstow, London, E17 8RN",
           "latitude": 51.5758,
           "longitude": -0.02884
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "Crystal Palace National Sports Centre",
@@ -111,7 +121,8 @@
           "address": "Ledrington Rd, Crystal Palace, London, SE19 2BB",
           "latitude": 51.4189989,
           "longitude": -0.0677686
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "Phoenix Fitness Centre",
@@ -121,7 +132,8 @@
           "address": "Bloemfontain Road, White City, London, London, W12 7DB",
           "latitude": 51.5127,
           "longitude": -0.23535
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Waltham Forest Feel Good Centre",
@@ -131,7 +143,8 @@
           "address": "170 Chingford Road, London,  Walthamstow, E17 5AA",
           "latitude": 51.5955114,
           "longitude": -0.0137085
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Copper Box Arena",
@@ -141,7 +154,8 @@
           "address": "Copper Street, Stratford, London, E20 3HB",
           "latitude": 51.5446,
           "longitude": -0.021522
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Hendon Leisure Centre",
@@ -151,7 +165,8 @@
           "address": "Marble Drive,  Hendon, London, NW2 1XQ",
           "latitude": 51.5739526,
           "longitude": -0.2155321
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Gunnersbury Park Sports Hub",
@@ -161,7 +176,8 @@
           "address": "Popes Lanes, Acton, London, W3 8LQ",
           "latitude": 51.500481,
           "longitude": -0.28953
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Canons Leisure Centre",
@@ -171,7 +187,8 @@
           "address": "Madeira Road, Mitcham, London, CR4 4HD",
           "latitude": 51.3997,
           "longitude": -0.161339
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "The Plumstead Centre",
@@ -181,7 +198,8 @@
           "address": "232 Plumstead High Street, Plumstead, London, SE18 1JL",
           "longitude": 0.09666,
           "latitude": 51.486362
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Waterfront Leisure Centre",
@@ -191,7 +209,8 @@
           "address": "Woolwich High Street, Woolwich, Greenwich, SE18 6DL",
           "latitude": 51.494047,
           "longitude": 0.063403
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "Barking Sporthouse and Gym",
@@ -201,7 +220,8 @@
           "address": "Mayesbrook Park, Lodge Avenue, Dagenham, London, RM8 2JR",
           "latitude": 51.545368,
           "longitude": 0.113014
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "East Ham Leisure Centre",
@@ -211,7 +231,8 @@
           "address": "East Ham Leisure Centre, 324 Barking  Road, East Ham, London, E6 2RT",
           "latitude": 51.533443,
           "longitude": 0.058953
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Newham Leisure Centre",
@@ -221,7 +242,8 @@
           "address": "281 Prince Regent Lane, Newham, London, E13 8SD",
           "latitude": 51.5196997336241,
           "longitude": 0.037804863874695845
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Thornton Heath Leisure Centre",
@@ -231,7 +253,8 @@
           "address": "100 High Street, Thornton Heath, Croydon, CR7 8LF",
           "latitude": 51.399032,
           "longitude": -0.096946
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "New Addington Leisure & Community Centre",
@@ -241,7 +264,8 @@
           "address": "88 Centrel Parade, New Addington, Croydon, London, CR0  0JB",
           "latitude": 51.340679,
           "longitude": -0.016029
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Score Leisure Centre",
@@ -251,7 +275,8 @@
           "address": "2 Coronation Square, London, E10 5UN",
           "longitude": -0.012969,
           "latitude": 51.558892
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Barnet Copthall Leisure Centre",
@@ -261,7 +286,8 @@
           "address": "Champions Way, London NW4 1PX",
           "longitude": -0.224559,
           "latitude": 51.604946
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Barnet Burnt Oak Leisure Centre",
@@ -271,7 +297,8 @@
           "address": "Watling Ave, Edgware HA8 0NP",
           "longitude": -0.255371,
           "latitude": 51.60499
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Queensmead Sports Centre",
@@ -281,7 +308,41 @@
           "address": "Victoria Rd, Ruislip HA4 0JE",
           "longitude": -0.395031,
           "latitude": 51.557382
-        }
+        },
+        "sports": ["badminton"]
+      },
+      {
+        "venue_name": "Hammersmith Fitness and Squash Centre",
+        "slug": "hammersmith-fitness-squash-centre",
+        "location": {
+          "postcode": "W6 8DW",
+          "address": "Chalk Hill Road, Hammersmith, London W6 8DW",
+          "longitude": -0.220086,
+          "latitude": 51.492047
+        },
+        "sports": ["squash"]
+      },
+      {
+        "venue_name": "Oasis Sports Centre",
+        "slug": "oasis-sports-centre",
+        "location": {
+          "postcode": "WC2H 9AG",
+          "address": "32 Endell Street, Covent Garden, London WC2H 9AG",
+          "longitude": -0.125876,
+          "latitude": 51.515662
+        },
+        "sports": ["squash"]
+      },
+      {
+        "venue_name": "Ironmonger Row Baths",
+        "slug": "ironmonger-row-baths",
+        "location": {
+          "postcode": "EC1V 3AA",
+          "address": "1 Norman Street, Islington, London EC1V 3AA",
+          "longitude": -0.094602,
+          "latitude": 51.526576
+        },
+        "sports": ["squash"]
       }
     ]
   },
@@ -297,7 +358,8 @@
           "address": "Tench St, London E1W 2QD",
           "latitude": 51.5049,
           "longitude": -0.061617
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Whitechapel Sports Centre",
@@ -307,7 +369,8 @@
           "address": "55 Durward Street, Whitechapel, Tower Hamlets, London, E1 5BA",
           "latitude": 51.5199,
           "longitude": -0.060763
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Poplar Leisure Centre",
@@ -317,7 +380,8 @@
           "address": "170 East India Dock Road Poplar, E14 0ED",
           "latitude": 51.511139,
           "longitude": -0.014445
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Mile End Park Leisure Centre",
@@ -327,7 +391,8 @@
           "address": "190 Burdett Rd, London E3 4HL",
           "latitude": 51.5193,
           "longitude": -0.032319
-        }
+        },
+        "sports": ["badminton"]
       }
     ]
   },
@@ -343,7 +408,8 @@
           "address": "The Franklin Building, 124 Goswell Road, London EC1V 7DP",
           "latitude": 51.524709,
           "longitude": -0.099123
-        }
+        },
+        "sports": ["badminton"]
       }
     ]
   },
@@ -359,7 +425,8 @@
           "address": "27 Brixton Station Road, London SW9 8QQP",
           "latitude": 51.46382,
           "longitude": -0.113125
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "Clapham Recreation Centre",
@@ -369,7 +436,8 @@
           "address": "141 Clapham Manor Street, London SW4 6DB",
           "latitude": 51.463651,
           "longitude": -0.134557
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Flaxman Sports Centre",
@@ -379,7 +447,8 @@
           "address": "Carew Street, London SE5 9DF",
           "latitude": 51.471872,
           "longitude": -0.099938
-        }
+        },
+        "sports": ["badminton", "squash"]
       },
       {
         "venue_name": "Streatham Ice And Leisure Centre",
@@ -389,7 +458,8 @@
           "address": "390 Streatham High Road, London SW16 6HX",
           "longitude": -0.130486,
           "latitude": 51.423757
-        }
+        },
+        "sports": ["badminton"]
       }
     ]
   },
@@ -405,7 +475,8 @@
           "address": "Torquay Street, London, W2 5EW",
           "longitude": -0.192178,
           "latitude": 51.520567
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Church Street Community Leisure Centre",
@@ -415,7 +486,8 @@
           "address": "Fisherton Street, London, NW8 8BF",
           "longitude": -0.171077,
           "latitude": 51.524226
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Jubilee Community Leisure Centre",
@@ -425,7 +497,8 @@
           "address": "Lancefield Street, London, W10 4NW",
           "longitude": -0.20576,
           "latitude": 51.528655
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Little Venice Sports Centre",
@@ -435,7 +508,8 @@
           "address": "10 Crompton Street, London, W2 1ND",
           "longitude": -0.176757,
           "latitude": 51.523763
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Moberly Sports Centre",
@@ -445,7 +519,8 @@
           "address": "25 Chamberlayne Road, London, NW10 3NB",
           "longitude": -0.216731,
           "latitude": 51.531241
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Reynolds Sports Centre",
@@ -455,7 +530,8 @@
           "address": "Gunnersbury Lane, London, W3 8EY",
           "longitude": -0.281007,
           "latitude": 51.50541
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "St Augustine’s Sports Centre",
@@ -465,7 +541,8 @@
           "address": "Oxford Road, London, NW6 5AW",
           "longitude": -0.198036,
           "latitude": 51.533321
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Queen Mother Sports Centre",
@@ -475,7 +552,8 @@
           "address": "Vauxhall Bridge, London, SW1V 1EL",
           "longitude": -0.140864,
           "latitude": 51.493642
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Vale Farm Sports Centre",
@@ -485,7 +563,8 @@
           "address": "Watford Road Wembley West London",
           "longitude": -0.316373,
           "latitude": 51.558198
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Greenford Sports Centre",
@@ -495,7 +574,8 @@
           "address": "Greenford Sports Centre,Lady Margaret Road, UB1 2NP",
           "longitude": -0.37196,
           "latitude": 51.53043
-        }
+        },
+        "sports": ["badminton"]
       },
       {
         "venue_name": "Harrow Leisure Centre",
@@ -505,7 +585,25 @@
           "address": "Christchurch Avenue, Harrow, HA3 5BD",
           "longitude": -0.327441,
           "latitude": 51.592524
-        }
+        },
+        "sports": ["badminton"]
+      }
+    ]
+  },
+  {
+    "organisation": "South Croydon Sports Club",
+    "organisation_website": "https://www.southcroydonsportsclub.com/",
+    "venues": [
+      {
+        "venue_name": "South Croydon Sports Club  ",
+        "slug": "southcroydonsportsclub",
+        "location": {
+          "postcode": "CR2 7ES",
+          "address": "Beech Copse, Birdhurst Rise, South Croydon, Surrey, CR2 7ES",
+          "longitude": -0.08765,
+          "latitude": 51.362347
+        },
+        "sports": ["badminton", "tennis"]
       }
     ]
   }

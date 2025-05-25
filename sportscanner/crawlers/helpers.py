@@ -1,8 +1,8 @@
 import asyncio
 from typing import Any, List, Tuple, Union
-
-from sportscanner.crawlers.parsers.schema import UnifiedParserSchema
-
+import pandas as pd
+from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
+from tabulate import tabulate
 
 async def SportscannerCrawlerBot(
     *coroutine_lists: Union[List[Any], Any]
@@ -24,3 +24,18 @@ async def SportscannerCrawlerBot(
 
     # Run only non-empty coroutines with asyncio.gather
     return await asyncio.gather(*coroutines)
+
+
+def override(func):
+    """
+    A simple decorator to mark methods as overriding a parent method.
+    Provides a visual cue but no runtime or static analysis checks
+    in Python versions prior to 3.12 without `typing_extensions`.
+    """
+    return func
+
+
+def printdf(df: pd.DataFrame):
+    """Prints pandas dataframe as a Readable output on console"""
+    print(tabulate(df, headers='keys', tablefmt='simple_grid', showindex=False))
+
