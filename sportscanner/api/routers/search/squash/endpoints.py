@@ -11,7 +11,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.storage.postgres.tables import BadmintonMasterTable
+from sportscanner.storage.postgres.tables import SquashMasterTable
 from sportscanner.api.routers.search.badminton.schemas import SearchCriteria
 from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.crawlers.pipeline import *
@@ -67,20 +67,20 @@ async def search(
     current_timestamp = datetime.now()
 
     datetime_expr = func.to_timestamp(
-        func.concat(BadmintonMasterTable.date, text("' '"),
-                    BadmintonMasterTable.starting_time),
+        func.concat(SquashMasterTable.date, text("' '"),
+                    SquashMasterTable.starting_time),
         text("'YYYY-MM-DD HH24:MI:SS'"),
     )
 
     slots = db.get_all_rows(
         db.engine,
-        BadmintonMasterTable,
-        db.select(BadmintonMasterTable)
-        .where(BadmintonMasterTable.composite_key.in_(composite_keys))
-        .where(BadmintonMasterTable.spaces > 0)  # Ignore empty courts
-        .where(BadmintonMasterTable.starting_time >= filters.timeRange.starting)
-        .where(BadmintonMasterTable.ending_time <= filters.timeRange.ending)
-        .where(BadmintonMasterTable.date.in_(filters.dates))
+        SquashMasterTable,
+        db.select(SquashMasterTable)
+        .where(SquashMasterTable.composite_key.in_(composite_keys))
+        .where(SquashMasterTable.spaces > 0)  # Ignore empty courts
+        .where(SquashMasterTable.starting_time >= filters.timeRange.starting)
+        .where(SquashMasterTable.ending_time <= filters.timeRange.ending)
+        .where(SquashMasterTable.date.in_(filters.dates))
         .where(
             datetime_expr > current_timestamp
         ),  # Ensures only future slots are returned

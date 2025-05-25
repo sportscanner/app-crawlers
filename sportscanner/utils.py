@@ -61,3 +61,4 @@ if __name__ == "__main__":
     """Write a test here for calculating consecutive slots"""
     logging.info("Attempting load of raw mappings from json file")
     _tmp: schemas.SportsVenueMappingModel = get_sports_venue_mappings_from_raw()
+    print(_tmp)

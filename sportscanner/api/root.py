@@ -11,6 +11,10 @@ from sportscanner.api.routers.geolocation.endpoints import router as Geolocation
 from sportscanner.api.routers.search.badminton.endpoints import (
     router as SearchBadmintonRouter,
 )
+from sportscanner.api.routers.search.squash.endpoints import (
+    router as SearchSquashRouter,
+)
+
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 import httpx
@@ -54,6 +58,10 @@ app.add_middleware(
 
 app.include_router(
     router=SearchBadmintonRouter, prefix="/search/badminton", tags=["Search"]
+)
+
+app.include_router(
+    router=SearchSquashRouter, prefix="/search/squash", tags=["Search"]
 )
 
 app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])

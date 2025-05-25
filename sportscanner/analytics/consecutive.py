@@ -7,11 +7,10 @@ from pydantic import BaseModel
 from sqlmodel import select
 
 from sportscanner.storage.postgres.database import (
-    SportScanner,
-    SportsVenue,
     engine,
     get_all_rows,
 )
+from sportscanner.storage.postgres.tables import BadmintonMasterTable, SportsVenue
 from sportscanner.utils import timeit
 
 
@@ -36,7 +35,7 @@ def find_consecutive_slots(
     ending_time: time = time(22, 00),
     starting_date: date = datetime.now().date(),
     ending_date: date = datetime.now().date() + timedelta(days=3),
-) -> List[List[SportScanner]]:
+) -> List[List[BadmintonMasterTable]]:
     """Finds consecutively overlapping slots i.e. end time of one slot overlaps with start time of
     another and calculates the `n` consecutive slots
     Returns: List of grouped consecutively occurring slots
@@ -44,13 +43,13 @@ def find_consecutive_slots(
 
     slots = get_all_rows(
         engine,
-        SportScanner,
-        select(SportScanner)
-        .where(SportScanner.spaces > 0)
-        .where(SportScanner.starting_time >= starting_time)
-        .where(SportScanner.ending_time <= ending_time)
-        .where(SportScanner.date >= starting_date)
-        .where(SportScanner.date <= ending_date),
+        BadmintonMasterTable,
+        select(BadmintonMasterTable)
+        .where(BadmintonMasterTable.spaces > 0)
+        .where(BadmintonMasterTable.starting_time >= starting_time)
+        .where(BadmintonMasterTable.ending_time <= ending_time)
+        .where(BadmintonMasterTable.date >= starting_date)
+        .where(BadmintonMasterTable.date <= ending_date),
     )
     sports_centre_lists = get_all_rows(engine, SportsVenue, select(SportsVenue))
     dates: List[date] = list(set([row.date for row in slots]))
@@ -101,7 +100,7 @@ def find_consecutive_slots(
 
 @timeit
 def format_consecutive_slots_groupings(
-    consecutive_slots: List[List[SportScanner]],
+    consecutive_slots: List[List[BadmintonMasterTable]],
 ) -> List[ConsecutiveSlotsCarousalDisplay]:
     temp = []
     sports_venues: List[SportsVenue] = get_all_rows(
@@ -116,8 +115,8 @@ def format_consecutive_slots_groupings(
         display_message_slots_starting_times: str = (
             "Slots starting at " f"{', '.join(gather_slots_starting_times)}"
         )
-        initial_slot_in_group: SportScanner = group_for_consecutive_slots[0]
-        final_slot_in_group: SportScanner = group_for_consecutive_slots[0]
+        initial_slot_in_group: BadmintonMasterTable = group_for_consecutive_slots[0]
+        final_slot_in_group: BadmintonMasterTable = group_for_consecutive_slots[0]
         # replacing slug with names
         if initial_slot_in_group.venue_slug in venue_slug_map:
             # Replace venue_slug with the corresponding slug from SportsVenue

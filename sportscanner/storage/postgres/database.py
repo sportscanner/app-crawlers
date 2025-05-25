@@ -1,21 +1,14 @@
-import json
-import os
 import uuid
-from datetime import date, datetime, time, timedelta
 from enum import Enum
-from functools import cache
-from typing import List, Optional
-from urllib.response import addinfo
 
 import sqlmodel
 from loguru import logger as logging
-from pydantic import UUID4, ValidationError
 from sqlalchemy import Engine, text
-from sqlmodel import Field, Session, SQLModel, create_engine, delete, select
 
-from sportscanner import config
+import sportscanner.storage.postgres.tables
 from sportscanner.schemas import SportsVenueMappingModel
 from sportscanner.storage.postgres.utils import *
+from sportscanner.storage.postgres.tables import *
 from sportscanner.utils import get_sports_venue_mappings_from_raw, timeit
 from sportscanner.variables import settings
 
@@ -30,48 +23,6 @@ class PipelineRefreshStatus(Enum):
     RUNNING = "Running"
     COMPLETED = "Completed"
     OBSOLETE = "Obsolete"
-
-
-class SportScanner(SQLModel, table=True):
-    """Table contains records of slots fetched from sport centres
-    Original Model: UnifiedParserSchema -> Mapped to: SportScanner
-    """
-
-    uuid: str = Field(primary_key=True)
-    category: str
-    starting_time: time
-    ending_time: time
-    date: date
-    price: str
-    spaces: int
-    last_refreshed: datetime
-    booking_url: str | None
-
-    composite_key: str = Field(default=None, foreign_key="sportsvenue.composite_key")
-
-
-class SportsVenue(SQLModel, table=True):
-    """Table containing information on Sports centres
-    Root Raw Data Model: SportsVenueMappingModel -> flattened to postgres Table: sportsvenue
-    """
-
-    composite_key: str = Field(primary_key=True)
-    organisation: str
-    organisation_website: str
-    venue_name: str
-    slug: str
-    postcode: Optional[str]
-    address: Optional[str]
-    latitude: float
-    longitude: float
-
-
-class RefreshMetadata(SQLModel, table=True):
-    """Table containing Refresh data, and if refresh is in progress"""
-
-    id: int = Field(default=None, primary_key=True)
-    last_refreshed: datetime
-    refresh_status: str
 
 
 def get_refresh_status_for_pipeline(engine: Engine):
@@ -133,13 +84,6 @@ def pipeline_refresh_decision_based_on_interval(
         session.commit()
 
 
-def create_db_and_tables(engine):
-    """Creates non-existing tables in db using Class arguments `table=True` which
-    registers SQLModel inheritted class into a Table schema
-    """
-    SQLModel.metadata.create_all(engine)
-
-
 def load_sports_centre_mappings(engine):
     """Loads sports centre lookup sheet to Table: SportsVenue"""
     sports_centre_lists: SportsVenueMappingModel = get_sports_venue_mappings_from_raw()
@@ -160,6 +104,7 @@ def load_sports_centre_mappings(engine):
                         address=venue.location.address,
                         latitude=venue.location.latitude,
                         longitude=venue.location.longitude,
+                        sports=venue.sports
                     )
                 )
         session.commit()
@@ -180,15 +125,15 @@ def truncate_table(engine, table: sqlmodel.main.SQLModelMetaclass):
 def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str):
     """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:
-        statement = delete(SportScanner).where(
-            SportScanner.organisation == organisation
+        statement = delete(BadmintonMasterTable).where(
+            BadmintonMasterTable.organisation == organisation
         )
         results = session.exec(statement)
         logging.debug(
             f"Loading fresh {len(slots_from_all_venues)} records to organisation: {organisation}"
         )
         for slots in slots_from_all_venues:
-            orm_object = SportScanner(
+            orm_object = BadmintonMasterTable(
                 uuid=str(uuid.uuid4()),
                 venue_slug=slots.venue_slug,
                 category=slots.category,
@@ -209,11 +154,11 @@ def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str
 def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues):
     """Inserts the slots for an Organisation one by one into the table: SportScanner"""
     with Session(engine) as session:
-        statement = delete(SportScanner)
+        statement = delete(BadmintonMasterTable)
         results = session.exec(statement)
         logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
         for slots in slots_from_all_venues:
-            orm_object = SportScanner(
+            orm_object = BadmintonMasterTable(
                 uuid=str(uuid.uuid4()),
                 composite_key=slots.composite_key,
                 category=slots.category,
@@ -229,6 +174,49 @@ def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues):
         session.commit()
 
 
+@timeit
+def truncate_and_reload_all(slots_from_all_venues, TableForLoading: sqlmodel.main.SQLModelMetaclass):
+    """Inserts the slots for an Organisation one by one into the table: SportScanner"""
+    with Session(engine) as session:
+        statement = delete(TableForLoading)
+        results = session.exec(statement)
+        logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
+        for slots in slots_from_all_venues:
+            orm_object = TableForLoading(
+                uuid=str(uuid.uuid4()),
+                composite_key=slots.composite_key,
+                category=slots.category,
+                starting_time=slots.starting_time,
+                ending_time=slots.ending_time,
+                date=slots.date,
+                price=slots.price,
+                spaces=slots.spaces,
+                last_refreshed=slots.last_refreshed,
+                booking_url=slots.booking_url,
+            )
+            session.add(orm_object)
+        session.commit()
+
+
+def recreate_staging_table():
+    with engine.begin() as conn:
+        # Drop the table if it exists
+        conn.exec_driver_sql("DROP TABLE IF EXISTS badminton_staging;")
+        # Recreate using SQLModel metadata
+        BadmintonStagingTable.metadata.create_all(bind=conn)
+
+def swap_tables(master: str, staging: str, archive: str):
+    """Swap staging table into master position."""
+    logging.warning(f"Starting swap between master: `{master}` and staging: `{staging}` - Archive: `{archive}`")
+    with engine.connect() as conn:
+        with conn.begin():
+            conn.execute(text(f"DROP TABLE IF EXISTS {archive} CASCADE;"))
+            conn.execute(text(f"ALTER TABLE {master} SET SCHEMA archive;"))
+            # conn.execute(text(f"ALTER TABLE {staging} DROP CONSTRAINT IF EXISTS {master}_pkey;"))
+            conn.execute(text(f"ALTER TABLE {staging} SET SCHEMA public;"))
+
+
+
 def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select):
     """Returns all rows from full table or selected columns
     Select columns via: select(table.columnA, table.columnB)
@@ -238,20 +226,62 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
     return rows
 
 
-@cache
-def initialize_db_and_tables(engine):
-    logging.info(f"Creating database: `{database_name}`")
-    create_db_and_tables(engine)
-    update_refresh_status_for_pipeline(
-        engine, refresh_status=PipelineRefreshStatus.OBSOLETE
+def create_db_and_tables(engine):
+    """Creates required schemas (if not exist) and then tables."""
+    required_schemas = ["public", "staging", "archive"]  # Replace with your actual schemas
+
+    with engine.connect() as conn:
+        for schema in required_schemas:
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+        conn.commit()
+
+    SQLModel.metadata.create_all(
+        bind=engine,
+        tables=[
+            SportsVenue.__table__,
+            BadmintonMasterTable.__table__,
+            BadmintonStagingTable.__table__,
+            SquashMasterTable.__table__,
+            SquashStagingTable.__table__,
+        ]
     )
-    truncate_table(engine, table=SportScanner)
+
+
+def initialise_badminton_staging():
+    """Creates non-existing tables in db using Class arguments `table=True` which
+    registers SQLModel inheritted class into a Table schema
+    """
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS staging.badminton;")
+    SQLModel.metadata.create_all(
+        bind=engine,
+        tables=[
+            BadmintonStagingTable.__table__,
+        ]
+    )
+
+def initialise_squash_staging():
+    """Creates non-existing tables in db using Class arguments `table=True` which
+    registers SQLModel inheritted class into a Table schema
+    """
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS staging.squash;")
+    SQLModel.metadata.create_all(
+        bind=engine,
+        tables=[
+            SquashStagingTable.__table__,
+        ]
+    )
+
+
+def initialize_db_and_tables(engine):
+    create_db_and_tables(engine)
     truncate_table(engine, table=SportsVenue)
     load_sports_centre_mappings(engine)
 
 
 def get_all_sports_venues(engine) -> List[SportsVenue]:
-    sports_venues: List[db.SportsVenue] = get_all_rows(
+    sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue] = get_all_rows(
         engine, SportsVenue, select(SportsVenue)
     )
     return sports_venues
