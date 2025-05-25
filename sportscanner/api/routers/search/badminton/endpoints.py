@@ -11,6 +11,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
+from sportscanner.storage.postgres.tables import BadmintonMasterTable
 from sportscanner.api.routers.search.badminton.schemas import SearchCriteria
 from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.crawlers.pipeline import *
@@ -21,18 +22,6 @@ from sportscanner.storage.postgres.dataset_transform import (
 from sportscanner.variables import settings, urljoin
 
 router = APIRouter()
-
-is_postgres = "postgresql" in settings.DB_CONNECTION_STRING
-if is_postgres:
-    # PostgreSQL: Use to_timestamp() with CONCAT
-    datetime_expr = func.to_timestamp(
-        func.concat(db.SportScanner.date, text("' '"), db.SportScanner.starting_time),
-        text("'YYYY-MM-DD HH24:MI:SS'"),
-    )
-else:
-    # SQLite: Use datetime() to combine date + time
-    datetime_expr = func.datetime(db.SportScanner.date, db.SportScanner.starting_time)
-
 
 @router.post("/")
 async def search(
@@ -76,15 +65,22 @@ async def search(
         composite_keys = [x["venue"]["composite_key"] for x in data]
 
     current_timestamp = datetime.now()
+
+    datetime_expr = func.to_timestamp(
+        func.concat(BadmintonMasterTable.date, text("' '"),
+                    BadmintonMasterTable.starting_time),
+        text("'YYYY-MM-DD HH24:MI:SS'"),
+    )
+
     slots = db.get_all_rows(
-        engine,
-        db.SportScanner,
-        db.select(db.SportScanner)
-        .where(db.SportScanner.composite_key.in_(composite_keys))
-        .where(db.SportScanner.spaces > 0)  # Ignore empty courts
-        .where(db.SportScanner.starting_time >= filters.timeRange.starting)
-        .where(db.SportScanner.ending_time <= filters.timeRange.ending)
-        .where(db.SportScanner.date.in_(filters.dates))
+        db.engine,
+        BadmintonMasterTable,
+        db.select(BadmintonMasterTable)
+        .where(BadmintonMasterTable.composite_key.in_(composite_keys))
+        .where(BadmintonMasterTable.spaces > 0)  # Ignore empty courts
+        .where(BadmintonMasterTable.starting_time >= filters.timeRange.starting)
+        .where(BadmintonMasterTable.ending_time <= filters.timeRange.ending)
+        .where(BadmintonMasterTable.date.in_(filters.dates))
         .where(
             datetime_expr > current_timestamp
         ),  # Ensures only future slots are returned
@@ -113,38 +109,3 @@ async def search(
         "slots": sorted_response,
     }
 
-
-# @router.get("/latest/")
-# async def trigger_search(filters: Filters):
-#     """Trigger fresh dataset refresh for specific venues and dates"""
-#     results: List[UnifiedParserSchema] = await standalone_refresh_trigger(dates=filters.dates, venues_slugs=filters.slugs)
-#     return {
-#         "statusCode": 200,
-#         "success": True,
-#         "message": "Partial dataset refresh triggered",
-#         "data": {
-#             "found": len(results),
-#             "slots": results
-#         }
-#     }
-#
-#
-# @router.get("/full-refresh/")
-# async def refresh_dataset():
-#     """Trigger fresh dataset refresh for all venues for next 1 week"""
-#     # today = date.today()
-#     # dates = [today + timedelta(days=i) for i in range(6)]
-#     # async with httpx.AsyncClient() as client:
-#     #     response = await client.get(urljoin(settings.API_BASE_URL, "/venues/"))
-#     #     json_response = response.json()
-#     # sports_venues: List[SportsVenue] = json_response.get("venues")
-#     results = await full_data_refresh_pipeline()
-#     return {
-#         "statusCode": 200,
-#         "success": True,
-#         "message": "Full dataset refresh triggered",
-#         "data": {
-#             "found": len(results),
-#             "slots": results
-#         }
-#     }
