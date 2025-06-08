@@ -606,5 +606,22 @@
         "sports": ["badminton", "tennis"]
       }
     ]
+  },
+  {
+    "organisation": "Southwark Leisure",
+    "organisation_website": "https://southwarkleisure.co.uk/",
+    "venues": [
+      {
+        "venue_name": "The Castle Leisure Centre",
+        "slug": "CAS",
+        "location": {
+          "postcode": "SE1 6FG",
+          "address": "2 St Gabriel Walk, London, SE1 6FG",
+          "longitude": -0.101664,
+          "latitude": 51.493762
+        },
+        "sports": ["badminton"]
+      }
+    ]
   }
 ]

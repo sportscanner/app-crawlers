@@ -8,12 +8,15 @@ from loguru import logger as logging
 from rich import print
 
 from sportscanner.crawlers.helpers import SportscannerCrawlerBot
+from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
+
 from sportscanner.crawlers.parsers.better.badminton.scraper import coroutines as BetterLeisureBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.activelambeth.badminton.scraper import coroutines as ActiveLambethBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.citysports.badminton.scraper import coroutines as CitySportsBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.everyoneactive.badminton.scraper import coroutines as EveryoneActiveBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import coroutines as TowerHamletsBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import coroutines as SouthwarkLeisureBadmintonScraperCoroutines
+
 from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
 from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
 
@@ -49,7 +52,8 @@ def badminton_scraping_pipeline():
             ActiveLambethBadmintonScraperCoroutines(dates),
             CitySportsBadmintonScraperCoroutines(dates),
             EveryoneActiveBadmintonScraperCoroutines(dates),
-            TowerHamletsBadmintonScraperCoroutines(dates)
+            TowerHamletsBadmintonScraperCoroutines(dates),
+            SouthwarkLeisureBadmintonScraperCoroutines(dates)
         )
     )
     # Flatten nested list structure and remove empty or failed responses
@@ -100,5 +104,5 @@ def squash_scraping_pipeline():
 
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
-    squash_scraping_pipeline()
+    # squash_scraping_pipeline()
     badminton_scraping_pipeline()

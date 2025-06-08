@@ -210,11 +210,15 @@ def swap_tables(master: str, staging: str, archive: str):
     logging.warning(f"Starting swap between master: `{master}` and staging: `{staging}` - Archive: `{archive}`")
     with engine.connect() as conn:
         with conn.begin():
+            logging.warning("Dropping existing Archive tables")
             conn.execute(text(f"DROP TABLE IF EXISTS {archive} CASCADE;"))
+            logging.warning("Moving Master table to Archive")
             conn.execute(text(f"ALTER TABLE {master} SET SCHEMA archive;"))
+            logging.warning("Moving Staging table to Master")
             # conn.execute(text(f"ALTER TABLE {staging} DROP CONSTRAINT IF EXISTS {master}_pkey;"))
             conn.execute(text(f"ALTER TABLE {staging} SET SCHEMA public;"))
-
+            logging.warning("Housekeeping: Dropping Archive Table")
+            conn.execute(text(f"DROP TABLE IF EXISTS {archive} CASCADE;"))
 
 
 def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select):
@@ -276,6 +280,10 @@ def initialise_squash_staging():
 
 def initialize_db_and_tables(engine):
     create_db_and_tables(engine)
+    truncate_table(engine, table=BadmintonMasterTable)
+    truncate_table(engine, table=SquashMasterTable)
+    truncate_table(engine, table=SquashStagingTable)
+
     truncate_table(engine, table=SportsVenue)
     load_sports_centre_mappings(engine)
 

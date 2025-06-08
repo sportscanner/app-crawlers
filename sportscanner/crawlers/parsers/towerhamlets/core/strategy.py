@@ -47,7 +47,7 @@ class TowerHamletsResponseParserStrategy(AbstractResponseParserStrategy):
         try:
             return [TowerHamletsResponseSchema(**x) for x in api_response]
         except ValidationError as e:
-            logging.error(f"Unable to apply BeWellResponseSchema to raw API json:\n{e}")
+            logging.error(f"Unable to apply TowerHamletsResponseSchema to raw API json:\n{e}")
             raise ValidationError
 
     def aggregate_court_availability(self, data: List[Slot]) -> List[dict]:
