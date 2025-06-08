@@ -54,7 +54,7 @@ class TowerHamletsResponseSchema(BaseModel):
     name: str
     description: str
     date: str
-    imageUrl: str
+    imageUrl: Optional[str] = None
     inCentre: bool
     virtual: bool
     siteId: str

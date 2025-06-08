@@ -82,7 +82,7 @@ def run(
     sport_venues_composite_ids: List[str]
 ) -> List[UnifiedParserSchema]:
 
-    allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=6)
+    allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=5)
     logging.warning(
         f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
     )
