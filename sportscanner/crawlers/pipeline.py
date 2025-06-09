@@ -104,5 +104,5 @@ def squash_scraping_pipeline():
 
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
-    # squash_scraping_pipeline()
     badminton_scraping_pipeline()
+    squash_scraping_pipeline()

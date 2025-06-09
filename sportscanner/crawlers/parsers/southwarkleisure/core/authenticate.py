@@ -26,7 +26,7 @@ def get_authorization_token() -> Optional[str]:
         )  # Correct syntax
         browser.close()
         logger.success(
-            f"Extracted Auth token for TowerHamlets website: {token}"
+            f"Extracted Auth token for Southwark council website: {token}"
         )
         return f"Bearer {token}"
 
