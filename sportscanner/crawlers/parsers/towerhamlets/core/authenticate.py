@@ -19,7 +19,7 @@ def get_authorization_token() -> Optional[str]:
         # Navigate to the target website
         page.goto("https://towerhamletscouncil.gladstonego.cloud/book")
         # Wait for the page to load (you may need to adjust this depending on the site)
-        time.sleep(1)
+        time.sleep(3)
         # Fetch the token from localStorage
         token: Optional[str] = page.evaluate(
             "window.localStorage.getItem('token');"
