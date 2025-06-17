@@ -17,8 +17,9 @@ class TimeFilter(BaseModel):
 
 class SearchCriteria(BaseModel):
     postcode: str
-    sport: str
+    sport: Optional[str] = None
     dates: List[date]
     timeRange: TimeFilter
     radius: float
     analytics: Optional[AdvancedFiltersCriteria] = None
+    sortBy: Optional[str] = "distance" # 2 options: distance/price

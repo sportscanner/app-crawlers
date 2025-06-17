@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.storage.postgres.tables import SquashMasterTable
-from sportscanner.api.routers.search.badminton.schemas import SearchCriteria
+from sportscanner.api.routers.search.squash.schemas import SearchCriteria
 from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.crawlers.pipeline import *
 from sportscanner.storage.postgres.dataset_transform import (
@@ -99,7 +99,9 @@ async def search(
         _response,
         key=lambda x: (
             datetime.strptime(x["date"], "%a, %b %d"),  # Closest date
-            x["distance"],  # Shortest location
+            x[
+                filters.sortBy
+            ],
         ),
     )
     logging.warning(f"Time taken for retrieval, transformations, sorting: {datetime.now() - current_timestamp}")
@@ -108,4 +110,3 @@ async def search(
         "resultId": f"e34f27a2-d591-486c-9a38-11111",
         "slots": sorted_response,
     }
-
