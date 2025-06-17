@@ -99,7 +99,9 @@ async def search(
         _response,
         key=lambda x: (
             datetime.strptime(x["date"], "%a, %b %d"),  # Closest date
-            x["distance"],  # Shortest location
+            x[
+                filters.sortBy
+            ],
         ),
     )
     logging.warning(f"Time taken for retrieval, transformations, sorting: {datetime.now() - current_timestamp}")
