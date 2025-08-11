@@ -12,14 +12,14 @@ def get_authorization_token() -> Optional[str]:
     with sync_playwright() as p:
         # Launch browser (use Chromium, Firefox, or Webkit)
         browser = p.chromium.launch(
-            headless=False
+            headless=True
         )  # headless=True makes the browser run in the background
         # Create a new browser page (tab)
         page = browser.new_page()
         # Navigate to the target website
         page.goto("https://towerhamletscouncil.gladstonego.cloud/book")
         # Wait for the page to load (you may need to adjust this depending on the site)
-        time.sleep(30)
+        time.sleep(2)
         # Fetch the token from localStorage
         token: Optional[str] = page.evaluate(
             "window.localStorage.getItem('token');"
