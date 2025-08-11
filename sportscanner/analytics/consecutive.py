@@ -1,7 +1,8 @@
 import itertools
 from datetime import date, datetime, time, timedelta
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+from black.lines import LeafID
 from loguru import logger as logging
 from pydantic import BaseModel
 from sqlmodel import select
@@ -12,7 +13,7 @@ from sportscanner.storage.postgres.database import (
 )
 from sportscanner.storage.postgres.tables import BadmintonMasterTable, SportsVenue
 from sportscanner.utils import timeit
-
+from rich import print
 
 class ConsecutiveSlotsCarousalDisplay(BaseModel):
     """Model to store information displayed via Card carousal"""
@@ -41,7 +42,7 @@ def find_consecutive_slots(
     Returns: List of grouped consecutively occurring slots
     """
 
-    slots = get_all_rows(
+    slots: List[BadmintonMasterTable] = get_all_rows(
         engine,
         BadmintonMasterTable,
         select(BadmintonMasterTable)
@@ -54,19 +55,18 @@ def find_consecutive_slots(
     sports_centre_lists = get_all_rows(engine, SportsVenue, select(SportsVenue))
     dates: List[date] = list(set([row.date for row in slots]))
     consecutive_slots_list = []
-    parameter_sets = [(x, y) for x, y in itertools.product(dates, sports_centre_lists)]
+    parameter_sets: List[Tuple[date, SportsVenue]] = [(x, y) for x, y in itertools.product(dates, sports_centre_lists)]
 
     for target_date, venue in parameter_sets:
-        venue = venue.slug
-        logging.debug(
-            f"Extracting consecutive slots for venue slug: {venue} / date: {target_date}"
+        logging.info(
+            f"Extracting consecutive slots for venue: {venue.venue_name} / date: {target_date}"
         )
         while True:
             consecutive_slots = []
             filtered_slots = [
                 slot
                 for slot in slots
-                if slot.venue_slug == venue and slot.date == target_date
+                if slot.composite_key == venue.composite_key and slot.date == target_date
             ]
             sorted_slots = sorted(filtered_slots, key=lambda slot: slot.starting_time)
             logging.debug(sorted_slots)
@@ -92,9 +92,7 @@ def find_consecutive_slots(
             else:
                 break  # No more consecutive slots found
 
-    logging.debug(
-        f"Top 3 Consecutive slots calculations:\n{consecutive_slots_list[:3]}"
-    )
+    print(consecutive_slots_list[:3])
     return consecutive_slots_list
 
 
@@ -144,3 +142,7 @@ def format_consecutive_slots_groupings(
         f"Top formatted consecutive slot grouping for Carousal:\n{sorted_groupings_for_consecutive_slots[:1]}"
     )
     return sorted_groupings_for_consecutive_slots
+
+
+if __name__ == "__main__":
+    find_consecutive_slots()

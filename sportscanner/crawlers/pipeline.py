@@ -20,11 +20,13 @@ from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import cor
 from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
 from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
 
+from sportscanner.crawlers.parsers.better.pickleball.scraper import coroutines as BetterLeisurePickleballScraperCoroutines
+
 from sportscanner.storage.postgres.database import (
-truncate_and_reload_all, BadmintonStagingTable, swap_tables,
-    initialise_squash_staging, initialise_badminton_staging
+truncate_and_reload_all, swap_tables,
+    initialise_squash_staging, initialise_badminton_staging, initialise_pickleball_staging
 )
-from sportscanner.storage.postgres.tables import SquashStagingTable
+from sportscanner.storage.postgres.tables import SquashStagingTable, BadmintonStagingTable, PickleballStagingTable
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
 
@@ -102,7 +104,37 @@ def squash_scraping_pipeline():
         return False
 
 
+@timeit
+def pickleball_scraping_pipeline():
+    logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    today = date.today()
+    dates = [today + timedelta(days=i) for i in range(15)]
+    logging.info(f"Finding slots for dates: {dates}")
+    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
+        SportscannerCrawlerBot(
+            BetterLeisurePickleballScraperCoroutines(dates),
+        )
+    )
+    # Flatten nested list structure and remove empty or failed responses
+    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    if all_slots:
+        logging.success(f"Total slots collected: {len(all_slots)}")
+        initialise_pickleball_staging()
+        logging.info(f"Truncating and loading all data to staging table: {PickleballStagingTable.__tablename__}")
+        truncate_and_reload_all(all_slots, PickleballStagingTable)
+        logging.warning(f"Swapping staging table, with Main table")
+        swap_tables(master = "pickleball", staging = "staging.pickleball", archive = "archive.pickleball")
+        return True
+    else:
+        logging.warning(
+            "No valid slots were found. Database update skipped (might be an issue)"
+        )
+        return False
+
+
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
     badminton_scraping_pipeline()
     squash_scraping_pipeline()
+    pickleball_scraping_pipeline()
+    logging.success("All scraping pipelines executed successfully.")

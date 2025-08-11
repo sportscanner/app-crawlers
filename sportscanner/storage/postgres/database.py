@@ -247,6 +247,8 @@ def create_db_and_tables(engine):
             BadmintonStagingTable.__table__,
             SquashMasterTable.__table__,
             SquashStagingTable.__table__,
+            PickleballMasterTable.__table__,
+            PickleballStagingTable.__table__        
         ]
     )
 
@@ -261,6 +263,19 @@ def initialise_badminton_staging():
         bind=engine,
         tables=[
             BadmintonStagingTable.__table__,
+        ]
+    )
+
+def initialise_pickleball_staging():
+    """Creates non-existing tables in db using Class arguments `table=True` which
+    registers SQLModel inheritted class into a Table schema
+    """
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS staging.pickleball;")
+    SQLModel.metadata.create_all(
+        bind=engine,
+        tables=[
+            PickleballStagingTable.__table__,
         ]
     )
 
@@ -281,8 +296,11 @@ def initialise_squash_staging():
 def initialize_db_and_tables(engine):
     create_db_and_tables(engine)
     truncate_table(engine, table=BadmintonMasterTable)
+    truncate_table(engine, table=BadmintonStagingTable)
     truncate_table(engine, table=SquashMasterTable)
     truncate_table(engine, table=SquashStagingTable)
+    truncate_table(engine, table=PickleballMasterTable)
+    truncate_table(engine, table=PickleballStagingTable)
 
     truncate_table(engine, table=SportsVenue)
     load_sports_centre_mappings(engine)

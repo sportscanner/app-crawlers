@@ -32,7 +32,7 @@ reset-database-tables:
 
 
 dev-api-server:
-	@echo "Locally running API server on localhost (connected databases: prod)"
+	@echo "Locally running API server on localhost (connected databases: gondor)"
 	@fastapi dev sportscanner/api/root.py
 
 
