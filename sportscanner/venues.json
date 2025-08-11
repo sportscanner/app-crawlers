@@ -23,7 +23,7 @@
           "latitude": 51.5114309,
           "longitude": -0.2121396
         },
-        "sports": ["badminton", "squash"]
+        "sports": ["badminton", "squash", "pickleball"]
       },
       {
         "venue_name": "Finsbury Leisure Centre",
@@ -45,10 +45,10 @@
           "latitude": 51.534244152029,
           "longitude": -0.082955257571105
         },
-        "sports": ["badminton", "squash", "tennis"]
+        "sports": ["badminton", "squash", "tennis", "pickleball"]
       },
       {
-        "venue_name": "Queensbridge Sports And  Community",
+        "venue_name": "Queensbridge Sports And Community",
         "slug": "queensbridge-sports-community-centre",
         "location": {
           "postcode": "E8 3XW",
@@ -56,7 +56,7 @@
           "latitude": 51.542135,
           "longitude": -0.071475
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Kings Hall Leisure Centre",
@@ -78,7 +78,7 @@
           "latitude": 51.5579,
           "longitude": -0.084595
         },
-        "sports": ["badminton", "squash", "tennis"]
+        "sports": ["badminton", "squash", "tennis", "pickleball"]
       },
       {
         "venue_name": "Talacre Community Sports Centre",
@@ -89,7 +89,7 @@
           "latitude": 51.547056,
           "longitude": -0.147121
         },
-        "sports": ["badminton", "pickleball"]
+        "sports": ["badminton", "pickleball", "pickleball"]
       },
       {
         "venue_name": "Leytonstone Leisure  Centre",
@@ -100,7 +100,7 @@
           "latitude": 51.5604,
           "longitude": 0.003602
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Walthamstow Leisure Centre",
@@ -111,7 +111,7 @@
           "latitude": 51.5758,
           "longitude": -0.02884
         },
-        "sports": ["badminton", "squash"]
+        "sports": ["badminton", "squash", "pickleball"]
       },
       {
         "venue_name": "Crystal Palace National Sports Centre",
@@ -122,7 +122,7 @@
           "latitude": 51.4189989,
           "longitude": -0.0677686
         },
-        "sports": ["badminton", "squash"]
+        "sports": ["badminton", "squash", "pickleball"]
       },
       {
         "venue_name": "Phoenix Fitness Centre",
@@ -133,7 +133,7 @@
           "latitude": 51.5127,
           "longitude": -0.23535
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Waltham Forest Feel Good Centre",
@@ -144,7 +144,7 @@
           "latitude": 51.5955114,
           "longitude": -0.0137085
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Copper Box Arena",
@@ -166,7 +166,7 @@
           "latitude": 51.5739526,
           "longitude": -0.2155321
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Gunnersbury Park Sports Hub",
@@ -199,7 +199,7 @@
           "longitude": 0.09666,
           "latitude": 51.486362
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Waterfront Leisure Centre",
@@ -210,7 +210,7 @@
           "latitude": 51.494047,
           "longitude": 0.063403
         },
-        "sports": ["badminton", "squash"]
+        "sports": ["badminton", "squash", "pickleball"]
       },
       {
         "venue_name": "Barking Sporthouse and Gym",
@@ -221,7 +221,7 @@
           "latitude": 51.545368,
           "longitude": 0.113014
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "East Ham Leisure Centre",
@@ -276,7 +276,7 @@
           "longitude": -0.012969,
           "latitude": 51.558892
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Barnet Copthall Leisure Centre",
@@ -343,6 +343,17 @@
           "latitude": 51.526576
         },
         "sports": ["squash"]
+      },
+      {
+        "venue_name": "Lee Valley VeloPark",
+        "slug": "lee-valley-velopark",
+        "location": {
+          "postcode": "E20 3AB",
+          "address": "Abercrombie Road, Queen Elizabeth Olympic Park, London, E20 3AB",
+          "longitude": -0.015228,
+          "latitude": 51.550397
+        },
+        "sports": ["pickleball"]
       }
     ]
   },

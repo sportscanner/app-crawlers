@@ -14,6 +14,9 @@ from sportscanner.api.routers.search.badminton.endpoints import (
 from sportscanner.api.routers.search.squash.endpoints import (
     router as SearchSquashRouter,
 )
+from sportscanner.api.routers.search.pickleball.endpoints import (
+    router as SearchPickleballRouter,
+)
 
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
@@ -62,6 +65,9 @@ app.include_router(
 
 app.include_router(
     router=SearchSquashRouter, prefix="/search/squash", tags=["Search"]
+)
+app.include_router(
+    router=SearchPickleballRouter, prefix="/search/pickleball", tags=["Search"]
 )
 
 app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])
