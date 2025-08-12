@@ -12,23 +12,27 @@ def get_authorization_token() -> Optional[str]:
     with sync_playwright() as p:
         # Launch browser (use Chromium, Firefox, or Webkit)
         browser = p.chromium.launch(
-            headless=True
+            headless=True, args=["--ignore-certificate-errors"]
         )  # headless=True makes the browser run in the background
         # Create a new browser page (tab)
-        page = browser.new_page()
+        page = browser.new_page(ignore_https_errors=True)
         # Navigate to the target website
         page.goto("https://towerhamletscouncil.gladstonego.cloud/book")
         # Wait for the page to load (you may need to adjust this depending on the site)
-        time.sleep(2)
-        # Fetch the token from localStorage
-        token: Optional[str] = page.evaluate(
-            "window.localStorage.getItem('token');"
-        )  # Correct syntax
+        time.sleep(3)
+
+        # Get cookies from the current browser context
+        cookies = page.context.cookies()
+        jwt_cookie = next((c["value"] for c in cookies if c["name"].lower() == "jwt"), None)
+
         browser.close()
-        logger.success(
-            f"Extracted Auth token for TowerHamlets website: {token}"
-        )
-        return f"Bearer {token}"
+
+        if jwt_cookie:
+            logger.success(f"Extracted JWT cookie for TowerHamlets website: {jwt_cookie}")
+            return jwt_cookie
+        else:
+            logger.error("JWT cookie not found")
+            return None
 
 if __name__ == "__main__":
     print(get_authorization_token())
