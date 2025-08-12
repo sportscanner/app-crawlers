@@ -18,7 +18,7 @@ class AdditionalRequestMetadata(BaseModel):
 
 class RequestDetailsWithMetadata(BaseModel):
     url: str
-    headers: Dict[str, str]
+    headers: Dict[str, Any]
     payload: Optional[Dict[str, Any]] = None,
     token: Optional[str] = None,
     cookies: Optional[str] = None,

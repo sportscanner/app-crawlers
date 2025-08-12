@@ -38,7 +38,9 @@ def generate_parameters_set(
 def generate_headers(token: str) -> Dict:
     return {
         "Host": f"towerhamletscouncil.gladstonego.cloud",
-        "Authorization": token,
+        "Cookie": f"Jwt={token}",
+        "x-use-sso": "1",
+        "referer": "https://towerhamletscouncil.gladstonego.cloud/book",
         # "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     }
 
