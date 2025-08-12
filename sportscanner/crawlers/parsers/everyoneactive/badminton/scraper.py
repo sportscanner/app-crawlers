@@ -1,7 +1,7 @@
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional, Dict
 from sportscanner.crawlers.helpers import override
 
@@ -12,7 +12,6 @@ from sportscanner.crawlers.parsers.everyoneactive.core.strategy import EveryoneA
 from sportscanner.crawlers.parsers.everyoneactive.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
-
 
 class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
     """
@@ -107,8 +106,9 @@ def coroutines(search_dates: List[date]):
 if __name__ == "__main__":
     logging.info("Mocking up input data (user inputs) for pipeline")
     _dates = [
-        date(2025, 5, 26)
+        date.today() + timedelta(days=2)
     ]
+    print(f"Dates to search for: {_dates}")
     _sport_venues_composite_ids = ["b03e14b9"]
     logging.info(f"Running EveryoneActiveCrawler crawler for slugs: {_sport_venues_composite_ids}")
     parsedResults = run(
