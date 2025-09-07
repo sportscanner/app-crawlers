@@ -632,6 +632,17 @@
           "latitude": 51.493762
         },
         "sports": ["badminton"]
+      },
+      {
+        "venue_name": "Canada Water Leisure Centre",
+        "slug": "CWLC",
+        "location": {
+          "postcode": "SE16 2AJ",
+          "address": "7 Deal Porters Way, London SE16 2AJ",
+          "longitude": -0.049886,
+          "latitude": 51.496851
+        },
+        "sports": ["badminton", "pickleball"]
       }
     ]
   }

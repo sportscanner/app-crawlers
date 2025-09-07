@@ -41,6 +41,10 @@ RUN make setup
 # Install Playwright browsers
 RUN pip install playwright && playwright install --with-deps chromium
 
+# Set the timezone to Europe/London
+ENV TZ=Europe/London
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Expose the port that Streamlit will run on
 EXPOSE 80
 

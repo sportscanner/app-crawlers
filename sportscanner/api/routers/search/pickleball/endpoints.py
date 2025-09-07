@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.storage.postgres.tables import PickleballMasterTable
-from sportscanner.api.routers.search.squash.schemas import SearchCriteria
+from sportscanner.api.routers.search.pickleball.schemas import SearchCriteria
 from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.crawlers.pipeline import *
 from sportscanner.storage.postgres.dataset_transform import (

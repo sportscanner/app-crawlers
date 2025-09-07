@@ -13,9 +13,9 @@ from sportscanner.crawlers.parsers.southwarkleisure.core.utils import get_utc_ti
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
 
-class SouthwarkLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
+class SouthwarkLeisurePickleballRequestStrategy(AbstractRequestStrategy):
     """
-    If there are multiple variations like badminton-40 / badminton-60 min, add those here
+    If there are multiple variations like Pickleball-40 / Pickleball-60 min, add those here
     These should be all possible requests for a particular venue
     """
     @override
@@ -24,8 +24,7 @@ class SouthwarkLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         activityIds = {
-            "CWLC": "CWACT00001", # Badminton - Canada water leisure centre
-            "CAS": "CAACT00001" # Badminton - Castle leisure centre
+            "CWLC": "CWACT00003", # Pickleball - Canada water leisure centre
         }
         activityId = activityIds.get(sports_venue.slug, None)
         from_utc, to_utc = get_utc_timestamps(fetch_date)
@@ -52,7 +51,7 @@ class SouthwarkLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
                 token=None,
                 cookies=None,
                 metadata=AdditionalRequestMetadata(
-                    category="Badminton",
+                    category="Pickleball",
                     date=fetch_date,
                     price="£11.85",
                     booking_url=f"https://southwarkcouncil.gladstonego.cloud/book/calendar/{activityId}?activityDate={formatted_date}",
@@ -66,7 +65,7 @@ class SouthwarkLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
 class SouthwarkLeisureCrawler(BaseCrawler):
     def __init__(self):
         super().__init__(
-            request_strategy = SouthwarkLeisureBadmintonRequestStrategy(),
+            request_strategy = SouthwarkLeisurePickleballRequestStrategy(),
             response_parser_strategy = SouthwarkLeisureResponseParserStrategy(),
             task_creation_strategy = SouthwarkLeisureTaskCreationStrategy(),
             organisation_website = "https://southwarkleisure.co.uk/"
@@ -88,7 +87,7 @@ def run(
 def coroutines(search_dates: List[date]):
     crawler = SouthwarkLeisureCrawler()
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
+        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="pickleball")
     if not sport_venues_to_crawl:
         logging.warning("No venues found for this organisation / sports offerings")
         return []
