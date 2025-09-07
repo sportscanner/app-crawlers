@@ -23,7 +23,8 @@ if __name__ == "__main__":
     converted_dates = [convert_sUTC_to_datetime(s) for s in sUTC_values]
 
     # Example usage
-    date = "02-03-2025"
+    date_str = "19-08-2025"
+    date = datetime.strptime(date_str, "%d-%m-%Y").date()
     from_utc, to_utc = get_utc_timestamps(date)
     print(f"fromUTC: {from_utc}, toUTC: {to_utc}")
 

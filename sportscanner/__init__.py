@@ -18,4 +18,4 @@ class Levels(Enum):
 
 
 logging.remove(0)
-logging.add(sys.stderr, level=Levels.INFO.name)
+logging.add(sys.stderr, level=Levels.DEBUG.name)

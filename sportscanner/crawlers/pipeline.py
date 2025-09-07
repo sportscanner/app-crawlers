@@ -21,6 +21,8 @@ from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as Be
 from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
 
 from sportscanner.crawlers.parsers.better.pickleball.scraper import coroutines as BetterLeisurePickleballScraperCoroutines
+from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import coroutines as SouthwarkLeisurePickleballScraperCoroutines
+
 
 from sportscanner.storage.postgres.database import (
 truncate_and_reload_all, swap_tables,
@@ -46,7 +48,7 @@ def flatten_responses(responses_from_all_sources) -> List[UnifiedParserSchema]:
 def badminton_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
     today = date.today()
-    dates = [today + timedelta(days=i) for i in range(15)]
+    dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
     responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
         SportscannerCrawlerBot(
@@ -113,6 +115,7 @@ def pickleball_scraping_pipeline():
     responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
         SportscannerCrawlerBot(
             BetterLeisurePickleballScraperCoroutines(dates),
+            SouthwarkLeisurePickleballScraperCoroutines(dates)
         )
     )
     # Flatten nested list structure and remove empty or failed responses
