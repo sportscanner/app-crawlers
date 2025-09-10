@@ -9,7 +9,7 @@ from sportscanner.storage.postgres.tables import SportsVenue
 
 class AdditionalRequestMetadata(BaseModel):
     category: str
-    date: date
+    date: Optional[date]
     price: Optional[str] = None # can be pre-defined, or extracted from response
     last_refreshed: Optional[datetime] = datetime.now()
     booking_url: Optional[str] = None # can be pre-defined, or extracted from response
