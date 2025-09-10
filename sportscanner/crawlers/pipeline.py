@@ -22,6 +22,7 @@ from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutine
 
 from sportscanner.crawlers.parsers.better.pickleball.scraper import coroutines as BetterLeisurePickleballScraperCoroutines
 from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import coroutines as SouthwarkLeisurePickleballScraperCoroutines
+from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutines as DecathlonPickleballScraperCoroutines
 
 
 from sportscanner.storage.postgres.database import (
@@ -115,7 +116,8 @@ def pickleball_scraping_pipeline():
     responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
         SportscannerCrawlerBot(
             BetterLeisurePickleballScraperCoroutines(dates),
-            SouthwarkLeisurePickleballScraperCoroutines(dates)
+            SouthwarkLeisurePickleballScraperCoroutines(dates),
+            DecathlonPickleballScraperCoroutines(dates)
         )
     )
     # Flatten nested list structure and remove empty or failed responses

@@ -645,5 +645,33 @@
         "sports": ["badminton", "pickleball"]
       }
     ]
+  },
+  {
+    "organisation": "Decathlon",
+    "organisation_website": "https://decathlon.co.uk/",
+    "venues": [
+      {
+        "venue_name": "Decathlon Surrey Quays - Court 2",
+        "slug": "493786",
+        "location": {
+          "postcode": "SE16 7FU",
+          "address": "9 Maritime St, London SE16 7FU",
+          "longitude": -0.047199,
+          "latitude": 51.498047
+        },
+        "sports": ["pickleball"]
+      },
+      {
+        "venue_name": "Decathlon Surrey Quays - Court 1",
+        "slug": "475356",
+        "location": {
+          "postcode": "SE16 7FU",
+          "address": "9 Maritime St, London SE16 7FU",
+          "longitude": -0.047199,
+          "latitude": 51.498047
+        },
+        "sports": ["pickleball"]
+      }
+    ]
   }
 ]

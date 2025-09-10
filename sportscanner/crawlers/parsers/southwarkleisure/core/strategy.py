@@ -27,7 +27,6 @@ uk_zone = pytz.timezone('Europe/London')
 class SouthwarkLeisureResponseParserStrategy(AbstractResponseParserStrategy):
     def _transform_raw_response_to_typed(self, api_response) -> SouthwarkLeisureRawSchema:
         try:
-            print(api_response)
             return SouthwarkLeisureRawSchema(**api_response)
         except ValidationError as e:
             logging.error(f"Unable to apply SouthwarkLeisureRawSchema to raw API json:\n{e}")
@@ -94,7 +93,6 @@ class SouthwarkLeisureTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
         """Fetches/Parses/Transforms data to a unified schema for a single request"""
         try:
             response = await client.get(request_details.url, headers=request_details.headers) # Add payload if request_details.payload
-            print(response.json())
             response.raise_for_status()
             content_type = response.headers.get("content-type", "")
             validated_response = validate_api_response(response, content_type, request_details.url)
