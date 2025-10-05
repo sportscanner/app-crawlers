@@ -39,6 +39,7 @@ class DecathlonResponseParserStrategy(AbstractResponseParserStrategy):
 
         unified_schema_output = []
         for activity in activities:
+            _booking_url = f"https://activities.decathlon.co.uk/en-GB/participants?sku={activity.identifier}"
             unified_schema_output.append(
                 UnifiedParserSchema(
                     category=raw_response.requestMetadata.metadata.category,
@@ -49,7 +50,7 @@ class DecathlonResponseParserStrategy(AbstractResponseParserStrategy):
                     spaces=activity.remainingAttendeeCapacity,
                     composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
                     last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
-                    booking_url=raw_response.requestMetadata.metadata.booking_url
+                    booking_url=_booking_url
                 )
             )
         return unified_schema_output

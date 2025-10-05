@@ -17,7 +17,7 @@ class Activity(BaseModel):
     childId: str
     remainingAttendeeCapacity: int
     maximumAttendeeCapacity: int
-    bookableUntilTheEnd: bool
+    bookableUntilTheEnd: Optional[bool] = None
     startDate: datetime
     endDate: datetime
     status: str
