@@ -24,37 +24,41 @@ class DecathlonPickleballRequestStrategy(AbstractRequestStrategy):
             self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
-        activityId = sports_venue.slug
+        activityIds = [
+            "6838177", # off-peak 12£
+            "7473556" # peak hours 20£
+        ]
         now_utc = datetime.datetime.now(datetime.UTC)
         formatted_timestamp: str = now_utc.strftime('%Y-%m-%dT%H:%M:%S.000Z')
-        url = (
-            f"https://api-eu.decathlon.net/activities/v2/activities/{activityId}/timeslots?timeslotStatus=PUBLISHED&excludeFull=false&startDate={formatted_timestamp}&sort%5Bby%5D=startDate&sort%5Border%5D=asc&pagination%5Bfrom%5D=0&pagination%5Blimit%5D=100"
-        )
-        logging.debug(url)
-        headers: Dict = {
-            'cache-control': 'no-cache',
-            'referer': 'https://activities.decathlon.co.uk/',
-            'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-            'accept': 'application/json, text/plain, */*',
-            'x-api-key': '666565be-422c-4b54-8138-682de3b95aee',
-        }
-        payload: Dict = {}
-        request_generator_list.append(
-            RequestDetailsWithMetadata(
-                url=url,
-                headers=headers,
-                payload=payload,
-                token=None,
-                cookies=None,
-                metadata=AdditionalRequestMetadata(
-                    category="Pickleball",
-                    date=None,
-                    price=None,
-                    booking_url=f"https://activities.decathlon.co.uk/en-GB/sport-activities/details/{activityId}",
-                    sportsCentre=sports_venue
+        for activityId in activityIds:
+            url = (
+                f"https://api-eu.decathlon.net/activities/v2/activities/{activityId}/timeslots?timeslotStatus=PUBLISHED&excludeFull=false&startDate={formatted_timestamp}&sort%5Bby%5D=startDate&sort%5Border%5D=asc&pagination%5Bfrom%5D=0&pagination%5Blimit%5D=100"
+            )
+            logging.debug(url)
+            headers: Dict = {
+                'cache-control': 'no-cache',
+                'referer': 'https://activities.decathlon.co.uk/',
+                'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                'accept': 'application/json, text/plain, */*',
+                'x-api-key': '666565be-422c-4b54-8138-682de3b95aee',
+            }
+            payload: Dict = {}
+            request_generator_list.append(
+                RequestDetailsWithMetadata(
+                    url=url,
+                    headers=headers,
+                    payload=payload,
+                    token=None,
+                    cookies=None,
+                    metadata=AdditionalRequestMetadata(
+                        category="Pickleball",
+                        date=None,
+                        price=None,
+                        booking_url=None, # populated using response data
+                        sportsCentre=sports_venue
+                    )
                 )
             )
-        )
         return request_generator_list
 
 
@@ -96,7 +100,7 @@ if __name__ == "__main__":
         date.today() + timedelta(days=2)
     ]
     print(f"Dates to search for: {_dates}")
-    _sport_venues_composite_ids = ["1fb9060d", "6f6b0f6a"]
+    _sport_venues_composite_ids = ["050928a0"]
     logging.info(f"Running DecathlonCrawler crawler for slugs: {_sport_venues_composite_ids}")
     parsedResults = run(
         crawler = DecathlonCrawler(),
