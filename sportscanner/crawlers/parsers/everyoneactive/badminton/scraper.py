@@ -44,12 +44,7 @@ class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
         logging.debug(url)
         headers: Dict = {
             'Host': 'caching.everyoneactive.com',
-            'AuthenticationKey': 'M0bi1eProB00king$',
-            'Accept': 'application/json,application/json',
-            'User-Agent': 'iPhone',
-            'Accept-Language': 'en-GB;q=1.0',
-            'Connection': 'keep-alive',
-            'Content-Type': 'application/json'
+            'AuthenticationKey': 'M0bi1eProB00king$'
         }
         payload: Dict = {}
         request_generator_list.append(

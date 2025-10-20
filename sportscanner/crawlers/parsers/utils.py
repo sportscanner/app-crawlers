@@ -7,7 +7,7 @@ def validate_api_response(response, content_type: str, url: str):
     """Validating API response based on the status codes and content type"""
     if response.status_code == 200 and "application/json" in content_type:
         json_response = response.json()
-        logging.debug(f"Raw response for url: {url} \n{json_response}")
+        logging.trace(f"Raw response for url: {url} \n{json_response}")
         return json_response
     elif "application/json" not in content_type:
         logging.error(
