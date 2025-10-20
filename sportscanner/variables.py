@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from rich import print
 
 # Check for an environment variable to determine the environment
-env_file = ".env" if os.getenv("ENV") == "prod" else "dev.env"
+env_file = ".env" if os.getenv("ENV") == "prod" else ".dev.env"
 
 
 class Settings(BaseSettings):
