@@ -1,6 +1,6 @@
 from firebase_admin import credentials, firestore, get_app, initialize_app
 from firebase_admin.exceptions import FirebaseError
-from loguru import logger as logging
+from sportscanner.logger import logging
 
 from sportscanner.variables import settings
 

@@ -3,8 +3,7 @@ from playwright.async_api import async_playwright
 from typing import Optional
 import time
 from playwright.sync_api import sync_playwright
-from loguru import logger
-from sqlalchemy.testing.plugin.plugin_base import logging
+from sportscanner.logger import logging
 
 
 def get_authorization_token() -> Optional[str]:
@@ -28,10 +27,10 @@ def get_authorization_token() -> Optional[str]:
         browser.close()
 
         if jwt_cookie:
-            logger.success(f"Extracted JWT cookie for TowerHamlets website: {jwt_cookie}")
+            logging.success(f"Extracted JWT cookie for TowerHamlets website: {jwt_cookie}")
             return jwt_cookie
         else:
-            logger.error("JWT cookie not found")
+            logging.error("JWT cookie not found")
             return None
 
 if __name__ == "__main__":

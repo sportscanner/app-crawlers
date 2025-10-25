@@ -8,7 +8,7 @@ from typing import Any, Coroutine, List
 from sportscanner.crawlers.helpers import override
 
 import httpx
-from loguru import logger as logging
+from sportscanner.logger import logging
 from rich import print
 
 import sportscanner.storage.postgres.database as db

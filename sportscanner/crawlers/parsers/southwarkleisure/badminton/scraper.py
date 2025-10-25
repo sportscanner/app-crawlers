@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from typing import List, Optional, Dict
 from sportscanner.crawlers.helpers import override
 
-from loguru import logger as logging
+from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.southwarkleisure.core.strategy import SouthwarkLeisureTaskCreationStrategy, SouthwarkLeisureResponseParserStrategy

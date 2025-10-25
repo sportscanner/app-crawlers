@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from enum import Enum
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -15,11 +16,13 @@ class TimeFilter(BaseModel):
     ending: time
 
 
+class SortByOptions(Enum):
+    distance = "distance"
+    price = "price"
+
 class SearchCriteria(BaseModel):
-    postcode: str
-    sport: Optional[str] = None
-    dates: List[date]
-    timeRange: TimeFilter
-    radius: float
+    postcode: Optional[str] = None
+    timeRange: Optional[TimeFilter] = None
+    radius: Optional[float] = None
     analytics: Optional[AdvancedFiltersCriteria] = None
-    sortBy: Optional[str] = "distance" # 2 options: distance/price
+    sortBy: Optional[SortByOptions] = "distance" # 2 options: distance/price

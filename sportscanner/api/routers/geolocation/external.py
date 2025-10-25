@@ -2,7 +2,7 @@ import json
 from typing import Optional
 
 import requests
-from loguru import logger as logging
+from sportscanner.logger import logging
 
 from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
 from sportscanner.utils import timeit

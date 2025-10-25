@@ -29,7 +29,7 @@ jobs:
         run: |
           echo "Running container for image (tag: latest) to run data crawlers pipeline"
           docker run --rm --platform=linux/amd64 --network=host --env-file .env \
-            -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-21f2f-firebase-adminsdk-g391o-7562082fdb.json \
+            -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
             ghcr.io/sportscanner/app-crawlers:latest \
             python sportscanner/crawlers/pipeline.py
   

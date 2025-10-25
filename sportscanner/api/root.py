@@ -8,14 +8,8 @@ from pydantic import BaseModel
 from starlette.requests import Request
 
 from sportscanner.api.routers.geolocation.endpoints import router as GeolocationRouter
-from sportscanner.api.routers.search.badminton.endpoints import (
-    router as SearchBadmintonRouter,
-)
-from sportscanner.api.routers.search.squash.endpoints import (
-    router as SearchSquashRouter,
-)
-from sportscanner.api.routers.search.pickleball.endpoints import (
-    router as SearchPickleballRouter,
+from sportscanner.api.routers.search.endpoints import (
+    router as SearchRouter,
 )
 
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
@@ -60,14 +54,7 @@ app.add_middleware(
 )
 
 app.include_router(
-    router=SearchBadmintonRouter, prefix="/search/badminton", tags=["Search"]
-)
-
-app.include_router(
-    router=SearchSquashRouter, prefix="/search/squash", tags=["Search"]
-)
-app.include_router(
-    router=SearchPickleballRouter, prefix="/search/pickleball", tags=["Search"]
+    router=SearchRouter, prefix="/search", tags=["Search"]
 )
 
 app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])

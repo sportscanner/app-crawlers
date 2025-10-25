@@ -1,9 +1,22 @@
-# logger.py
-from loguru import logger
+# logging.py
 import sys
-# Configure the logger
-logger.remove()  # Removes the default logger configuration
-logger.add(sys.stdout, level="INFO")  # Adds a custom handler (e.g., stdout)
-logger.add("my_logfile.log", level="DEBUG", rotation="1 week")  # Adds a file handler
+from enum import Enum
+from loguru import logger as logging
+
+class Levels(Enum):
+    """Loguru log levels and severity config"""
+
+    TRACE = 5
+    DEBUG = 10
+    INFO = 20
+    SUCCESS = 25
+    WARNING = 30
+    ERROR = 40
+    CRITICAL = 50
+
+LOGGING_LEVEL = Levels.INFO.value
+
+logging.remove(0)
+logging.add(sys.stdout, level=LOGGING_LEVEL)
 
 # Optionally, you can customize more options like format, backtrace, and diagnose.

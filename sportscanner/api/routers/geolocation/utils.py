@@ -1,6 +1,5 @@
 import geopy.distance
-from loguru import logger as logging
-
+from sportscanner.logger import logging
 
 def calculate_distance_in_miles(
     locationA: tuple[float, float], locationB: tuple[float, float]
