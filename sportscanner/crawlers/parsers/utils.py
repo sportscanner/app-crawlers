@@ -1,4 +1,4 @@
-from loguru import logger as logging
+from sportscanner.logger import logging
 from datetime import date, timedelta
 from typing import List
 

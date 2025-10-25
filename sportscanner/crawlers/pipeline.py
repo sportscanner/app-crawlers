@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from math import lgamma
 from typing import Any, List, Tuple, Union
 
-from loguru import logger as logging
+from sportscanner.logger import logging
 from rich import print
 
 from sportscanner.crawlers.helpers import SportscannerCrawlerBot

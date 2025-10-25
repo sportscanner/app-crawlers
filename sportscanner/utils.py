@@ -5,7 +5,7 @@ from functools import wraps
 from time import time as timer
 from typing import List, Optional
 
-from loguru import logger as logging
+from sportscanner.logger import logging
 from pydantic import BaseModel, ValidationError
 from rich import print
 from sqlmodel import select

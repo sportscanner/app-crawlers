@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from loguru import logger as logging
+from sportscanner.logger import logging
 from rich import print
 
 from sportscanner.api.routers.users.schema.user import (UserInCreate)

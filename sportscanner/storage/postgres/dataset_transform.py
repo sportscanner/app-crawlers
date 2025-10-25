@@ -48,11 +48,13 @@ def group_slots_by_attributes(slots, attributes):
     return grouped_slots
 
 
-def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_reference):
+def sort_and_format_grouped_slots_for_ui(
+        grouped_slots, distance_from_venues_reference
+        ) -> List[dict]:
     processed_slots: List = []
     for groups in grouped_slots:
         # Sort the groups based on 'date' and 'starting_time'
-        sorted_slots_in_group: List[sportscanner.storage.postgres.tables.BadmintonMasterTable] = sorted(
+        sorted_slots_in_group = sorted(
             groups, key=attrgetter("date", "starting_time")
         )
 
@@ -79,6 +81,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
                     "endingTime": x.ending_time.strftime("%H:%M"),
                     "available": _available,
                     "bookingUrl": x.booking_url,
+                    "price": x.price,
                 }
             )
 
@@ -87,6 +90,7 @@ def sort_and_format_grouped_slots_for_ui(grouped_slots, distance_from_venues_ref
         lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key, None)
         processed_slots.append(
             {
+                "composite_key": earliest_slot_in_group.composite_key,
                 "venue": lookup_data.get("venue_name", ""),
                 "address": lookup_data.get("address", ""),
                 "distance": distance_from_venues_reference.get(

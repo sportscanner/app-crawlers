@@ -3,7 +3,7 @@ from datetime import date, datetime, time, timedelta
 from typing import List, Optional, Tuple
 
 from black.lines import LeafID
-from loguru import logger as logging
+from sportscanner.logger import logging
 from pydantic import BaseModel
 from sqlmodel import select
 

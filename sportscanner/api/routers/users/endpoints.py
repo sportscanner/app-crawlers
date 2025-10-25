@@ -5,7 +5,7 @@ from fastapi import (
     Request,
     status,
 )
-from loguru import logger as logging
+from sportscanner.logger import logging
 from pydantic import BaseModel
 from rich import print
 from typing import List

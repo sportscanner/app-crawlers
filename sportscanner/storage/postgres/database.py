@@ -2,7 +2,7 @@ import uuid
 from enum import Enum
 
 import sqlmodel
-from loguru import logger as logging
+from sportscanner.logger import logging
 from sqlalchemy import Engine, text
 
 import sportscanner.storage.postgres.tables
@@ -221,12 +221,15 @@ def swap_tables(master: str, staging: str, archive: str):
             conn.execute(text(f"DROP TABLE IF EXISTS {archive} CASCADE;"))
 
 
-def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select):
+def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select, params=None):
     """Returns all rows from full table or selected columns
     Select columns via: select(table.columnA, table.columnB)
     """
     with Session(engine) as session:
-        rows = session.exec(expression).all()
+        if params:
+            rows = session.exec(expression, **params).all()
+        else:
+            rows = session.exec(expression).all()
     return rows
 
 

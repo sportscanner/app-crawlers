@@ -6,7 +6,7 @@ from sqlalchemy import any_
 
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, UnifiedParserSchema, RawResponseData
-from loguru import logger
+from sportscanner.logger import logging
 import asyncio
 import sportscanner.storage.postgres.database as db
 from sqlmodel import col, select
@@ -73,12 +73,12 @@ class BaseCrawler(ABC):
                 )
                 all_tasks.extend(item_tasks)
 
-            logger.info(f"Total number of concurrent request tasks for {self.organisation_website} : {len(all_tasks)}")
+            logging.info(f"Total number of concurrent request tasks for {self.organisation_website} : {len(all_tasks)}")
             responses = await asyncio.gather(*all_tasks)
             successful_responses = []
             for idx, response in enumerate(responses):
                 if isinstance(response, Exception):
-                    logger.error(f"Task {idx} failed with error: {response}")
+                    logging.error(f"Task {idx} failed with error: {response}")
                 else:
                     successful_responses.append(response)
             flattened_responses = list(itertools.chain.from_iterable(successful_responses))
@@ -88,7 +88,7 @@ class BaseCrawler(ABC):
     def ScraperCoroutines(self, sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue], dates: List[date]) -> Coroutine[Any, Any, list[UnifiedParserSchema]]:
         parameter_sets: List[Tuple[
             sportscanner.storage.postgres.tables.SportsVenue, date]] = list(itertools.product(sports_venues, dates))
-        logger.info(
+        logging.info(
             f"Crawling for {len(sports_venues)} items across {len(dates)} dates. Total parameter sets: {len(parameter_sets)}"
         )
         return self._send_concurrent_requests(parameter_sets)
@@ -96,13 +96,13 @@ class BaseCrawler(ABC):
     @timeit
     def crawl(self, sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue], dates: List[date]) -> List[UnifiedParserSchema]:
         if not sports_venues or not dates:
-            logger.warning("No items or dates to crawl.")
+            logging.warning("No items or dates to crawl.")
             return []
         coroutines = self.ScraperCoroutines(sports_venues, dates)
         responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
             coroutines
         )
-        logger.debug(f"Unified parser schema mapped responses count: {len(responses_from_all_sources)}")
+        logging.debug(f"Unified parser schema mapped responses count: {len(responses_from_all_sources)}")
         return responses_from_all_sources
 
     def query_sport_venues_details(self, composite_ids: List[str]) -> List[
@@ -117,7 +117,7 @@ class BaseCrawler(ABC):
             .where(sportscanner.storage.postgres.tables.SportsVenue.organisation_website == self.organisation_website)
             .where(col(sportscanner.storage.postgres.tables.SportsVenue.composite_key).in_(composite_ids)),
         )
-        logger.success(
+        logging.success(
             f"{len(sports_centre_lists)} Sports venue data queried from database for {self.organisation_website}"
         )
         return sports_centre_lists
@@ -131,7 +131,7 @@ class BaseCrawler(ABC):
             .where(sportscanner.storage.postgres.tables.SportsVenue.organisation_website == self.organisation_website)
             .where(sport == any_(sportscanner.storage.postgres.tables.SportsVenue.sports))
         )
-        logger.success(
+        logging.success(
             f"{len(sports_centre_lists)} Sports venue data queried from database for {self.organisation_website}"
         )
         return sports_centre_lists
