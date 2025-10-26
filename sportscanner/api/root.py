@@ -18,21 +18,22 @@ import httpx
 
 
 description = """
-Discover, Compare, and Book Sports Facilities Across London
+## Sportscanner API
 
-### Sportscanner API
+This aggregator API is a comprehensive platform designed to help sports enthusiasts find and book badminton, squash, and pickleball courts across London with ease.
 
 You will be able to:
 
-* **Search for sports bookings and drill down using advanced filters**
-* **Find available playing venues which are covered under the search**
+* Search for Badminton, Squash and Pickleball court bookings across London
+* Find Venues near you that offers different types of sports, and amneties
+* Compare prices, facilities, and peak/off-peak times. Book directly through venue links
 """
 
 app = FastAPI(
     title="Sportscanner",
     description=description,
-    summary="API to fetch sports booking availability, analytics, and advanced filters",
-    version="0.0.1",
+    summary="Find Badminton, Squash, and Pickleball facilities; and available courts for hire across London",
+    version="1.0.0",
     contact={
         "name": "Sportscanner (dev)",
         "url": "https://www.linkedin.com/company/sportscanner/",
