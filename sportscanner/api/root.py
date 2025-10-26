@@ -64,8 +64,7 @@ app.include_router(
     router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"]
 )
 
-app.include_router(router=UsersRouter, prefix="/user", tags=["Authentication"])
-
+app.include_router(router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False)
 
 @app.get("/", tags=["Root"])
 async def root():
