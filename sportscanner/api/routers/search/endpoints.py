@@ -1,10 +1,11 @@
 from sportscanner.api.routers.core.schemas import SportscannerSupportedSports
 from sportscanner.logger import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from typing import List, Optional
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Path
+from fastapi_cache.decorator import cache
 from rich import print
 from sqlalchemy import case, func, text
 from sqlmodel import col
@@ -13,8 +14,7 @@ from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.storage.postgres.tables import BadmintonMasterTable, SquashMasterTable, PickleballMasterTable
-from sportscanner.api.routers.search.schemas import SearchCriteria, SortByOptions
-from sportscanner.api.routers.users.service.userService import UserService
+from sportscanner.api.routers.search.schemas import SortByOptions
 from sportscanner.crawlers.pipeline import *
 from sportscanner.storage.postgres.dataset_transform import (
     group_slots_by_attributes,
@@ -37,38 +37,44 @@ def find_query_table(sport: SportscannerSupportedSports):
             detail=f"Unsupported sport category: {sport}",
         )
 
-@router.post("/{sport}")
+
+@router.get("/{sport}")
 async def search(
     sport: SportscannerSupportedSports = Path(
         description="Sport category to filter venues and court availability"
     ),
+    postcode: str =  Query(...,description="UK postcode to search nearby venues from"),
     date: date =  Query(...,description="Date to filter court availability"),
-    filters: SearchCriteria = ...,
+    startingTime: Optional[time] = Query(time(hour=6, minute=0), description="Starting time to filter court availability"),
+    endingTime: Optional[time] = Query(time(hour=23, minute=30), description="Ending time to filter court availability"),
+    radius: int = Query(5, description="Search radius in miles from the specified postcode"),
+    sort: SortByOptions = Query(SortByOptions.distance, description="Sorting criteria for the results"),
+    venues: Optional[List[str]] = Query(None, description="Optional list of specific venue composite keys to filter results"),
+    consecutive: Optional[int] = Query(1, description="Number of consecutive bookings to retrieve availability for")
 ):
     """Returns all court availability relevant to specified filters passed via payload"""
     queryTable = find_query_table(sport)
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(
-                urljoin(
-                    settings.API_BASE_URL,
-                    f"/venues/near?postcode={filters.postcode}&distance={filters.radius}",
+    if not venues:
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    urljoin(
+                        settings.API_BASE_URL,
+                        f"/venues/near?postcode={postcode}&distance={radius}",
+                    )
                 )
-            )
-            json_response: List[dict] = response.json()
-        except:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one.",
-            )
-    if filters.analytics.specifiedVenues:
-        composite_keys: List[str] = filters.analytics.specifiedVenues
-    else:
+                json_response: List[dict] = response.json()
+            except:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unable to fetch metadata - {postcode} is not a valid UK postcode. Try changing the postcode to another one.",
+                )
         composite_keys = [venue["composite_key"] for venue in json_response]
+    else:
+        composite_keys: List[str] = venues
 
     current_timestamp = datetime.now()
-
     datetime_expr = func.to_timestamp(
         func.concat(queryTable.date, text("' '"),
                     queryTable.starting_time),
@@ -81,8 +87,8 @@ async def search(
         db.select(queryTable)
         .where(queryTable.composite_key.in_(composite_keys))
         .where(queryTable.spaces > 0)  # Ignore empty courts
-        .where(queryTable.starting_time >= filters.timeRange.starting)
-        .where(queryTable.ending_time <= filters.timeRange.ending)
+        .where(queryTable.starting_time >= startingTime)
+        .where(queryTable.ending_time <= endingTime)
         .where(queryTable.date == date)
         .where(
             datetime_expr > current_timestamp
@@ -101,20 +107,26 @@ async def search(
     sorted_response = sorted(
         _response,
         key=lambda x: (
-            datetime.strptime(x["date"], "%a, %b %d"),  # Closest date
-            float(x[filters.sortBy.name].replace("£", "")) if filters.sortBy == SortByOptions.price else x[filters.sortBy.name],
+            datetime.strptime(x["date"], "%a, %b %d"),
+            float(x[sort.name].replace("£", "")) if sort == SortByOptions.price else x[sort.name],
         ),
     )
     logging.warning(f"Time taken for retrieval, transformations, sorting: {datetime.now() - current_timestamp}")
-    return sorted_response
+    return JSONResponse(
+        content=sorted_response,
+        headers={"Cache-Control": "public, max-age=300"}
+    )
 
-@router.post("/{sport}/{composite_key}")
+
+@router.get("/{sport}/{composite_key}")
 async def search(
     sport: SportscannerSupportedSports = Path(
         description="Sport category to filter venues and court availability"
     ),
+    composite_key: str = Path(..., description="Composite key identifier to filter venue court availability"),
     date: date =  Query(...,description="Date to filter court availability"),
-    composite_key: str = Path(..., description="Composite key identifier to filter venue court availability")
+    startingTime: Optional[time] = Query(time(hour=6, minute=0), description="Starting time to filter court availability"),
+    endingTime: Optional[time] = Query(time(hour=23, minute=30), description="Ending time to filter court availability")
 ):
     queryTable = find_query_table(sport)
 

@@ -15,6 +15,7 @@ from sportscanner.api.routers.search.endpoints import (
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 import httpx
+import logfire
 
 
 description = """
@@ -45,7 +46,9 @@ app = FastAPI(
     },
 )
 
-# Add CORS middleware
+logfire.configure(token='pylf_v1_eu_8R2wszN2G9Fd9957f49TF3hBlCfkzXyY5lZTKNmb1qVF')
+logfire.instrument_fastapi(app, capture_headers=True)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Replace '*' with specific origins if needed
@@ -54,17 +57,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-app.include_router(
-    router=SearchRouter, prefix="/search", tags=["Search"]
-)
-
+app.include_router(router=SearchRouter, prefix="/search", tags=["Search"])
 app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])
-
-app.include_router(
-    router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"]
-)
-
+app.include_router(router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"])
 app.include_router(router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False)
+
 
 @app.get("/", tags=["Root"])
 async def root():
