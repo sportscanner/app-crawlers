@@ -354,6 +354,17 @@
           "latitude": 51.550397
         },
         "sports": ["pickleball"]
+      },
+      {
+        "venue_name": "Sobell Leisure Centre",
+        "slug": "sobell-leisure-centre",
+        "location": {
+          "postcode": "N7 7NY",
+          "address": "Tollington Rd, London N7 7NY",
+          "longitude": -0.111574,
+          "latitude": 51.558939
+        },
+        "sports": ["pickleball", "badminton", "squash"]
       }
     ]
   },
