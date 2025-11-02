@@ -16,6 +16,7 @@ from sportscanner.crawlers.parsers.citysports.badminton.scraper import coroutine
 from sportscanner.crawlers.parsers.everyoneactive.badminton.scraper import coroutines as EveryoneActiveBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import coroutines as TowerHamletsBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import coroutines as SouthwarkLeisureBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.haringey.badminton.scraper import coroutines as HaringeyCouncilBadmintonScraperCoroutines
 
 from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
 from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
@@ -58,7 +59,8 @@ def badminton_scraping_pipeline():
             CitySportsBadmintonScraperCoroutines(dates),
             EveryoneActiveBadmintonScraperCoroutines(dates),
             TowerHamletsBadmintonScraperCoroutines(dates),
-            SouthwarkLeisureBadmintonScraperCoroutines(dates)
+            SouthwarkLeisureBadmintonScraperCoroutines(dates),
+            HaringeyCouncilBadmintonScraperCoroutines(dates)
         )
     )
     # Flatten nested list structure and remove empty or failed responses
