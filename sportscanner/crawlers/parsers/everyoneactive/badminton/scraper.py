@@ -34,7 +34,8 @@ class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
             "academy-sport": "262BADM060SH001",
             "vale-farm-sports-centre": "101BADMINTON1",
             "greenford-sports-centre": "118BADM050SH001",
-            "harrow-leisure-centre": "091BADMINT001"
+            "harrow-leisure-centre": "091BADMINT001",
+            "the-centre-slough": "208BADM060SH001"
         }
         activityId = activityIds.get(sports_venue.slug, None)
         from_utc, to_utc = get_utc_timestamps(fetch_date)

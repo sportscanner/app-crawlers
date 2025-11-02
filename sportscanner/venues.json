@@ -598,6 +598,17 @@
           "latitude": 51.592524
         },
         "sports": ["badminton"]
+      },
+      {
+        "venue_name": "The Centre (Slough)",
+        "slug": "the-centre-slough",
+        "location": {
+          "postcode": "SL1 4UT",
+          "address": "Farnham Road, Slough, SL1 4UT",
+          "longitude": -0.61463,
+          "latitude": 51.519719
+        },
+        "sports": ["badminton"]
       }
     ]
   },
@@ -660,6 +671,34 @@
           "latitude": 51.498047
         },
         "sports": ["pickleball"]
+      }
+    ]
+  },
+  {
+    "organisation": "Haringey Council",
+    "organisation_website": "https://haringey.gov.uk/",
+    "venues": [
+      {
+        "venue_name": "Broadwater Farm Community Centre",
+        "slug": "broadwater-farm-community-centre",
+        "location": {
+          "postcode": "N17 6HG",
+          "address": "Adams Road, Tottenham, London N17 6HE",
+          "longitude": -0.08448,
+          "latitude": 51.595719
+        },
+        "sports": ["badminton"]
+      },
+      {
+        "venue_name": "Tottenham Green Leisure Centre",
+        "slug": "tottenham-green-leisure-centre",
+        "location": {
+          "postcode": "N15 4JA",
+          "address": "1 Philip Lane, Tottenham, London, N15 4JA",
+          "longitude": -0.074028,
+          "latitude": 51.588183
+        },
+        "sports": ["badminton", "squash"]
       }
     ]
   }

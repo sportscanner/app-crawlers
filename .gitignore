@@ -12,6 +12,7 @@ experimental/
 # iPython Notebook files
 .ipynb_checkpoints/
 *.ipynb
+reports/
 
 # ignore credentials files/or environment variables
 credentials/
