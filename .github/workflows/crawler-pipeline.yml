@@ -2,7 +2,7 @@ name: Run Crawler Pipeline
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # This will run the workflow every hour on the hour
+    - cron: '*/20 * * * *'  # This will run the workflow every hour on the hour
   workflow_dispatch:  # Allows you to manually trigger the workflow if needed
 
 jobs:
