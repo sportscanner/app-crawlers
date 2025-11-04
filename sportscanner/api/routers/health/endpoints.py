@@ -24,7 +24,7 @@ async def scrapers_healthcheck(
         SELECT
             t2.venue_name,
             t1.date,
-            MIN(t1.last_refreshed) AS latest_refresh
+            MAX(t1.last_refreshed) AS latest_refresh
         FROM
             {sports} t1
         JOIN
