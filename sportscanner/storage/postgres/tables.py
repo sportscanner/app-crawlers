@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 from typing import List, Optional
 
 from sqlalchemy import Column, String
+import sqlalchemy
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select, Column, String
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -27,7 +28,7 @@ class BadmintonMasterTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
-    uuid: str = Field(primary_key=True)
+    uid: str = Field(primary_key=True)
     category: str
     starting_time: time
     ending_time: time
@@ -46,7 +47,7 @@ class BadmintonStagingTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
-    uuid: str = Field(primary_key=True)
+    uid: str = Field(primary_key=True)
     category: str
     starting_time: time
     ending_time: time
@@ -65,7 +66,7 @@ class SquashMasterTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
-    uuid: str = Field(primary_key=True)
+    uid: str = Field(primary_key=True)
     category: str
     starting_time: time
     ending_time: time
@@ -84,7 +85,7 @@ class SquashStagingTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
-    uuid: str = Field(primary_key=True)
+    uid: str = Field(primary_key=True)
     category: str
     starting_time: time
     ending_time: time
@@ -103,7 +104,7 @@ class PickleballMasterTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
-    uuid: str = Field(primary_key=True)
+    uid: str = Field(primary_key=True)
     category: str
     starting_time: time
     ending_time: time
@@ -122,7 +123,7 @@ class PickleballStagingTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
-    uuid: str = Field(primary_key=True)
+    uid: str = Field(primary_key=True)
     category: str
     starting_time: time
     ending_time: time

@@ -6,9 +6,9 @@ on:
   workflow_dispatch:  # Allows you to manually trigger the workflow if needed
 
 jobs:
-  run-crawler-pipeline:
+  badminton-crawler-pipeline:
     runs-on: ubuntu-latest
-    name: "Fetch latest data"
+    name: "Badminton Crawler Pipeline"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,10 +31,67 @@ jobs:
           docker run --rm --platform=linux/amd64 --network=host --env-file .env \
             -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
             ghcr.io/sportscanner/app-crawlers:latest \
-            python sportscanner/crawlers/pipeline.py
+            python sportscanner/crawlers/pipeline.py --task badminton
   
+  squash-crawler-pipeline:
+    runs-on: ubuntu-latest
+    name: "Squash Crawler Pipeline"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker and log in to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GHCR }} | docker login ghcr.io -u yasir-khalid --password-stdin
+
+      - name: Write Firebase JSON secret to file
+        run: |
+          echo "${{ secrets.FIREBASE_ADMIN_SDK_JSON }}" > /tmp/sportscanner-firebase-adminsdk.json
+
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env  # Store the content of your .env file in the secret "ENV_FILE_CONTENT"
+
+      - name: Run crawler pipeline container
+        run: |
+          echo "Running container for image (tag: latest) to run data crawlers pipeline"
+          docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+            -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
+            ghcr.io/sportscanner/app-crawlers:latest \
+            python sportscanner/crawlers/pipeline.py --task squash
+
+  pickleball-crawler-pipeline:
+    runs-on: ubuntu-latest
+    name: "Pickleball Crawler Pipeline"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker and log in to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GHCR }} | docker login ghcr.io -u yasir-khalid --password-stdin
+
+      - name: Write Firebase JSON secret to file
+        run: |
+          echo "${{ secrets.FIREBASE_ADMIN_SDK_JSON }}" > /tmp/sportscanner-firebase-adminsdk.json
+
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env  # Store the content of your .env file in the secret "ENV_FILE_CONTENT"
+
+      - name: Run crawler pipeline container
+        run: |
+          echo "Running container for image (tag: latest) to run data crawlers pipeline"
+          docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+            -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
+            ghcr.io/sportscanner/app-crawlers:latest \
+            python sportscanner/crawlers/pipeline.py --task pickleball
+
   update-hearbeart-monitor:
-    needs: run-crawler-pipeline
+    needs: 
+      - badminton-crawler-pipeline
+      - squash-crawler-pipeline
+      - pickleball-crawler-pipeline
     runs-on: ubuntu-latest
     steps:
       - name: Update heartbeat monitor
