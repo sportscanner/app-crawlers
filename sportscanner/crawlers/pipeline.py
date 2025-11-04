@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import itertools
 from datetime import date, timedelta
@@ -27,10 +28,10 @@ from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutine
 
 
 from sportscanner.storage.postgres.database import (
-truncate_and_reload_all, swap_tables,
+insert_records_to_table, truncate_and_reload_all, swap_tables,
     initialise_squash_staging, initialise_badminton_staging, initialise_pickleball_staging
 )
-from sportscanner.storage.postgres.tables import SquashStagingTable, BadmintonStagingTable, PickleballStagingTable
+from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, SquashStagingTable, BadmintonStagingTable, PickleballStagingTable
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
 
@@ -67,11 +68,8 @@ def badminton_scraping_pipeline():
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        initialise_badminton_staging()
-        logging.info(f"Truncating and loading all data to staging table: {BadmintonStagingTable.__tablename__}")
-        truncate_and_reload_all(all_slots, BadmintonStagingTable)
-        logging.warning(f"Swapping staging table, with Main table")
-        swap_tables(master = "badminton", staging = "staging.badminton", archive = "archive.badminton")
+        logging.info(f"Upserting all data to master table: {BadmintonMasterTable.__tablename__}")
+        insert_records_to_table(all_slots, BadmintonMasterTable)
         return True
     else:
         logging.warning(
@@ -96,11 +94,8 @@ def squash_scraping_pipeline():
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        initialise_squash_staging()
-        logging.info(f"Truncating and loading all data to staging table: {SquashStagingTable.__tablename__}")
-        truncate_and_reload_all(all_slots, SquashStagingTable)
-        logging.warning(f"Swapping staging table, with Main table")
-        swap_tables(master = "squash", staging = "staging.squash", archive = "archive.squash")
+        logging.info(f"Upserting all data to master table: {SquashMasterTable.__tablename__}")
+        insert_records_to_table(all_slots, SquashMasterTable)
         return True
     else:
         logging.warning(
@@ -126,11 +121,8 @@ def pickleball_scraping_pipeline():
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        initialise_pickleball_staging()
-        logging.info(f"Truncating and loading all data to staging table: {PickleballStagingTable.__tablename__}")
-        truncate_and_reload_all(all_slots, PickleballStagingTable)
-        logging.warning(f"Swapping staging table, with Main table")
-        swap_tables(master = "pickleball", staging = "staging.pickleball", archive = "archive.pickleball")
+        logging.info(f"Upserting all data to master table: {PickleballMasterTable.__tablename__}")
+        insert_records_to_table(all_slots, PickleballMasterTable)
         return True
     else:
         logging.warning(
@@ -141,7 +133,27 @@ def pickleball_scraping_pipeline():
 
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
-    badminton_scraping_pipeline()
-    squash_scraping_pipeline()
-    pickleball_scraping_pipeline()
-    logging.success("All scraping pipelines executed successfully.")
+
+    parser = argparse.ArgumentParser(description="Run SportScanner scraping pipelines")
+    parser.add_argument(
+        "--task",
+        choices=["badminton", "squash", "pickleball", "all"],
+        required=False,
+        help="Which pipeline to run"
+    )
+    args = parser.parse_args()
+
+    if args.task == "badminton":
+        logging.info("Starting Badminton scraping pipeline...")
+        badminton_scraping_pipeline()
+    elif args.task == "squash":
+        logging.info("Starting Squash scraping pipeline...")
+        squash_scraping_pipeline()
+    elif args.task == "pickleball":
+        logging.info("Starting Pickleball scraping pipeline...")
+        pickleball_scraping_pipeline()
+    else:
+        logging.info("Starting ALL scraping pipelines...")
+        badminton_scraping_pipeline()
+        squash_scraping_pipeline()
+        pickleball_scraping_pipeline()

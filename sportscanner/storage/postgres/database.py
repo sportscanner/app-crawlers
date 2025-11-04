@@ -3,7 +3,9 @@ from enum import Enum
 
 import sqlmodel
 from sportscanner.logger import logging
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, text, func
+from sqlalchemy.dialects.postgresql import insert
+import hashlib
 
 import sportscanner.storage.postgres.tables
 from sportscanner.schemas import SportsVenueMappingModel
@@ -122,58 +124,6 @@ def truncate_table(engine, table: sqlmodel.main.SQLModelMetaclass):
         )
 
 
-def delete_and_insert_slots_to_database(slots_from_all_venues, organisation: str):
-    """Inserts the slots for an Organisation one by one into the table: SportScanner"""
-    with Session(engine) as session:
-        statement = delete(BadmintonMasterTable).where(
-            BadmintonMasterTable.organisation == organisation
-        )
-        results = session.exec(statement)
-        logging.debug(
-            f"Loading fresh {len(slots_from_all_venues)} records to organisation: {organisation}"
-        )
-        for slots in slots_from_all_venues:
-            orm_object = BadmintonMasterTable(
-                uuid=str(uuid.uuid4()),
-                venue_slug=slots.venue_slug,
-                category=slots.category,
-                starting_time=slots.starting_time,
-                ending_time=slots.ending_time,
-                date=slots.date,
-                price=slots.price,
-                spaces=slots.spaces,
-                organisation=slots.organisation,
-                last_refreshed=slots.last_refreshed,
-                booking_url=slots.booking_url,
-            )
-            session.add(orm_object)
-        session.commit()
-
-
-@timeit
-def delete_all_items_and_insert_fresh_to_db(slots_from_all_venues):
-    """Inserts the slots for an Organisation one by one into the table: SportScanner"""
-    with Session(engine) as session:
-        statement = delete(BadmintonMasterTable)
-        results = session.exec(statement)
-        logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
-        for slots in slots_from_all_venues:
-            orm_object = BadmintonMasterTable(
-                uuid=str(uuid.uuid4()),
-                composite_key=slots.composite_key,
-                category=slots.category,
-                starting_time=slots.starting_time,
-                ending_time=slots.ending_time,
-                date=slots.date,
-                price=slots.price,
-                spaces=slots.spaces,
-                last_refreshed=slots.last_refreshed,
-                booking_url=slots.booking_url,
-            )
-            session.add(orm_object)
-        session.commit()
-
-
 @timeit
 def truncate_and_reload_all(slots_from_all_venues, TableForLoading: sqlmodel.main.SQLModelMetaclass):
     """Inserts the slots for an Organisation one by one into the table: SportScanner"""
@@ -183,7 +133,7 @@ def truncate_and_reload_all(slots_from_all_venues, TableForLoading: sqlmodel.mai
         logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
         for slots in slots_from_all_venues:
             orm_object = TableForLoading(
-                uuid=str(uuid.uuid4()),
+                uid=str(uuid.uuid4()),
                 composite_key=slots.composite_key,
                 category=slots.category,
                 starting_time=slots.starting_time,
@@ -197,6 +147,42 @@ def truncate_and_reload_all(slots_from_all_venues, TableForLoading: sqlmodel.mai
             session.add(orm_object)
         session.commit()
 
+
+
+@timeit
+def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.main.SQLModelMetaclass):
+    """Bulk upsert slots into a table"""
+    with Session(engine) as session:
+        logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
+
+        all_data = []
+        for slots in slots_from_all_venues:
+            key = f"{slots.composite_key}-{slots.category}-{slots.date}-{slots.starting_time}-{slots.ending_time}"
+            uid = hashlib.md5(key.encode("utf-8")).hexdigest()
+            all_data.append(dict(
+                uid=uid,
+                composite_key=slots.composite_key,
+                category=slots.category,
+                starting_time=slots.starting_time,
+                ending_time=slots.ending_time,
+                date=slots.date,
+                price=slots.price,
+                spaces=slots.spaces,
+                last_refreshed=slots.last_refreshed,
+                booking_url=slots.booking_url
+            ))
+
+        # Step 1: create the insert
+        stmt = insert(TableForLoading).values(all_data)
+
+        # Step 2: tell Postgres how to upsert
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['uid'],
+            set_={c: stmt.excluded[c] for c in all_data[0] if c != 'uid'}
+        )
+
+        session.exec(stmt)
+        session.commit()
 
 def recreate_staging_table():
     with engine.begin() as conn:
