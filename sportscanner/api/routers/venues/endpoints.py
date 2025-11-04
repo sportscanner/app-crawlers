@@ -40,7 +40,7 @@ async def get_venues_offering_sport(
 ) -> List[SportVenueOutputModel] :
     """Get all Sports Venues offering a specific sport"""
     sports_venues: List[SportsVenue] = get_venues_from_database(
-        sports=[sport.name], 
+        sports=[sport.value], 
         limit=limit
     )
     
