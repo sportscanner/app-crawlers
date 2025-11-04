@@ -1,8 +1,9 @@
 import json
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from operator import attrgetter
 from typing import List
+from zoneinfo import ZoneInfo
 
 import httpx
 from PIL.TiffTags import lookup
@@ -88,6 +89,15 @@ def sort_and_format_grouped_slots_for_ui(
         # Populating metadata from venues into main availability items
         lookup_dict = generate_venue_lookup()
         lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key, None)
+
+        now_uk = datetime.now(ZoneInfo("Europe/London"))
+        last_refreshed = earliest_slot_in_group.last_refreshed
+
+        # Make last_refreshed timezone-aware in UK time if it's naive
+        if last_refreshed.tzinfo is None:
+            last_refreshed = last_refreshed.replace(tzinfo=ZoneInfo("Europe/London"))
+        healthcheck = "deprecated" if now_uk - last_refreshed > timedelta(minutes=35) else "ok"
+
         processed_slots.append(
             {
                 "composite_key": earliest_slot_in_group.composite_key,
@@ -100,6 +110,8 @@ def sort_and_format_grouped_slots_for_ui(
                 "organization": lookup_data.get("organisation", ""),
                 "date": earliest_slot_in_group.date.strftime("%a, %b %d"),
                 "availability": availabilities,
+                "last_refreshed": earliest_slot_in_group.last_refreshed.isoformat(),
+                "healthcheck": healthcheck
             }
         )
     return processed_slots
