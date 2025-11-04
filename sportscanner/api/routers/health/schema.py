@@ -13,6 +13,6 @@ class VenueAvailability(BaseModel):
         """Return 'ok' if latest_refresh is within the last hour, else 'deprecated'."""
         if self.latest_refresh is None:
             return "deprecated"
-        if datetime.utcnow() - self.latest_refresh > timedelta(minutes=30):
+        if datetime.utcnow() - self.latest_refresh > timedelta(minutes=35):
             return "deprecated"
         return "ok"
