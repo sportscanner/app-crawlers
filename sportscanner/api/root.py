@@ -14,6 +14,8 @@ from sportscanner.api.routers.search.endpoints import (
 
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
+from sportscanner.api.routers.health.endpoints import router as HealthRouter
+
 import httpx
 
 
@@ -65,6 +67,8 @@ app.include_router(
 )
 
 app.include_router(router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False)
+
+app.include_router(router=HealthRouter, prefix="/health", tags=["Health"])
 
 @app.get("/", tags=["Root"])
 async def root():
