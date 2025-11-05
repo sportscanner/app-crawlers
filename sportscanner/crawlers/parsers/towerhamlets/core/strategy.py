@@ -54,6 +54,8 @@ class TowerHamletsResponseParserStrategy(AbstractResponseParserStrategy):
         aggregated = defaultdict(lambda: {"available": 0})
         for entry in data:
             key = (entry.startTime, entry.endTime)
+            # Ensure the key exists in aggregated
+            _ = aggregated[key]  
             if entry.status == "Available":
                 aggregated[key]["available"] += 1
 
@@ -61,7 +63,6 @@ class TowerHamletsResponseParserStrategy(AbstractResponseParserStrategy):
             {"startTime": k[0], "endTime": k[1], "spaces": v["available"]}
             for k, v in aggregated.items()
         ]
-
         return result
 
     def rollup_and_aggregate_data(
