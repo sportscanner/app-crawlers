@@ -1,3 +1,4 @@
+from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, BetterLeisureTaskCreationStrategy
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
@@ -8,10 +9,7 @@ from rich import print
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.haringey.core.strategy import HaringeyLeisureResponseParserStrategy, \
-    HaringeyLeisureTaskCreationStrategy
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
     filter_for_allowable_search_dates_for_venue  # Keep this
 
@@ -69,8 +67,8 @@ class HaringeyLeisureCrawler(BaseCrawler):
     def __init__(self):
         super().__init__(
             request_strategy = HaringeyLeisureBadmintonRequestStrategy(),
-            response_parser_strategy = HaringeyLeisureResponseParserStrategy(),
-            task_creation_strategy = HaringeyLeisureTaskCreationStrategy(),
+            response_parser_strategy = BetterLeisureResponseParserStrategy(),
+            task_creation_strategy = BetterLeisureTaskCreationStrategy(),
             organisation_website = "https://haringey.gov.uk/" # add url stuff using urllib
         )
 
@@ -110,7 +108,7 @@ def coroutines(search_dates: List[date]):
 if __name__ == "__main__":
     logging.info("Mocking up input data (user inputs) for pipeline")
     _dates = [
-        date(2025,11, 3)
+        date(2025,11, 5)
     ]
     _sport_venues_composite_ids = ["62e3aacc"]
 
