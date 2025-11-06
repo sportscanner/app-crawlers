@@ -177,7 +177,7 @@
           "latitude": 51.500481,
           "longitude": -0.28953
         },
-        "sports": ["badminton"]
+        "sports": ["badminton", "pickleball"]
       },
       {
         "venue_name": "Canons Leisure Centre",
@@ -365,6 +365,17 @@
           "latitude": 51.558939
         },
         "sports": ["pickleball", "badminton", "squash"]
+      },
+      {
+        "venue_name": "King's Cross Fitness",
+        "slug": "kings-cross-fitness",
+        "location": {
+          "postcode": "N1C 4EP",
+          "address": "1 Harrier Street (formerly Loverose Way), London, N1C 4EP",
+          "longitude": -0.123009,
+          "latitude": 51.537702
+        },
+        "sports": ["pickleball", "badminton"]
       }
     ]
   },
