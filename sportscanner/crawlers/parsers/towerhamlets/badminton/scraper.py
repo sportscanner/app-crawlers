@@ -173,14 +173,14 @@ def coroutines(search_dates: List[date]):
 if __name__ == "__main__":
     logging.info("Mocking up input data (user inputs) for pipeline")
     _dates = [
-        date(2025, 11, 5)
+        date(2025, 11, 10)
     ]
-    _sport_venues_composite_ids = ["47b1fa52"]
+    _sport_venues_composite_ids = ["6f22b7b1"]
 
     parsedResults = run(
         crawler = TowerHamletsCrawler(),
         search_dates = _dates,
         sport_venues_composite_ids = _sport_venues_composite_ids
     )
-    # print(parsedResults)
+    print(parsedResults)
     logging.success(f"TowerHamletsCrawler finished. Got {len(parsedResults)} results.")
