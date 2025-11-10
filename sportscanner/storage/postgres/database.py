@@ -306,6 +306,47 @@ def get_all_sports_venues(engine) -> List[SportsVenue]:
     return sports_venues
 
 
+@timeit
+def truncate_by_composite_key_and_reload(slots_from_all_venues, TableForLoading: sqlmodel.main.SQLModelMetaclass):
+    """
+    Deletes rows for matching composite_key values in TableForLoading 
+    and inserts fresh slots for those keys.
+    """
+    if not slots_from_all_venues:
+        logging.warning("No slots provided for `Truncate by Composite Key and Reload`; skipping.")
+        return
+
+    # Collect unique composite keys from incoming data
+    composite_keys_to_delete = {slots.composite_key for slots in slots_from_all_venues}
+
+    with Session(engine) as session:
+        # Delete only matching composite_key rows
+        delete_stmt = delete(TableForLoading).where(
+            TableForLoading.composite_key.in_(composite_keys_to_delete)
+        )
+        deleted_count = session.exec(delete_stmt)
+        logging.info(f"Deleted {deleted_count.rowcount} rows from {TableForLoading.__tablename__} for composite_keys={composite_keys_to_delete}")
+
+        # Insert new rows
+        for slots in slots_from_all_venues:
+            orm_object = TableForLoading(
+                uid=str(uuid.uuid4()),
+                composite_key=slots.composite_key,
+                category=slots.category,
+                starting_time=slots.starting_time,
+                ending_time=slots.ending_time,
+                date=slots.date,
+                price=slots.price,
+                spaces=slots.spaces,
+                last_refreshed=slots.last_refreshed,
+                booking_url=slots.booking_url,
+            )
+            session.add(orm_object)
+
+        session.commit()
+        logging.success(f"Reloaded {len(slots_from_all_venues)} slots into {TableForLoading.__tablename__}")
+
+
 if __name__ == "__main__":
     logging.info("Database being initialised, cache deleted and mappings reloaded")
     initialize_db_and_tables(engine)

@@ -108,7 +108,7 @@ def coroutines(search_dates: List[date]):
 if __name__ == "__main__":
     logging.info("Mocking up input data (user inputs) for pipeline")
     _dates = [
-        date(2025,11, 5)
+        date(2025,11, 10)
     ]
     _sport_venues_composite_ids = ["62e3aacc"]
 

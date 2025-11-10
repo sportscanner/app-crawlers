@@ -28,8 +28,7 @@ from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutine
 
 
 from sportscanner.storage.postgres.database import (
-insert_records_to_table, truncate_and_reload_all, swap_tables,
-    initialise_squash_staging, initialise_badminton_staging, initialise_pickleball_staging
+insert_records_to_table, truncate_by_composite_key_and_reload
 )
 from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, SquashStagingTable, BadmintonStagingTable, PickleballStagingTable
 from sportscanner.utils import timeit
@@ -53,23 +52,33 @@ def badminton_scraping_pipeline():
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
-    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
+    responses_for_upsertion: List[UnifiedParserSchema] = asyncio.run(
         SportscannerCrawlerBot(
             BetterLeisureBadmintonScraperCoroutines(dates),
             ActiveLambethBadmintonScraperCoroutines(dates),
             CitySportsBadmintonScraperCoroutines(dates),
             EveryoneActiveBadmintonScraperCoroutines(dates),
-            TowerHamletsBadmintonScraperCoroutines(dates),
             SouthwarkLeisureBadmintonScraperCoroutines(dates),
             HaringeyCouncilBadmintonScraperCoroutines(dates)
         )
     )
+    responses_for_reload: List[UnifiedParserSchema] = asyncio.run(
+        SportscannerCrawlerBot(
+            TowerHamletsBadmintonScraperCoroutines(dates)
+        )
+    )
+    
     # Flatten nested list structure and remove empty or failed responses
-    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
-    if all_slots:
-        logging.success(f"Total slots collected: {len(all_slots)}")
+    flattened_responses_for_upsertion: List[UnifiedParserSchema] = flatten_responses(responses_for_upsertion)
+    flattened_responses_for_reload: List[UnifiedParserSchema] = flatten_responses(responses_for_reload)
+
+    if flattened_responses_for_upsertion or flattened_responses_for_reload:
+        logging.success(f"Total slots collected for Upsert: {len(flattened_responses_for_upsertion)}")
+        logging.success(f"Total slots collected for Reload: {len(flattened_responses_for_reload)}")
         logging.info(f"Upserting all data to master table: {BadmintonMasterTable.__tablename__}")
-        insert_records_to_table(all_slots, BadmintonMasterTable)
+        insert_records_to_table(flattened_responses_for_upsertion, BadmintonMasterTable)
+        logging.info(f"Reloading all data to master table: {BadmintonMasterTable.__tablename__}")
+        truncate_by_composite_key_and_reload(flattened_responses_for_reload, BadmintonMasterTable)
         return True
     else:
         logging.warning(

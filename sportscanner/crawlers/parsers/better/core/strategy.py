@@ -128,7 +128,7 @@ class BetterLeisureTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
                 parsed_common_schema_response: List[UnifiedParserSchema] = parser.parse(raw_data_obj)
                 return parsed_common_schema_response
             else:
-                logging.info(f"No 'data' field in API response from {request_details.url} - populating blanks for upserts")
+                logging.debug(f"No 'data' field in API response from {request_details.url} - populating blanks for upserts")
                 blanks = populate_blank_response_for_upserts(
                     category=request_details.metadata.category,
                     composite_key=request_details.metadata.sportsCentre.composite_key,
