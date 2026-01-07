@@ -26,8 +26,9 @@ class BetterLeisureSquashRequestStrategy(AbstractRequestStrategy):
             self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
+        _version = "/v2" if sports_venue.slug in ["woolwich-waves-leisure-centre"] else ""
         activityIds = {
-            0: "squash-court-40min"
+            0: "squash-court-40min" + _version
         }
         for activityId in activityIds.values():
             formatted_date: str = fetch_date.strftime('%Y-%m-%d') # YYYY-MM-DD
