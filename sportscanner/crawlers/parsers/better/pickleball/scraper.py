@@ -26,9 +26,10 @@ class BetterLeisurePickleballRequestStrategy(AbstractRequestStrategy):
             self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
+        _version = "/v2" if sports_venue.slug in ["woolwich-waves-leisure-centre"] else ""
         activityIds = {
-            0: "pickleball-40mins",
-            1: "pickleball-60mins"
+            0: "pickleball-40mins" + _version,
+            1: "pickleball-60mins" + _version
         }
         for activityId in activityIds.values():
             formatted_date: str = fetch_date.strftime('%Y-%m-%d') # YYYY-MM-DD
