@@ -202,13 +202,13 @@
         "sports": ["badminton", "pickleball"]
       },
       {
-        "venue_name": "Waterfront Leisure Centre",
-        "slug": "waterfront-leisure-centre",
+        "venue_name": "Woolwich Waves",
+        "slug": "woolwich-waves-leisure-centre",
         "location": {
-          "postcode": "SE18 6DL",
-          "address": "Woolwich High Street, Woolwich, Greenwich, SE18 6DL",
-          "latitude": 51.494047,
-          "longitude": 0.063403
+          "postcode": "SE18 6EU",
+          "address": "49 Woolwich New Road, London, SE18 6EU",
+          "longitude": 0.068985,
+          "latitude": 51.49011
         },
         "sports": ["badminton", "squash", "pickleball"]
       },
