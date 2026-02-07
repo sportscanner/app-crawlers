@@ -143,3 +143,29 @@ class RefreshMetadata(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     last_refreshed: datetime
     refresh_status: str
+
+
+class Notification(SQLModel, table=True):
+    """Global notification messages shown to users in the app."""
+
+    __tablename__ = "notification"
+    __table_args__ = {"schema": "public"}
+
+    id: Optional[str] = Field(default=None, primary_key=True)
+    title: str
+    message: str
+    active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class NotificationAck(SQLModel, table=True):
+    """Per-user acknowledgement (dismissal) of a notification."""
+
+    __tablename__ = "notification_ack"
+    __table_args__ = {"schema": "public"}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str  # Kinde user id
+    notification_id: str = Field(foreign_key="public.notification.id")
+    acknowledged_at: datetime = Field(default_factory=datetime.utcnow)
