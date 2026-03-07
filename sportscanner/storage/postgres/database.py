@@ -206,14 +206,24 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
 
         logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
 
-        all_data = []
-        seen_uids = set()
+        # Group slots by UID and prefer the one with available spaces (spaces > 0)
+        # This handles cases where both 40min and 60min API calls return the same slot,
+        # but one returns spaces=0 (fallback from empty response) and one returns actual availability
+        uid_to_slots = {}
         for slots in slots_from_all_venues:
             key = f"{slots.composite_key}-{slots.category}-{slots.date}-{slots.starting_time}-{slots.ending_time}"
             uid = hashlib.md5(key.encode("utf-8")).hexdigest()
-            if uid in seen_uids: # Due to 2 API calls in 40-min/60-min backfill is an issue
-                continue
-            seen_uids.add(uid)
+
+            if uid not in uid_to_slots:
+                uid_to_slots[uid] = slots
+            else:
+                # If we already have this slot, prefer the one with available spaces
+                existing = uid_to_slots[uid]
+                if slots.spaces > 0 and existing.spaces == 0:
+                    uid_to_slots[uid] = slots
+
+        all_data = []
+        for uid, slots in uid_to_slots.items():
             all_data.append(dict(
                 uid=uid,
                 composite_key=slots.composite_key,
