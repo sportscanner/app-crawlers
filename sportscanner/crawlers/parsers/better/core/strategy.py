@@ -74,7 +74,7 @@ class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
                     )
                 )
             except ValueError as e:
-                print(f"Error parsing time for slot {slot['Time']}: {e}")
+                print(f"Error parsing time for slot {slot.starts_at.format_24_hour}: {e}")
         return unified_schema_output
 
 

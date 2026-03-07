@@ -109,6 +109,8 @@ def load_sports_centre_mappings(engine):
                         sports=venue.sports
                     )
                 )
+        # Ensure srid column is populated for distance calculations
+        session.execute(text("UPDATE sportsvenue SET srid = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) WHERE srid IS NULL"))
         session.commit()
         logging.success("Sports venue mapping successfully loaded to database")
 
