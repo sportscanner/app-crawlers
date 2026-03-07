@@ -26,11 +26,11 @@ class BetterLeisureSquashRequestStrategy(AbstractRequestStrategy):
             self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
-        _version = "/v2" if sports_venue.slug in ["woolwich-waves-leisure-centre"] else ""
-        activityIds = {
-            0: "squash-court-40min" + _version
-        }
-        for activityId in activityIds.values():
+        if sports_venue.slug in ["woolwich-waves-leisure-centre"]:
+            activity_ids_list = ["squash-40min/v2"]
+        else:
+            activity_ids_list = ["squash-court-40min"]
+        for activityId in activity_ids_list:
             formatted_date: str = fetch_date.strftime('%Y-%m-%d') # YYYY-MM-DD
             url = (
                 f"https://better-admin.org.uk/api/activities/venue/"
