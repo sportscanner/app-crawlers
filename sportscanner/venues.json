@@ -48,7 +48,7 @@
         "sports": ["badminton", "squash", "tennis", "pickleball"]
       },
       {
-        "venue_name": "Queensbridge Sports And Community",
+        "venue_name": "Queensbridge Sports And Community Centre",
         "slug": "queensbridge-sports-community-centre",
         "location": {
           "postcode": "E8 3XW",
@@ -92,7 +92,7 @@
         "sports": ["badminton", "pickleball", "pickleball"]
       },
       {
-        "venue_name": "Leytonstone Leisure  Centre",
+        "venue_name": "Leytonstone Leisure Centre",
         "slug": "leytonstone-leisure-centre",
         "location": {
           "postcode": "E11 4LA",
