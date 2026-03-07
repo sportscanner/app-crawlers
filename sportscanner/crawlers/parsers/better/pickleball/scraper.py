@@ -27,11 +27,14 @@ class BetterLeisurePickleballRequestStrategy(AbstractRequestStrategy):
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         _version = "/v2" if sports_venue.slug in ["woolwich-waves-leisure-centre"] else ""
-        activityIds = {
-            0: "pickleball-40mins" + _version,
-            1: "pickleball-60mins" + _version
-        }
-        for activityId in activityIds.values():
+        if sports_venue.slug in ["lee-valley-velopark"]:
+            activity_ids_list = ["pickleball-60mins-court"]
+        else:
+            activity_ids_list = [
+                "pickleball-40mins" + _version,
+                "pickleball-60mins" + _version
+            ]
+        for activityId in activity_ids_list:
             formatted_date: str = fetch_date.strftime('%Y-%m-%d') # YYYY-MM-DD
             url = (
                 f"https://better-admin.org.uk/api/activities/venue/"

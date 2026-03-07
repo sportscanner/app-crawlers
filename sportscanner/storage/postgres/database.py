@@ -151,8 +151,59 @@ def truncate_and_reload_all(slots_from_all_venues, TableForLoading: sqlmodel.mai
 
 @timeit
 def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.main.SQLModelMetaclass):
-    """Bulk upsert slots into a table"""
+    """Bulk upsert slots into a table.
+
+    Also handles stale slots: for any existing slots in DB that are NOT in the incoming
+    data (i.e., the API no longer returns them), they will be marked as spaces=0.
+    This ensures stale slots don't show old availability.
+    """
+    if not slots_from_all_venues:
+        logging.warning("No slots provided for insert; skipping.")
+        return
+
     with Session(engine) as session:
+        # Step 1: Build set of incoming slot keys for comparison
+        incoming_keys = set()
+        for slots in slots_from_all_venues:
+            key = f"{slots.composite_key}-{slots.category}-{slots.date}-{slots.starting_time}-{slots.ending_time}"
+            incoming_keys.add(key)
+
+        # Step 2: Get unique composite_keys and dates from incoming data
+        composite_keys = {slots.composite_key for slots in slots_from_all_venues}
+        dates = {slots.date for slots in slots_from_all_venues}
+
+        # Step 3: Fetch existing slots for these composite_keys and dates from DB
+        existing_slots = session.exec(
+            select(TableForLoading).where(
+                TableForLoading.composite_key.in_(composite_keys),
+                TableForLoading.date.in_(dates)
+            )
+        ).all()
+
+        # Step 4: Identify missing slots (exist in DB but not in incoming data)
+        # and add them to the upsert list with spaces=0
+        now = datetime.now()
+        for existing in existing_slots:
+            key = f"{existing.composite_key}-{existing.category}-{existing.date}-{existing.starting_time}-{existing.ending_time}"
+            if key not in incoming_keys:
+                # This slot exists in DB but not in incoming API data - mark as unavailable
+                uid = hashlib.md5(key.encode("utf-8")).hexdigest()
+                slots_from_all_venues.append(
+                    TableForLoading(
+                        uid=uid,
+                        composite_key=existing.composite_key,
+                        category=existing.category,
+                        starting_time=existing.starting_time,
+                        ending_time=existing.ending_time,
+                        date=existing.date,
+                        price=existing.price,
+                        spaces=0,  # Mark as unavailable
+                        last_refreshed=now,
+                        booking_url=existing.booking_url
+                    )
+                )
+                logging.debug(f"Marked missing slot as unavailable: {key}")
+
         logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
 
         all_data = []
@@ -176,10 +227,14 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
                 booking_url=slots.booking_url
             ))
 
-        # Step 1: create the insert
+        if not all_data:
+            logging.warning("No data to insert after processing.")
+            return
+
+        # Step 5: create the insert
         stmt = insert(TableForLoading).values(all_data)
 
-        # Step 2: tell Postgres how to upsert
+        # Step 6: tell Postgres how to upsert
         stmt = stmt.on_conflict_do_update(
             index_elements=['uid'],
             set_={c: stmt.excluded[c] for c in all_data[0] if c != 'uid'}
@@ -187,6 +242,7 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
 
         session.exec(stmt)
         session.commit()
+        logging.success(f"Upserted {len(all_data)} slots into {TableForLoading.__tablename__}")
 
 def recreate_staging_table():
     with engine.begin() as conn:
