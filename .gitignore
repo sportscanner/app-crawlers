@@ -1,7 +1,8 @@
 .vscode/
 *cache
 __pycache__/
-venv
+.venv/
+.idea/
 snorlax/.DS_Store
 *.egg-info
 dist/
@@ -28,3 +29,4 @@ secrets.toml
 *.db
 datasets
 *.logs
+.DS_Store

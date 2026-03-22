@@ -34,7 +34,7 @@ class UserMetadataRepository(FirebaseManager):
 
     def update_metadata_by_userId(self, user_id: str, updates: dict):
         """
-        Updates an existing user document.
+        Updates an existing user document, or creates it if it doesn't exist yet.
 
         Args:
           user_id: The ID of the user document.
@@ -42,7 +42,7 @@ class UserMetadataRepository(FirebaseManager):
                    Example: {'age': 31}
         """
         user_ref = self.user_collection.document(user_id)
-        user_ref.update(updates)
+        user_ref.set(updates, merge=True)
 
     def delete_metadata_by_userId(self, user_id: str) -> None:
         doc_ref = self.user_collection.document(user_id)

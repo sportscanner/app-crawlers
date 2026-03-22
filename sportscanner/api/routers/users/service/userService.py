@@ -1,39 +1,24 @@
 from fastapi import HTTPException
-from sportscanner.logger import logging
-from rich import print
-
-from sportscanner.api.routers.users.schema.user import (UserInCreate)
-from sportscanner.storage.firestore.repository.UserRepository import UserMetadataRepository
+from sportscanner.storage.postgres.user_repository import PostgresUserRepository
+from sportscanner.storage.postgres.database import engine
 
 
 class UserService:
     def __init__(self):
-        self.userMetadataRepository = UserMetadataRepository()
+        self.repo = PostgresUserRepository(engine)
 
-    def get_user_info(self, user_id: str) -> dict:
-        try:
-            user_metadata = self.userMetadataRepository.get_metadata_by_userId(user_id=user_id)
-            if not user_metadata:
-                raise HTTPException(
-                    status_code=400, detail=f"No user details found for id: {user_id}"
-                )
-            return self.userMetadataRepository.get_metadata_by_userId(user_id=user_id)
-        except HTTPException as error:
-            # Raise the same exception if it's already HTTPException (like user already exists case)
-            raise error
-        except Exception as error:
-            print(error)
-            raise HTTPException(
-                status_code=500, detail="Failed to retrive information from Users repo"
-            ) from error
+    def get_full_profile(self, kinde_user_id: str) -> dict:
+        profile = self.repo.get_full_profile(kinde_user_id)
+        if not profile:
+            raise HTTPException(status_code=400, detail=f"No user found: {kinde_user_id}")
+        return profile
 
-    def create_metadata(self, user_data: UserInCreate, document_id: str):
-        self.userMetadataRepository.create_metadata(user_data, document_id)
+    def register(self, kinde_user_id: str, full_name: str, email: str) -> None:
+        """Called on first login — creates user + empty preferences rows."""
+        self.repo.upsert_user(kinde_user_id, full_name, email)
+        # Ensure a preferences row exists so onboarding=False is queryable
+        self.repo.upsert_preferences(kinde_user_id, {}, onboarding_completed=False)
 
-    def update_user_info(self, user_id: str, updates: dict) -> None:
-        self.userMetadataRepository.update_metadata_by_userId(user_id, updates)
-
-
-if __name__ == "__main__":
-    _UserService = UserService()
-    print(_UserService.get_user_info(user_id="sjsjsj"))
+    def update(self, kinde_user_id: str, full_name: str, email: str, preferences: dict, onboarding: bool) -> None:
+        self.repo.upsert_user(kinde_user_id, full_name, email)
+        self.repo.upsert_preferences(kinde_user_id, preferences, onboarding_completed=onboarding)

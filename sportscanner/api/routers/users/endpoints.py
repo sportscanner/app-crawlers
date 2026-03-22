@@ -1,81 +1,57 @@
-from fastapi import (
-    APIRouter,
-    Header,
-    HTTPException,
-    Request,
-    status,
-)
-from sportscanner.logger import logging
-from pydantic import BaseModel
+from fastapi import APIRouter, Header, Request, status
 from rich import print
-from typing import List
-from sportscanner.api.routers.users.schema.user import (
-    UserInCreate,
-    UserOutput,
-)
-from sportscanner.api.routers.users.service.userService import UserService
-import httpx
 
+from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.core.kinde.auth import get_kinde_access_token, get_kinde_user_details
 
 router = APIRouter()
 
 
+def _kinde_identity(refresh_token: str) -> tuple[str, str, str]:
+    """Returns (kinde_user_id, full_name, email) from a refresh token."""
+    access_token = get_kinde_access_token(refresh_token=refresh_token)
+    d = get_kinde_user_details(access_token)
+    full_name = f"{d.get('first_name', '')} {d.get('last_name', '')}".strip()
+    return d["id"], full_name, d.get("preferred_email", "")
+
+
 @router.get("/", status_code=status.HTTP_200_OK)
-async def get_user_info(
-    Authorization: str = Header(
-        default=None, title="Bearer JWT token to authenticate user"
-    ),
+async def get_user_profile(
+    Authorization: str = Header(default=None),
 ):
-    access_token = get_kinde_access_token(
-        refresh_token=Authorization
-    )
-    user_details = get_kinde_user_details(access_token)
-    user = UserService().get_user_info(user_details["id"])
-    print(user)
-    return user
-
-
-@router.patch("/", status_code=status.HTTP_200_OK)
-async def modify_user_info(
-    request: Request,
-    Authorization: str = Header(
-        default=None, title="Bearer JWT token to authenticate user"
-    ),
-):
-    payload = await request.json()
-    print(payload)
-    access_token = get_kinde_access_token(
-        refresh_token=Authorization
-    )
-    user_details = get_kinde_user_details(access_token)
-    UserService().update_user_info(user_details["id"], payload)
-    return {"success": True}
+    user_id, _, _ = _kinde_identity(Authorization)
+    profile = UserService().get_full_profile(user_id)
+    print(profile)
+    return profile
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def user_onboarding(
-    request: Request,
-    Authorization: str = Header(
-        default=None, description="Bearer token to authenticate user"
-    ),
+async def register_user(
+    Authorization: str = Header(default=None),
 ):
-    payload = await request.json()
-    access_token = get_kinde_access_token(
-        refresh_token=Authorization
-    )
-    user_details = get_kinde_user_details(access_token)
-    print(user_details)
-    userMetadata = UserInCreate(
-        kindeUserId=user_details.get("id"),
-        fullName=f"{user_details.get('first_name')} {user_details.get('last_name')}",
-        email=user_details.get("preferred_email"),
-        postcode=payload.get("postcode"),
-        preferredVenues=payload.get("preferredVenues"),
-        onboarding=True
-    )
-    return UserService().create_metadata(
-        userMetadata,
-        userMetadata.kindeUserId
-    )
+    """Called automatically from the callback page on first login."""
+    user_id, full_name, email = _kinde_identity(Authorization)
+    UserService().register(user_id, full_name, email)
+    return {"success": True}
 
+
+@router.patch("/", status_code=status.HTTP_200_OK)
+async def update_user(
+    request: Request,
+    Authorization: str = Header(default=None),
+):
+    """
+    Expects body:
+      { "onboarding": bool, "preferences": { ...any keys... } }
+    """
+    body = await request.json()
+    user_id, full_name, email = _kinde_identity(Authorization)
+    print(body)
+    UserService().update(
+        kinde_user_id=user_id,
+        full_name=full_name,
+        email=email,
+        preferences=body.get("preferences", {}),
+        onboarding=body.get("onboarding", False),
+    )
+    return {"success": True}

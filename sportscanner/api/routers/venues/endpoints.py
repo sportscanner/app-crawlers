@@ -26,9 +26,11 @@ async def get_all_venues(
     output: List[SportVenueOutputModel] = [
         SportVenueOutputModel(
             composite_key=venue.composite_key,
-            venue=venue.venue_name,
+            venue_name=venue.venue_name,
             address=venue.address,
             sports=venue.sports,
+            latitude=venue.latitude,
+            longitude=venue.longitude,
         ) for venue in sports_venues
     ]
     return output
@@ -40,16 +42,18 @@ async def get_venues_offering_sport(
 ) -> List[SportVenueOutputModel] :
     """Get all Sports Venues offering a specific sport"""
     sports_venues: List[SportsVenue] = get_venues_from_database(
-        sports=[sport.value], 
+        sports=[sport.value],
         limit=limit
     )
-    
+
     output: List[SportVenueOutputModel] = [
         SportVenueOutputModel(
             composite_key=venue.composite_key,
-            venue=venue.venue_name,
+            venue_name=venue.venue_name,
             address=venue.address,
             sports=venue.sports,
+            latitude=venue.latitude,
+            longitude=venue.longitude,
         ) for venue in sports_venues
     ]
     return output
@@ -91,7 +95,9 @@ async def venues_near_postcode_and_radius(
                 ST_SetSRID(ST_MakePoint({search_postcode_metadata.result.longitude}, {search_postcode_metadata.result.latitude}), 4326)::geography
             ) / 1609.344)::numeric, 1) AS distance_miles,
             address,
-            sports
+            sports,
+            latitude,
+            longitude
         FROM
             sportsvenue
         WHERE
@@ -118,7 +124,9 @@ async def venues_near_postcode_and_radius(
             venue_name=row.venue_name,
             distance=row.distance_miles,
             address=row.address,
-            sports=row.sports
+            sports=row.sports,
+            latitude=row.latitude,
+            longitude=row.longitude,
         )
         for row in rows
     ]
@@ -135,9 +143,11 @@ async def get_venue_info(
     output: List[SportVenueOutputModel] = [
         SportVenueOutputModel(
             composite_key=venue.composite_key,
-            venue=venue.venue_name,
+            venue_name=venue.venue_name,
             address=venue.address,
             sports=venue.sports,
+            latitude=venue.latitude,
+            longitude=venue.longitude,
         ) for venue in sports_venues
     ]
     return output
