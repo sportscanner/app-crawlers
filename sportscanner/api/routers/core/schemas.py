@@ -7,9 +7,11 @@ from sportscanner.storage.postgres.tables import SportsVenue
 
 class SportVenueOutputModel(BaseModel):
     composite_key: str
-    venue: str
+    venue_name: str
     address: str
     sports: List[str]
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class SportscannerSupportedSports(Enum):
@@ -55,3 +57,5 @@ class VenueDistanceModel(BaseModel):
     distance: float
     address: str
     sports: Optional[List[str]] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None

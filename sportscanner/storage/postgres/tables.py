@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 from typing import List, Optional
 
 from sqlalchemy import Column, String
+from sqlalchemy import JSON
 import sqlalchemy
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select, Column, String
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -169,3 +170,40 @@ class NotificationAck(SQLModel, table=True):
     user_id: str  # Kinde user id
     notification_id: str = Field(foreign_key="public.notification.id")
     acknowledged_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class User(SQLModel, table=True):
+    """Core user identity — one row per Kinde account."""
+
+    __tablename__ = "users"
+    __table_args__ = {"schema": "public"}
+
+    kinde_user_id: str = Field(primary_key=True)
+    full_name: Optional[str] = None
+    email: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class UserPreferences(SQLModel, table=True):
+    """
+    Flexible user preferences stored as JSONB.
+    Adding new preference fields never requires a schema migration —
+    just write the new key into the JSON blob.
+
+    Preference keys (all optional, evolve over time):
+      postcode, searchRadius, usePostcodeSearch, preferredVenues,
+      goals, skills, availability, customPostcodes, ...
+    """
+
+    __tablename__ = "user_preferences"
+    __table_args__ = {"schema": "public"}
+
+    kinde_user_id: str = Field(
+        primary_key=True,
+        foreign_key="public.users.kinde_user_id",
+    )
+    preferences: dict = Field(default={}, sa_column=Column(JSON, nullable=False))
+    onboarding_completed: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

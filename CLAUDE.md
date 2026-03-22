@@ -120,6 +120,32 @@ session.execute(text("UPDATE sportsvenue SET srid = ST_SetSRID(ST_MakePoint(long
 2. Postcodes.io API responding correctly
 3. Distance in meters: `miles * 1609.344`
 
+## Makefile Commands
+
+```bash
+make setup              # Install dependencies (pip + playwright + editable install)
+make dev-api-server     # Run FastAPI dev server on localhost:8000 (uses .dev.env)
+make test               # Run pytest
+make format             # Run isort + black formatters
+make freeze             # Regenerate requirements.txt via pipreqs
+make reset-database-tables  # Truncate DB tables and reset metadata
+
+# Docker (production)
+make build-docker-image         # Build linux/amd64 image
+make push-image-to-repository   # Push to GHCR
+make api-server-container       # Run API server container (prod, port 8000)
+make crawler-pipeline-container # Run crawler pipeline in container (prod)
+```
+
+**Environment files**: `.dev.env` for local dev, `.env` for production (selected by `ENV=prod`).
+
+## MCP Server
+
+An MCP (Model Context Protocol) server lives in `sportscanner/mcp/`.
+- Runs via `FastMCP` on HTTP transport, port 8080
+- Exposes geolocation tools for venue search
+- Start with: `python -m sportscanner.mcp.server`
+
 ## Development Workflow
 
 ### Running Crawlers
