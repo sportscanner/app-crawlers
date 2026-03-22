@@ -10,7 +10,7 @@ class UserService:
     def get_full_profile(self, kinde_user_id: str) -> dict:
         profile = self.repo.get_full_profile(kinde_user_id)
         if not profile:
-            raise HTTPException(status_code=400, detail=f"No user found: {kinde_user_id}")
+            raise HTTPException(status_code=404, detail=f"No user found: {kinde_user_id}")
         return profile
 
     def register(self, kinde_user_id: str, full_name: str, email: str) -> None:
