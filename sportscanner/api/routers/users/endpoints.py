@@ -52,6 +52,6 @@ async def update_user(
         full_name=full_name,
         email=email,
         preferences=body.get("preferences", {}),
-        onboarding=body.get("onboarding", False),
+        onboarding=body.get("onboarding", None),
     )
     return {"success": True}

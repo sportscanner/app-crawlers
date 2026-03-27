@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from sqlmodel import Session
 
@@ -41,24 +41,26 @@ class PostgresUserRepository:
         self,
         kinde_user_id: str,
         preferences: dict,
-        onboarding_completed: bool = False,
+        onboarding_completed: Optional[bool] = None,
     ) -> UserPreferences:
         """
         Merge new preference keys into the existing JSONB blob.
         Existing keys not in `preferences` are preserved.
+        Pass onboarding_completed=None to leave the existing value unchanged.
         """
         with Session(self.engine) as session:
             prefs = session.get(UserPreferences, kinde_user_id)
             if prefs:
                 merged = {**(prefs.preferences or {}), **preferences}
                 prefs.preferences = merged
-                prefs.onboarding_completed = onboarding_completed
+                if onboarding_completed is not None:
+                    prefs.onboarding_completed = onboarding_completed
                 prefs.updated_at = datetime.utcnow()
             else:
                 prefs = UserPreferences(
                     kinde_user_id=kinde_user_id,
                     preferences=preferences,
-                    onboarding_completed=onboarding_completed,
+                    onboarding_completed=onboarding_completed if onboarding_completed is not None else False,
                 )
                 session.add(prefs)
             session.commit()
