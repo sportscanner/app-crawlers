@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException
 from sportscanner.storage.postgres.user_repository import PostgresUserRepository
 from sportscanner.storage.postgres.database import engine
@@ -19,6 +21,6 @@ class UserService:
         # Ensure a preferences row exists so onboarding=False is queryable
         self.repo.upsert_preferences(kinde_user_id, {}, onboarding_completed=False)
 
-    def update(self, kinde_user_id: str, full_name: str, email: str, preferences: dict, onboarding: bool) -> None:
+    def update(self, kinde_user_id: str, full_name: str, email: str, preferences: dict, onboarding: Optional[bool]) -> None:
         self.repo.upsert_user(kinde_user_id, full_name, email)
         self.repo.upsert_preferences(kinde_user_id, preferences, onboarding_completed=onboarding)
