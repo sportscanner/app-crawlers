@@ -376,6 +376,17 @@
           "latitude": 51.537702
         },
         "sports": ["pickleball", "badminton"]
+      },
+      {
+        "venue_name": "Shene Sports and Fitness Centre",
+        "slug": "shene-sports-and-fitness-centre",
+        "location": {
+          "postcode": "SW14 8AT",
+          "address": "Park Ave, London SW14 8AT",
+          "longitude": -0.262625,
+          "latitude": 51.462642
+        },
+        "sports": ["pickleball", "badminton"]
       }
     ]
   },
