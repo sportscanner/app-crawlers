@@ -734,5 +734,66 @@
         "sports": ["badminton", "squash"]
       }
     ]
+  },
+  {
+    "organisation": "Leisure Focus",
+    "organisation_website": "https://www.leisurefocus.org.uk/",
+    "venues": [
+      {
+        "venue_name": "Braywick Leisure Centre",
+        "slug": "braywick-leisure-centre",
+        "location": {
+          "postcode": "SL6 1BN",
+          "address": "Braywick Rd, Maidenhead, SL6 1BN",
+          "longitude": -0.719057,
+          "latitude": 51.515484
+        },
+        "sports": ["badminton", "pickleball", "squash"]
+      },
+      {
+        "venue_name": "Windsor Leisure Centre",
+        "slug": "windsor-leisure-centre",
+        "location": {
+          "postcode": "SL4 5JB",
+          "address": "Clewer Ave, Stovell Rd, Windsor, SL4 5JB",
+          "longitude": -0.619714,
+          "latitude": 51.485051
+        },
+        "sports": ["badminton", "tennis"]
+      },
+      {
+        "venue_name": "Cox Green Leisure Centre",
+        "slug": "cox-green-leisure-centre",
+        "location": {
+          "postcode": "SL6 3AX",
+          "address": "Highfield Ln, Maidenhead, SL6 3AX",
+          "longitude": -0.755393,
+          "latitude": 51.508438
+        },
+        "sports": ["badminton", "tennis"]
+      },
+      {
+        "venue_name": "Fuze Platt Leisure Centre",
+        "slug": "furze-platt-leisure-centre",
+        "location": {
+          "postcode": "SL6 7NQ",
+          "address": "Furze Leisure Centre, 101 Furze Platt Rd, Maidenhead SL6 7NQ",
+          "longitude": -0.739118,
+          "latitude": 51.535825
+        },
+        "sports": ["badminton"]
+      },
+      {
+        "venue_name": "Charters Leisure Centre",
+        "slug": "charters-leisure-centre",
+        "location": {
+          "postcode": "SL5 9QY",
+          "address": "Charters Comprehensive School, Charters Rd, Sunningdale, Ascot SL5 9QY",
+          "longitude": -0.651535,
+          "latitude": 51.392432
+        },
+        "sports": ["badminton", "squash"]
+      }
+    ]
   }
 ]
