@@ -207,3 +207,21 @@ class UserPreferences(SQLModel, table=True):
     onboarding_completed: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PlayerProfile(SQLModel, table=True):
+    """Opt-in discoverable player profile. Created separately from the user account."""
+    __tablename__ = "player_profiles"
+    __table_args__ = {"schema": "public"}
+
+    kinde_user_id: str = Field(primary_key=True, foreign_key="public.users.kinde_user_id")
+    display_name: str                              # First name shown to other players
+    postcode_district: str                         # e.g. "SE1" — full postcode NOT stored here
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    is_discoverable: bool = Field(default=True)
+    sports: list = Field(default=[], sa_column=Column(JSON))     # ["badminton", "squash"]
+    skill_level: dict = Field(default={}, sa_column=Column(JSON)) # {"badminton": "intermediate"}
+    availability: dict = Field(default={}, sa_column=Column(JSON)) # {"Mon": ["6-9pm"]}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

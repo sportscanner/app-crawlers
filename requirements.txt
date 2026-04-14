@@ -18,6 +18,7 @@ Requests==2.32.3
 rich==13.9.4
 SQLAlchemy==2.0.29
 sqlmodel==0.0.22
+stream-chat==4.31.0
 starlette==0.38.6
 psycopg2-binary==2.9.9
 tenacity==8.5.0

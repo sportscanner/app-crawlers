@@ -309,7 +309,12 @@ def create_db_and_tables(engine):
             SquashMasterTable.__table__,
             SquashStagingTable.__table__,
             PickleballMasterTable.__table__,
-            PickleballStagingTable.__table__        
+            PickleballStagingTable.__table__,
+            User.__table__,
+            UserPreferences.__table__,
+            Notification.__table__,
+            NotificationAck.__table__,
+            PlayerProfile.__table__,
         ]
     )
 

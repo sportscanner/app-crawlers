@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, Request, status
+from fastapi import APIRouter, Header, HTTPException, Request, status
 from rich import print
 
 from sportscanner.api.routers.users.service.userService import UserService
@@ -32,6 +32,18 @@ async def register_user(
     """Called automatically from the callback page on first login."""
     user_id, full_name, email = _kinde_identity(Authorization)
     UserService().register(user_id, full_name, email)
+    return {"success": True}
+
+
+@router.delete("/", status_code=status.HTTP_200_OK)
+async def delete_user(
+    Authorization: str = Header(default=None),
+):
+    """Delete all personal data for the authenticated user (GDPR right to erasure)."""
+    user_id, _, _ = _kinde_identity(Authorization)
+    deleted = UserService().delete(user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"No user found: {user_id}")
     return {"success": True}
 
 

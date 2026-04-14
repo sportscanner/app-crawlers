@@ -16,6 +16,8 @@ from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 from sportscanner.api.routers.health.endpoints import router as HealthRouter
 from sportscanner.api.routers.notifications.endpoints import router as NotificationsRouter
+from sportscanner.api.routers.chat.endpoints import router as ChatRouter
+from sportscanner.api.routers.players.endpoints import router as PlayersRouter
 
 import httpx
 
@@ -51,8 +53,8 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace '*' with specific origins if needed
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
@@ -75,6 +77,20 @@ app.include_router(
     router=NotificationsRouter,
     prefix="/notifications",
     tags=["Notifications"],
+)
+
+app.include_router(
+    router=ChatRouter,
+    prefix="/chat",
+    tags=["Chat"],
+    include_in_schema=False,
+)
+
+app.include_router(
+    router=PlayersRouter,
+    prefix="/players",
+    tags=["Players"],
+    include_in_schema=False,
 )
 
 @app.get("/", tags=["Root"])

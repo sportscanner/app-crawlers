@@ -24,3 +24,6 @@ class UserService:
     def update(self, kinde_user_id: str, full_name: str, email: str, preferences: dict, onboarding: Optional[bool]) -> None:
         self.repo.upsert_user(kinde_user_id, full_name, email)
         self.repo.upsert_preferences(kinde_user_id, preferences, onboarding_completed=onboarding)
+
+    def delete(self, kinde_user_id: str) -> bool:
+        return self.repo.delete_user(kinde_user_id)

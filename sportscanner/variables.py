@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     ENV: str
     KINDE_DOMAIN: str
     KINDE_CLIENT_ID: str
+    STREAM_API_KEY: Optional[str] = None
+    STREAM_API_SECRET: Optional[str] = None
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8")
 

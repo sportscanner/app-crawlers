@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional, Union
 
-from sqlmodel import Session
+from sqlmodel import Session, delete
 
-from sportscanner.storage.postgres.tables import User, UserPreferences
+from sportscanner.storage.postgres.tables import NotificationAck, User, UserPreferences
 
 
 class PostgresUserRepository:
@@ -66,6 +66,18 @@ class PostgresUserRepository:
             session.commit()
             session.refresh(prefs)
             return prefs
+
+    def delete_user(self, kinde_user_id: str) -> bool:
+        """Delete all data for a user (GDPR right to erasure). Returns True if the user existed."""
+        with Session(self.engine) as session:
+            user = session.get(User, kinde_user_id)
+            if not user:
+                return False
+            session.exec(delete(NotificationAck).where(NotificationAck.user_id == kinde_user_id))
+            session.exec(delete(UserPreferences).where(UserPreferences.kinde_user_id == kinde_user_id))
+            session.delete(user)
+            session.commit()
+            return True
 
     # ── Combined profile ──────────────────────────────────────────────────────
 

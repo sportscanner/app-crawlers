@@ -244,3 +244,14 @@ venue = get_venue_by_composite_key(composite_key)
 2. **Parser error message**: Fixed `slot['Time']` → `slot.starts_at.format_24_hour` in `BetterLeisureResponseParserStrategy`
 3. **Venue name typos**: Fixed in `venues.json` (Queensbridge, Leytonstone)
 4. **Deduplication**: Prefer slots with `spaces > 0` over `spaces = 0` in `insert_records_to_table()`
+
+## GDPR — Account Deletion
+
+`DELETE /user/` is implemented in `sportscanner/api/routers/users/endpoints.py`.
+
+It verifies the user via their Kinde refresh token, then calls `UserService().delete(user_id)`, which deletes:
+1. All rows in `notification_ack` where `user_id = kinde_user_id`
+2. The row in `user_preferences` where `kinde_user_id` matches
+3. The row in `users` where `kinde_user_id` matches
+
+The repository method is `PostgresUserRepository.delete_user()` in `sportscanner/storage/postgres/user_repository.py`. Returns 404 if the user doesn't exist.
