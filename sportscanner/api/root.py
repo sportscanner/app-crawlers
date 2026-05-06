@@ -16,6 +16,7 @@ from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 from sportscanner.api.routers.health.endpoints import router as HealthRouter
 from sportscanner.api.routers.notifications.endpoints import router as NotificationsRouter
+from sportscanner.api.routers.matches import router as MatchesRouter
 
 import httpx
 
@@ -75,6 +76,12 @@ app.include_router(
     router=NotificationsRouter,
     prefix="/notifications",
     tags=["Notifications"],
+)
+
+app.include_router(
+    router=MatchesRouter,
+    prefix="/matches",
+    tags=["Matches"],
 )
 
 @app.get("/", tags=["Root"])

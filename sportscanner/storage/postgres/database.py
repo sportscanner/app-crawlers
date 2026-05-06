@@ -14,7 +14,6 @@ from sportscanner.storage.postgres.tables import *
 from sportscanner.utils import get_sports_venue_mappings_from_raw, timeit
 from sportscanner.variables import settings
 
-database_name = settings.SQL_DATABASE_NAME
 connection_string = settings.DB_CONNECTION_STRING
 
 engine_configs = {"timeout": 5}

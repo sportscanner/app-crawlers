@@ -1,8 +1,11 @@
+import enum
+import uuid
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import Column, String
-from sqlalchemy import JSON
+from sqlalchemy import JSON, Numeric
 import sqlalchemy
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select, Column, String
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -207,3 +210,64 @@ class UserPreferences(SQLModel, table=True):
     onboarding_completed: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MatchType(str, enum.Enum):
+    SINGLES = "SINGLES"
+    DOUBLES = "DOUBLES"
+
+
+class MatchStatus(str, enum.Enum):
+    LOGGED = "LOGGED"
+    SPLIT = "SPLIT"
+
+
+class Match(SQLModel, table=True):
+    """A logged match session — created after playing, with scores and participants."""
+
+    __tablename__ = "match"
+    __table_args__ = {"schema": "public"}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_by: str = Field(foreign_key="public.users.kinde_user_id")
+    venue_name: str
+    sport: str
+    match_type: MatchType
+    played_at: datetime
+    duration_minutes: Optional[int] = None
+    winning_team: Optional[int] = None  # 1 or 2; null if not determined
+    total_cost: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(10, 2), nullable=True))
+    status: MatchStatus = Field(default=MatchStatus.LOGGED)
+    splitwise_expense_id: Optional[str] = None
+    splitwise_error: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MatchPlayer(SQLModel, table=True):
+    """A player in a Match — identified by email, assigned to a team."""
+
+    __tablename__ = "match_player"
+    __table_args__ = {"schema": "public"}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    match_id: uuid.UUID = Field(foreign_key="public.match.id")
+    email: str
+    display_name: str
+    team: int  # 1 or 2
+    is_creator: bool = Field(default=False)
+    splitwise_notified: Optional[bool] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MatchScore(SQLModel, table=True):
+    """Score for one game (set) within a Match."""
+
+    __tablename__ = "match_score"
+    __table_args__ = {"schema": "public"}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    match_id: uuid.UUID = Field(foreign_key="public.match.id")
+    game_number: int  # 1, 2, 3...
+    team1_score: int
+    team2_score: int
