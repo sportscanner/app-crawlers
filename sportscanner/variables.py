@@ -14,7 +14,6 @@ env_file = ".env" if os.getenv("ENV") == "prod" else ".dev.env"
 
 class Settings(BaseSettings):
     DB_CONNECTION_STRING: str
-    SQL_DATABASE_NAME: str
     HTTPX_CLIENT_MAX_CONNECTIONS: int
     HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS: int
     HTTPX_CLIENT_TIMEOUT: float
@@ -29,8 +28,13 @@ class Settings(BaseSettings):
     ENV: str
     KINDE_DOMAIN: str
     KINDE_CLIENT_ID: str
+    SPLITWISE_API_KEY: str = ""
 
-    model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=env_file, 
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 
 settings = Settings()
