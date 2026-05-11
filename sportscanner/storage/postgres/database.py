@@ -18,7 +18,17 @@ database_name = settings.SQL_DATABASE_NAME
 connection_string = settings.DB_CONNECTION_STRING
 
 engine_configs = {"timeout": 5}
-engine = create_engine(connection_string, pool_pre_ping=True, echo=False)
+# Aiven max_connections is 20 (3 reserved for SUPERUSER). Cap each process
+# at 5 total so multiple workers + the crawler pipeline can coexist.
+engine = create_engine(
+    connection_string,
+    pool_pre_ping=True,
+    pool_size=3,
+    max_overflow=2,
+    pool_recycle=300,
+    pool_timeout=10,
+    echo=False,
+)
 
 
 class PipelineRefreshStatus(Enum):
