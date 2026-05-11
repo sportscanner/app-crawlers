@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     KINDE_DOMAIN: str
     KINDE_CLIENT_ID: str
 
-    model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()

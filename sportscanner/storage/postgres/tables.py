@@ -44,25 +44,6 @@ class BadmintonMasterTable(SQLModel, table=True):
     __table_args__ = {"schema": "public"}
 
 
-class BadmintonStagingTable(SQLModel, table=True):
-    """Table contains records of slots fetched from sport centres
-    Original Model: UnifiedParserSchema -> Mapped to: SportScanner
-    """
-    uid: str = Field(primary_key=True)
-    category: str
-    starting_time: time
-    ending_time: time
-    date: date
-    price: str
-    spaces: int
-    last_refreshed: datetime
-    booking_url: str | None
-
-    composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
-
-    __tablename__ = "badminton"
-    __table_args__ = {"schema": "staging"}
-
 class SquashMasterTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
@@ -80,25 +61,6 @@ class SquashMasterTable(SQLModel, table=True):
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "squash"
     __table_args__ = {"schema": "public"}
-
-
-class SquashStagingTable(SQLModel, table=True):
-    """Table contains records of slots fetched from sport centres
-    Original Model: UnifiedParserSchema -> Mapped to: SportScanner
-    """
-    uid: str = Field(primary_key=True)
-    category: str
-    starting_time: time
-    ending_time: time
-    date: date
-    price: str
-    spaces: int
-    last_refreshed: datetime
-    booking_url: str | None
-    
-    composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
-    __tablename__ = "squash"
-    __table_args__ = {"schema": "staging"}
 
 
 class PickleballMasterTable(SQLModel, table=True):
@@ -120,7 +82,7 @@ class PickleballMasterTable(SQLModel, table=True):
     __table_args__ = {"schema": "public"}
 
 
-class PickleballStagingTable(SQLModel, table=True):
+class PadelMasterTable(SQLModel, table=True):
     """Table contains records of slots fetched from sport centres
     Original Model: UnifiedParserSchema -> Mapped to: SportScanner
     """
@@ -133,10 +95,11 @@ class PickleballStagingTable(SQLModel, table=True):
     spaces: int
     last_refreshed: datetime
     booking_url: str | None
-    
+
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
-    __tablename__ = "pickleball"
-    __table_args__ = {"schema": "staging"}
+    __tablename__ = "padel"
+    __table_args__ = {"schema": "public"}
+
 
 class RefreshMetadata(SQLModel, table=True):
     """Table containing Refresh data, and if refresh is in progress"""

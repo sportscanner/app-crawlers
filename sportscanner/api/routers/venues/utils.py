@@ -17,7 +17,7 @@ from typing import Optional, Sequence
 from sportscanner.api.routers.core.schemas import *
 
 def get_venues_from_database(
-        sports: Annotated[List[Literal["badminton", "pickleball", "squash"]], Field(description="Sport category to filter venues")] = ["badminton", "pickleball", "squash"], 
+        sports: Annotated[List[Literal["badminton", "pickleball", "squash", "padel"]], Field(description="Sport category to filter venues")] = ["badminton", "pickleball", "squash", "padel"],
         limit: Annotated[int, Field(description="Limit the number of venues in the response")] = 10
     ) -> List[SportsVenue]:
     """This Tool fetches sports venues from the database offering a specific sport."""
