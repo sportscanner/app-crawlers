@@ -234,15 +234,30 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
         if not matchi_slots:
             return []
 
-        # Concurrent per-slot-group price fetch, capped to avoid rate limiting Matchi
+        # TODO: currently we fetch the price for only the FIRST slot group per venue and
+        # reuse it for all other slots at that venue on the same date. Prices at the same
+        # venue vary by time-of-day (peak/off-peak) so this may be inaccurate — revisit
+        # by fetching per-slot prices once Matchi's rate limiting is better understood.
         semaphore = asyncio.Semaphore(3)
-        price_tasks = [self._fetch_prices(ms.slot_ids, semaphore) for ms in matchi_slots]
-        price_maps: List[Dict[str, float]] = await asyncio.gather(*price_tasks)
-        total_priced = sum(len(pm) for pm in price_maps)
-        logging.debug(f"Matchi: prices fetched for {total_priced} slot IDs across {len(matchi_slots)} groups")
+        venue_price_map: Dict[str, Dict[str, float]] = {}
+        first_slot_by_venue: Dict[str, MatchiSlot] = {}
+        for ms in matchi_slots:
+            if ms.facility_slug not in first_slot_by_venue:
+                first_slot_by_venue[ms.facility_slug] = ms
+
+        price_tasks = [
+            self._fetch_prices(ms.slot_ids, semaphore)
+            for ms in first_slot_by_venue.values()
+        ]
+        fetched_maps = await asyncio.gather(*price_tasks)
+        for slug, pm in zip(first_slot_by_venue.keys(), fetched_maps):
+            venue_price_map[slug] = pm
+
+        logging.debug(f"Matchi: prices fetched for {len(first_slot_by_venue)} venues (reused across slots)")
 
         results: List[UnifiedParserSchema] = []
-        for ms, pm in zip(matchi_slots, price_maps):
+        for ms in matchi_slots:
+            pm = venue_price_map.get(ms.facility_slug, {})
             record = self._to_unified(ms, pm, venue_by_slug, fetch_date)
             if record:
                 results.append(record)
