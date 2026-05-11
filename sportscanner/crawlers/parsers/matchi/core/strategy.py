@@ -23,7 +23,6 @@ used so DST transitions are handled automatically.
 
 from __future__ import annotations
 
-import asyncio
 import html as html_lib
 import json
 import re
@@ -47,7 +46,7 @@ from sportscanner.crawlers.parsers.core.schemas import (
     RequestDetailsWithMetadata,
     UnifiedParserSchema,
 )
-from sportscanner.crawlers.parsers.matchi.core.schema import MatchiPriceItem, MatchiSlot
+from sportscanner.crawlers.parsers.matchi.core.schema import MatchiSlot
 from sportscanner.logger import logging
 
 MATCHI_ORGANISATION_WEBSITE = "https://www.matchi.se"
@@ -222,43 +221,18 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
         fetch_date: date,
         venue_by_slug: Dict[str, sportscanner.storage.postgres.tables.SportsVenue],
     ) -> List[UnifiedParserSchema]:
-        """Full two-phase crawl for a single date across all London venues.
+        """Crawl availability for a single date across all London Matchi venues.
 
-        Phase 1: paginated HTML fetch → MatchiSlot list
-        Phase 2: concurrent per-slot-group price fetch via getSlotPrices
-                 (one call per button/time-slot, not a global batch — the API
-                 only returns prices for IDs from a single time slot at once)
+        Price is hardcoded at £55 — not fetched from the Matchi API.
         """
         matchi_slots = await self._fetch_all_slots(client, fetch_date)
         logging.info(f"Matchi: {len(matchi_slots)} slot groups for {fetch_date}")
         if not matchi_slots:
             return []
 
-        # TODO: currently we fetch the price for only the FIRST slot group per venue and
-        # reuse it for all other slots at that venue on the same date. Prices at the same
-        # venue vary by time-of-day (peak/off-peak) so this may be inaccurate — revisit
-        # by fetching per-slot prices once Matchi's rate limiting is better understood.
-        semaphore = asyncio.Semaphore(3)
-        venue_price_map: Dict[str, Dict[str, float]] = {}
-        first_slot_by_venue: Dict[str, MatchiSlot] = {}
-        for ms in matchi_slots:
-            if ms.facility_slug not in first_slot_by_venue:
-                first_slot_by_venue[ms.facility_slug] = ms
-
-        price_tasks = [
-            self._fetch_prices(ms.slot_ids, semaphore)
-            for ms in first_slot_by_venue.values()
-        ]
-        fetched_maps = await asyncio.gather(*price_tasks)
-        for slug, pm in zip(first_slot_by_venue.keys(), fetched_maps):
-            venue_price_map[slug] = pm
-
-        logging.debug(f"Matchi: prices fetched for {len(first_slot_by_venue)} venues (reused across slots)")
-
         results: List[UnifiedParserSchema] = []
         for ms in matchi_slots:
-            pm = venue_price_map.get(ms.facility_slug, {})
-            record = self._to_unified(ms, pm, venue_by_slug, fetch_date)
+            record = self._to_unified(ms, venue_by_slug, fetch_date)
             if record:
                 results.append(record)
 
@@ -314,51 +288,9 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
 
         return all_slots
 
-    async def _fetch_prices(
-        self,
-        slot_ids: List[str],
-        semaphore: Optional[asyncio.Semaphore] = None,
-    ) -> Dict[str, float]:
-        """Fetch prices for the courts in ONE slot button (typically 1-3 IDs).
-
-        Matchi's getSlotPrices only returns data when given slot IDs that all
-        belong to the same time slot at the same facility.  Mixing IDs from
-        different slot groups or large batches results in an empty response.
-
-        A fresh httpx client avoids the connection-state issue that arises when
-        the same client previously made the findFacilities POST.  A semaphore
-        caps concurrent calls so we don't open 80+ connections simultaneously.
-        """
-        if not slot_ids:
-            return {}
-        sem = semaphore or asyncio.Semaphore(3)
-        async with sem:
-            for attempt in range(3):
-                try:
-                    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as c:
-                        resp = await c.get(
-                            f"{MATCHI_ORGANISATION_WEBSITE}/book/getSlotPrices",
-                            params=[("slotId", sid) for sid in slot_ids],
-                            follow_redirects=True,
-                        )
-                        if resp.status_code == 429:
-                            wait = 2 ** attempt
-                            logging.warning(f"Matchi getSlotPrices 429 (attempt {attempt+1}), retrying in {wait}s")
-                            await asyncio.sleep(wait)
-                            continue
-                        resp.raise_for_status()
-                        if resp.text.strip():
-                            return {item["slotId"]: item["price"] for item in resp.json()}
-                        return {}
-                except Exception as exc:
-                    logging.error(f"Matchi getSlotPrices failed for {slot_ids[:2]}: {exc}")
-                    break
-            return {}
-
     def _to_unified(
         self,
         ms: MatchiSlot,
-        price_map: Dict[str, float],
         venue_by_slug: Dict[str, sportscanner.storage.postgres.tables.SportsVenue],
         search_date: date,
     ) -> Optional[UnifiedParserSchema]:
@@ -366,15 +298,12 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
         if not venue:
             return None
 
-        price_value = next((price_map[sid] for sid in ms.slot_ids if sid in price_map), None)
-        price_str = f"£{price_value:.2f}" if price_value is not None else "N/A"
-
         return UnifiedParserSchema(
             category="Padel",
             starting_time=_ms_to_london_time(ms.start_timestamp_ms),
             ending_time=_ms_to_london_time(ms.end_timestamp_ms),
             date=search_date,
-            price=price_str,
+            price="£55.00",
             spaces=len(ms.slot_ids),
             composite_key=venue.composite_key,
             last_refreshed=datetime.now(),
