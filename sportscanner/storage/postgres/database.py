@@ -109,6 +109,7 @@ def load_sports_centre_mappings(engine):
                         sports=venue.sports
                     )
                 )
+        session.flush()  # write inserts to DB before the UPDATE can see them
         # Ensure srid column is populated for distance calculations
         session.execute(text("UPDATE sportsvenue SET srid = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) WHERE srid IS NULL"))
         session.commit()
@@ -256,28 +257,6 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
         session.commit()
         logging.success(f"Upserted {len(all_data)} slots into {TableForLoading.__tablename__}")
 
-def recreate_staging_table():
-    with engine.begin() as conn:
-        # Drop the table if it exists
-        conn.exec_driver_sql("DROP TABLE IF EXISTS badminton_staging;")
-        # Recreate using SQLModel metadata
-        BadmintonStagingTable.metadata.create_all(bind=conn)
-
-def swap_tables(master: str, staging: str, archive: str):
-    """Swap staging table into master position."""
-    logging.warning(f"Starting swap between master: `{master}` and staging: `{staging}` - Archive: `{archive}`")
-    with engine.connect() as conn:
-        with conn.begin():
-            logging.warning("Dropping existing Archive tables")
-            conn.execute(text(f"DROP TABLE IF EXISTS {archive} CASCADE;"))
-            logging.warning("Moving Master table to Archive")
-            conn.execute(text(f"ALTER TABLE {master} SET SCHEMA archive;"))
-            logging.warning("Moving Staging table to Master")
-            # conn.execute(text(f"ALTER TABLE {staging} DROP CONSTRAINT IF EXISTS {master}_pkey;"))
-            conn.execute(text(f"ALTER TABLE {staging} SET SCHEMA public;"))
-            logging.warning("Housekeeping: Dropping Archive Table")
-            conn.execute(text(f"DROP TABLE IF EXISTS {archive} CASCADE;"))
-
 
 def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select, params=None):
     """Returns all rows from full table or selected columns
@@ -293,11 +272,8 @@ def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: sel
 
 def create_db_and_tables(engine):
     """Creates required schemas (if not exist) and then tables."""
-    required_schemas = ["public", "staging", "archive"]  # Replace with your actual schemas
-
     with engine.connect() as conn:
-        for schema in required_schemas:
-            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS public"))
         conn.commit()
 
     SQLModel.metadata.create_all(
@@ -305,64 +281,26 @@ def create_db_and_tables(engine):
         tables=[
             SportsVenue.__table__,
             BadmintonMasterTable.__table__,
-            BadmintonStagingTable.__table__,
             SquashMasterTable.__table__,
-            SquashStagingTable.__table__,
             PickleballMasterTable.__table__,
-            PickleballStagingTable.__table__        
+            PadelMasterTable.__table__,
         ]
     )
 
-
-def initialise_badminton_staging():
-    """Creates non-existing tables in db using Class arguments `table=True` which
-    registers SQLModel inheritted class into a Table schema
-    """
-    with engine.begin() as conn:
-        conn.exec_driver_sql("DROP TABLE IF EXISTS staging.badminton;")
-    SQLModel.metadata.create_all(
-        bind=engine,
-        tables=[
-            BadmintonStagingTable.__table__,
-        ]
-    )
-
-def initialise_pickleball_staging():
-    """Creates non-existing tables in db using Class arguments `table=True` which
-    registers SQLModel inheritted class into a Table schema
-    """
-    with engine.begin() as conn:
-        conn.exec_driver_sql("DROP TABLE IF EXISTS staging.pickleball;")
-    SQLModel.metadata.create_all(
-        bind=engine,
-        tables=[
-            PickleballStagingTable.__table__,
-        ]
-    )
-
-def initialise_squash_staging():
-    """Creates non-existing tables in db using Class arguments `table=True` which
-    registers SQLModel inheritted class into a Table schema
-    """
-    with engine.begin() as conn:
-        conn.exec_driver_sql("DROP TABLE IF EXISTS staging.squash;")
-    SQLModel.metadata.create_all(
-        bind=engine,
-        tables=[
-            SquashStagingTable.__table__,
-        ]
-    )
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        conn.execute(text(
+            "ALTER TABLE public.sportsvenue ADD COLUMN IF NOT EXISTS srid geometry(Point, 4326)"
+        ))
+        conn.commit()
 
 
 def initialize_db_and_tables(engine):
     create_db_and_tables(engine)
     truncate_table(engine, table=BadmintonMasterTable)
-    truncate_table(engine, table=BadmintonStagingTable)
     truncate_table(engine, table=SquashMasterTable)
-    truncate_table(engine, table=SquashStagingTable)
     truncate_table(engine, table=PickleballMasterTable)
-    truncate_table(engine, table=PickleballStagingTable)
-
+    truncate_table(engine, table=PadelMasterTable)
     truncate_table(engine, table=SportsVenue)
     load_sports_centre_mappings(engine)
 

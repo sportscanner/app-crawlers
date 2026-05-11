@@ -734,5 +734,121 @@
         "sports": ["badminton", "squash"]
       }
     ]
+  },
+  {
+    "organisation": "Matchi",
+    "organisation_website": "https://www.matchi.se",
+    "venues": [
+      {
+        "venue_name": "Coldharbour Leisure Centre",
+        "slug": "game4padelgll",
+        "location": {
+          "postcode": "SE9 3LX",
+          "address": "Chapel Farm Rd, Coldharbour Estate, London, SE9 3LX",
+          "longitude": 0.053608,
+          "latitude": 51.437061
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "Tower Hill Terrace - Padel",
+        "slug": "towerhillterrace",
+        "location": {
+          "postcode": "EC3N 4EE",
+          "address": "Tower Hill Terrace, London",
+          "latitude": 51.5092228,
+          "longitude": -0.0785213
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "Hay's Galleria London Bridge City",
+        "slug": "londonbridgecity",
+        "location": {
+          "postcode": "SE1 2HL",
+          "address": "Hay's Galleria, London Bridge City, London",
+          "latitude": 51.5056802,
+          "longitude": -0.0835362
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "St Paul's Cathedral Churchyard",
+        "slug": "stpaulscathedralchurchyard",
+        "location": {
+          "postcode": "EC4M 8AE",
+          "address": "St Paul's Cathedral Churchyard, London",
+          "latitude": 51.5138453,
+          "longitude": -0.0983506
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "The Padel Yard - Vauxhall Square",
+        "slug": "g4pvauxhallpadelyard",
+        "location": {
+          "postcode": "SW8 2LX",
+          "address": "Vauxhall Sqaure, London SW8 2LX",
+          "longitude": -0.126722,
+          "latitude": 51.483436
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "Crystal Palace National Sports Centre",
+        "slug": "game4padelcrystalpalace",
+        "location": {
+          "postcode": "SE19 2BB",
+          "address": "Ledrington Rd, London, SE19 2BB",
+          "longitude": -0.067743,
+          "latitude": 51.418998
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "West Herts Sports Club",
+        "slug": "westhertssportsclub",
+        "location": {
+          "postcode": "N13 5XQ",
+          "address": "West Herts Sports Club, London",
+          "latitude": 51.6209455,
+          "longitude": -0.1052101
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "Cumberland Lawn Tennis Club",
+        "slug": "cltc",
+        "location": {
+          "postcode": "NW6 1JD",
+          "address": "Cumberland Lawn Tennis Club, London",
+          "latitude": 51.5515842,
+          "longitude": -0.1874331
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "The Padel Yard - Wandsworth",
+        "slug": "g4pthepadelyard",
+        "location": {
+          "postcode": "SW18 1SH",
+          "address": "2 Armoury Way, London SW18 1SH",
+          "longitude": -0.19122,
+          "latitude": 51.45935
+        },
+        "sports": ["padel"]
+      },
+      {
+        "venue_name": "Parkside Padel Club",
+        "slug": "game4padelparkside",
+        "location": {
+          "postcode": "UB1 1GH",
+          "address": "1 Seva Dr, Southall, UB1 1GH",
+          "longitude": -0.389126,
+          "latitude": 51.50629
+        },
+        "sports": ["padel"]
+      }
+    ]
   }
 ]

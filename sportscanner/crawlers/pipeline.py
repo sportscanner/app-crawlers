@@ -26,11 +26,13 @@ from sportscanner.crawlers.parsers.better.pickleball.scraper import coroutines a
 from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import coroutines as SouthwarkLeisurePickleballScraperCoroutines
 from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutines as DecathlonPickleballScraperCoroutines
 
+from sportscanner.crawlers.parsers.matchi.padel.scraper import coroutines as MatchiPadelScraperCoroutines
+
 
 from sportscanner.storage.postgres.database import (
 insert_records_to_table, truncate_by_composite_key_and_reload
 )
-from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, SquashStagingTable, BadmintonStagingTable, PickleballStagingTable
+from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, PadelMasterTable
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
 
@@ -140,13 +142,37 @@ def pickleball_scraping_pipeline():
         return False
 
 
+@timeit
+def padel_scraping_pipeline():
+    logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    today = date.today()
+    dates = [today + timedelta(days=i) for i in range(10)]
+    logging.info(f"Finding slots for dates: {dates}")
+    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
+        SportscannerCrawlerBot(
+            MatchiPadelScraperCoroutines(dates),
+        )
+    )
+    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    if all_slots:
+        logging.success(f"Total slots collected: {len(all_slots)}")
+        logging.info(f"Upserting all data to master table: {PadelMasterTable.__tablename__}")
+        insert_records_to_table(all_slots, PadelMasterTable)
+        return True
+    else:
+        logging.warning(
+            "No valid padel slots were found. Database update skipped (might be an issue)"
+        )
+        return False
+
+
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
 
     parser = argparse.ArgumentParser(description="Run SportScanner scraping pipelines")
     parser.add_argument(
         "--task",
-        choices=["badminton", "squash", "pickleball", "all"],
+        choices=["badminton", "squash", "pickleball", "padel", "all"],
         required=False,
         help="Which pipeline to run"
     )
@@ -161,8 +187,12 @@ if __name__ == "__main__":
     elif args.task == "pickleball":
         logging.info("Starting Pickleball scraping pipeline...")
         pickleball_scraping_pipeline()
+    elif args.task == "padel":
+        logging.info("Starting Padel scraping pipeline...")
+        padel_scraping_pipeline()
     else:
         logging.info("Starting ALL scraping pipelines...")
         badminton_scraping_pipeline()
         squash_scraping_pipeline()
         pickleball_scraping_pipeline()
+        padel_scraping_pipeline()
