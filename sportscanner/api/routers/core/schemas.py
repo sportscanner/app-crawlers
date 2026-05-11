@@ -19,6 +19,7 @@ class SportscannerSupportedSports(Enum):
     BADMINTON = "badminton"
     SQUASH = "squash"
     PICKLEBALL = "pickleball"
+    PADEL = "padel"
 
 
 @dataclass
