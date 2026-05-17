@@ -4,6 +4,17 @@ from fastapi import HTTPException
 
 
 def get_kinde_access_token(refresh_token: str):
+    if not refresh_token:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "invalid_request",
+                "error_description": "Refresh token not provided.",
+            },
+        )
+    if refresh_token.lower().startswith("bearer "):
+        refresh_token = refresh_token.split(" ", 1)[1].strip()
+
     url = f"{settings.KINDE_DOMAIN}/oauth2/token"
     payload = {
         "grant_type": "refresh_token",

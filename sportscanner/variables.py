@@ -14,7 +14,6 @@ env_file = ".env" if os.getenv("ENV") == "prod" else ".dev.env"
 
 class Settings(BaseSettings):
     DB_CONNECTION_STRING: str
-    SQL_DATABASE_NAME: str
     HTTPX_CLIENT_MAX_CONNECTIONS: int
     HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS: int
     HTTPX_CLIENT_TIMEOUT: float
