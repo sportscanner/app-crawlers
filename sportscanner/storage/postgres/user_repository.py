@@ -6,6 +6,17 @@ from sqlmodel import Session
 from sportscanner.storage.postgres.tables import User, UserPreferences
 
 
+def _deep_merge_preferences(existing: dict, updates: dict) -> dict:
+    """Merge preference updates without dropping unrelated nested preference keys."""
+    merged = dict(existing or {})
+    for key, value in (updates or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_preferences(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 class PostgresUserRepository:
     def __init__(self, engine):
         self.engine = engine
@@ -46,12 +57,14 @@ class PostgresUserRepository:
         """
         Merge new preference keys into the existing JSONB blob.
         Existing keys not in `preferences` are preserved.
+        Nested preference groups are merged recursively so new fields can be
+        added later without overwriting sibling settings.
         Pass onboarding_completed=None to leave the existing value unchanged.
         """
         with Session(self.engine) as session:
             prefs = session.get(UserPreferences, kinde_user_id)
             if prefs:
-                merged = {**(prefs.preferences or {}), **preferences}
+                merged = _deep_merge_preferences(prefs.preferences or {}, preferences)
                 prefs.preferences = merged
                 if onboarding_completed is not None:
                     prefs.onboarding_completed = onboarding_completed
@@ -76,10 +89,19 @@ class PostgresUserRepository:
             if not user:
                 return None
             prefs = session.get(UserPreferences, kinde_user_id)
+            preferences = prefs.preferences if prefs else {}
             return {
                 "kindeUserId": user.kinde_user_id,
                 "fullName": user.full_name,
                 "email": user.email,
                 "onboarding": prefs.onboarding_completed if prefs else False,
-                "preferences": prefs.preferences if prefs else {},
+                "preferences": preferences,
+                # Backward-compatible aliases for clients that still read these
+                # fields at the profile root. The source of truth is the
+                # preferences JSON blob above.
+                "postcode": preferences.get("postcode"),
+                "preferredVenues": preferences.get("preferredVenues", []),
+                "preferredTimes": preferences.get("preferredTimes"),
+                "goals": preferences.get("goals", []),
+                "availability": preferences.get("availability", {}),
             }

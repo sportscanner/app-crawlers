@@ -2,10 +2,9 @@ from datetime import date, datetime, time, timedelta
 from typing import List, Optional
 
 from sqlalchemy import Column, String
-from sqlalchemy import JSON
 import sqlalchemy
 from sqlmodel import Field, Session, SQLModel, create_engine, delete, select, Column, String
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 class SportsVenue(SQLModel, table=True):
     """Table containing information on Sports centres
@@ -166,7 +165,7 @@ class UserPreferences(SQLModel, table=True):
         primary_key=True,
         foreign_key="public.users.kinde_user_id",
     )
-    preferences: dict = Field(default={}, sa_column=Column(JSON, nullable=False))
+    preferences: dict = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False))
     onboarding_completed: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

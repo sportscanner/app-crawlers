@@ -6,6 +6,21 @@ from sportscanner.core.kinde.auth import get_kinde_access_token, get_kinde_user_
 
 router = APIRouter()
 
+PREFERENCE_KEYS = {
+    "postcode",
+    "searchRadius",
+    "usePostcodeSearch",
+    "preferredVenues",
+    "preferredTimes",
+    "goals",
+    "availability",
+    "customPostcodes",
+    "skillBadminton",
+    "skillSquash",
+    "skillPickleball",
+    "skills",
+}
+
 
 def _kinde_identity(refresh_token: str) -> tuple[str, str, str]:
     """Returns (kinde_user_id, full_name, email) from a refresh token."""
@@ -13,6 +28,16 @@ def _kinde_identity(refresh_token: str) -> tuple[str, str, str]:
     d = get_kinde_user_details(access_token)
     full_name = f"{d.get('first_name', '')} {d.get('last_name', '')}".strip()
     return d["id"], full_name, d.get("preferred_email", "")
+
+
+def _preference_updates(body: dict) -> dict:
+    """
+    Prefer the extensible `{ "preferences": { ... } }` contract, but also
+    accept legacy top-level preference fields for older clients.
+    """
+    preferences = body.get("preferences") if isinstance(body.get("preferences"), dict) else {}
+    legacy_preferences = {key: body[key] for key in PREFERENCE_KEYS if key in body}
+    return {**preferences, **legacy_preferences}
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
@@ -51,7 +76,7 @@ async def update_user(
         kinde_user_id=user_id,
         full_name=full_name,
         email=email,
-        preferences=body.get("preferences", {}),
+        preferences=_preference_updates(body),
         onboarding=body.get("onboarding", None),
     )
     return {"success": True}
