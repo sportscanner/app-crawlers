@@ -1,17 +1,9 @@
 """
 Matchi strategy implementations.
 
-Matchi (matchi.se) serves HTML for its facility-listing endpoint and loads prices
-via a separate JSON endpoint.  The crawl has two phases per date:
-
-  1. POST /book/findFacilities  → HTML → MatchiSlot objects  (paginated)
-  2. GET  /book/getSlotPrices   → JSON → price lookup by slot ID
-
-Because one Matchi request retrieves ALL London padel venues at once (unlike the
-per-venue model used by Better/GLL), we override BaseCrawler.ScraperCoroutines
-in MatchiPadelCrawler to iterate over dates rather than (venue × date) pairs.
-The venue list from the DB is used purely to build a slug → SportsVenue map for
-composite-key resolution.
+For each known venue slug the crawler fetches GET /facilities/{slug}?date={date}&sport=5
+directly, avoiding the deprecated POST /book/findFacilities discovery endpoint.
+Slugs are stable and sourced from venues.json via the DB — no runtime discovery needed.
 
 Time-zone note
 --------------
@@ -23,6 +15,7 @@ used so DST transitions are handled automatically.
 
 from __future__ import annotations
 
+import asyncio
 import html as html_lib
 import json
 import re
@@ -52,11 +45,6 @@ from sportscanner.logger import logging
 MATCHI_ORGANISATION_WEBSITE = "https://www.matchi.se"
 LONDON_TZ = ZoneInfo("Europe/London")
 PADEL_SPORT_ID = 5
-
-# Fixed search centre used for all London padel queries
-_LONDON_LAT = 51.5072
-_LONDON_LNG = -0.1276
-_PAGE_SIZE = 10  # Matchi returns at most 10 facilities per page
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +150,7 @@ def _parse_html_page(html_content: str) -> tuple[List[MatchiSlot], int]:
 # ---------------------------------------------------------------------------
 
 class MatchiRequestStrategy(AbstractRequestStrategy):
-    """Generates a single POST request to /book/findFacilities for a venue+date."""
+    """Stub — Matchi crawler bypasses the standard per-venue request loop."""
 
     @override
     def generate_request_details(
@@ -173,22 +161,9 @@ class MatchiRequestStrategy(AbstractRequestStrategy):
     ) -> List[RequestDetailsWithMetadata]:
         return [
             RequestDetailsWithMetadata(
-                url=f"{MATCHI_ORGANISATION_WEBSITE}/book/findFacilities",
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Accept": "*/*",
-                },
-                payload={
-                    "lat": _LONDON_LAT,
-                    "lng": _LONDON_LNG,
-                    "offset": 0,
-                    "outdoors": "",
-                    "sport": PADEL_SPORT_ID,
-                    "date": fetch_date.isoformat(),
-                    "q": "London",
-                    "hasCamera": "",
-                },
+                url=f"{MATCHI_ORGANISATION_WEBSITE}/facilities/{sports_venue.slug}",
+                headers={},
+                payload=None,
                 metadata=AdditionalRequestMetadata(
                     category="Padel",
                     date=fetch_date,
@@ -221,11 +196,19 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
         fetch_date: date,
         venue_by_slug: Dict[str, sportscanner.storage.postgres.tables.SportsVenue],
     ) -> List[UnifiedParserSchema]:
-        """Crawl availability for a single date across all London Matchi venues.
+        """Crawl availability for a single date across all known Matchi slugs concurrently."""
+        slot_lists = await asyncio.gather(
+            *[self._fetch_facility_slots(client, slug, fetch_date) for slug in venue_by_slug],
+            return_exceptions=True,
+        )
 
-        Price is hardcoded at £55 — not fetched from the Matchi API.
-        """
-        matchi_slots = await self._fetch_all_slots(client, fetch_date)
+        matchi_slots: List[MatchiSlot] = []
+        for r in slot_lists:
+            if isinstance(r, Exception):
+                logging.error(f"Matchi facility task raised: {r}")
+            elif r:
+                matchi_slots.extend(r)
+
         logging.info(f"Matchi: {len(matchi_slots)} slot groups for {fetch_date}")
         if not matchi_slots:
             return []
@@ -241,52 +224,28 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
 
     # -- internal helpers -----------------------------------------------------
 
-    async def _fetch_all_slots(
-        self, client: httpx.AsyncClient, fetch_date: date
+    async def _fetch_facility_slots(
+        self, client: httpx.AsyncClient, slug: str, fetch_date: date
     ) -> List[MatchiSlot]:
-        """Paginate /book/findFacilities until the last page."""
-        all_slots: List[MatchiSlot] = []
-        offset = 0
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "X-Requested-With": "XMLHttpRequest",
-            "Accept": "*/*",
-        }
-        while True:
-            payload = {
-                "lat": _LONDON_LAT,
-                "lng": _LONDON_LNG,
-                "offset": offset,
-                "outdoors": "",
-                "sport": PADEL_SPORT_ID,
-                "date": fetch_date.isoformat(),
-                "q": "London",
-                "hasCamera": "",
-            }
-            try:
-                resp = await client.post(
-                    f"{MATCHI_ORGANISATION_WEBSITE}/book/findFacilities",
-                    data=payload,
-                    headers=headers,
-                    timeout=30,
-                )
-                resp.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                logging.error(f"Matchi findFacilities HTTP error (offset={offset}): {exc}")
-                break
-            except Exception as exc:
-                logging.error(f"Matchi findFacilities failed (offset={offset}): {exc}")
-                break
+        """Fetch and parse availability for one facility on one date."""
+        url = f"{MATCHI_ORGANISATION_WEBSITE}/facilities/{slug}"
+        try:
+            resp = await client.get(
+                url,
+                params={"date": fetch_date.isoformat(), "sport": PADEL_SPORT_ID},
+                timeout=30,
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            logging.error(f"Matchi {slug} HTTP {exc.response.status_code} for {fetch_date}")
+            return []
+        except Exception as exc:
+            logging.error(f"Matchi {slug} failed for {fetch_date}: {exc}")
+            return []
 
-            page_slots, n_facilities = _parse_html_page(resp.text)
-            logging.debug(f"Matchi: offset={offset} → {n_facilities} facilities, {len(page_slots)} slot groups")
-            all_slots.extend(page_slots)
-
-            if n_facilities < _PAGE_SIZE:
-                break
-            offset += _PAGE_SIZE
-
-        return all_slots
+        slots, _ = _parse_html_page(resp.text)
+        logging.debug(f"Matchi: {slug} {fetch_date} → {len(slots)} slot groups")
+        return slots
 
     def _to_unified(
         self,
