@@ -96,7 +96,7 @@ def sort_and_format_grouped_slots_for_ui(
         # Make last_refreshed timezone-aware in UK time if it's naive
         if last_refreshed.tzinfo is None:
             last_refreshed = last_refreshed.replace(tzinfo=ZoneInfo("Europe/London"))
-        healthcheck = "deprecated" if now_uk - last_refreshed > timedelta(minutes=35) else "ok"
+        healthcheck = "deprecated" if now_uk - last_refreshed > timedelta(minutes=30) else "ok"
 
         processed_slots.append(
             {

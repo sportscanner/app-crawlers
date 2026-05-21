@@ -11,7 +11,7 @@ class VenueAvailability(BaseModel):
     @computed_field
     @property
     def health(self) -> str:
-        """Return 'ok' if latest_refresh is within the last 35 minutes (UK time), else 'deprecated'."""
+        """Return 'ok' if latest_refresh is within the last 30 minutes (UK time), else 'deprecated'."""
         if self.latest_refresh is None:
             return "deprecated"
 
@@ -22,6 +22,6 @@ class VenueAvailability(BaseModel):
         if latest.tzinfo is None:
             latest = latest.replace(tzinfo=ZoneInfo("Europe/London"))
 
-        if now_uk - latest > timedelta(minutes=35):
+        if now_uk - latest > timedelta(minutes=30):
             return "deprecated"
         return "ok"
