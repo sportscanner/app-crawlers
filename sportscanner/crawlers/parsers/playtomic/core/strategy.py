@@ -66,13 +66,13 @@ _BOOKING_SLUG_OVERRIDES: Dict[str, Optional[str]] = {
 }
 
 
-def _booking_url(tenant_uid: str) -> Optional[str]:
+def _booking_url(tenant_uid: str, slot_date: date) -> Optional[str]:
     if tenant_uid in _BOOKING_SLUG_OVERRIDES:
         website_slug = _BOOKING_SLUG_OVERRIDES[tenant_uid]
         if website_slug is None:
             return None
-        return f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{website_slug}"
-    return f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{tenant_uid}"
+        return f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{website_slug}?date={slot_date.isoformat()}"
+    return f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{tenant_uid}?date={slot_date.isoformat()}"
 
 _HEADERS = {
     "accept": "*/*",
@@ -181,7 +181,7 @@ def _resources_to_unified(
                 spaces=len(prices),
                 composite_key=venue.composite_key,
                 last_refreshed=datetime.now(),
-                booking_url=_booking_url(venue.slug),
+                booking_url=_booking_url(venue.slug, fetch_date),
             )
         )
 
