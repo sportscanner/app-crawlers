@@ -27,6 +27,7 @@ from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import co
 from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutines as DecathlonPickleballScraperCoroutines
 
 from sportscanner.crawlers.parsers.matchi.padel.scraper import coroutines as MatchiPadelScraperCoroutines
+from sportscanner.crawlers.parsers.playtomic.padel.scraper import coroutines as PlaytomicPadelScraperCoroutines
 
 
 from sportscanner.storage.postgres.database import (
@@ -151,6 +152,7 @@ def padel_scraping_pipeline():
     responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
         SportscannerCrawlerBot(
             MatchiPadelScraperCoroutines(dates),
+            PlaytomicPadelScraperCoroutines(dates),
         )
     )
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
