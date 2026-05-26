@@ -1,0 +1,2 @@
+"""Observability integrations for SportScanner."""
+

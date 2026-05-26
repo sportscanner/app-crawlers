@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from operator import attrgetter
@@ -13,6 +14,29 @@ from rich import print
 import sportscanner.storage.postgres.database as db
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.pipeline import *
+
+
+def format_price_for_ui(raw_price) -> str:
+    """Normalize slot prices for the frontend, ensuring GBP symbol is present."""
+    if raw_price is None:
+        return "£0"
+
+    price = str(raw_price).strip()
+    if not price:
+        return "£0"
+    if price.startswith("£"):
+        return price
+
+    numeric_match = re.search(r"\d+(?:\.\d+)?", price.replace(",", ""))
+    if not numeric_match:
+        return price
+
+    amount = numeric_match.group(0)
+    if "." not in amount:
+        return f"£{amount}"
+
+    normalized_amount = amount.rstrip("0").rstrip(".")
+    return f"£{normalized_amount or '0'}"
 
 
 def generate_venue_lookup() -> dict:
@@ -82,7 +106,7 @@ def sort_and_format_grouped_slots_for_ui(
                     "endingTime": x.ending_time.strftime("%H:%M"),
                     "available": _available,
                     "bookingUrl": x.booking_url,
-                    "price": x.price,
+                    "price": format_price_for_ui(x.price),
                 }
             )
 
@@ -106,7 +130,7 @@ def sort_and_format_grouped_slots_for_ui(
                 "distance": distance_from_venues_reference.get(
                     earliest_slot_in_group.composite_key, 99
                 ),
-                "price": earliest_slot_in_group.price,
+                "price": format_price_for_ui(earliest_slot_in_group.price),
                 "organization": lookup_data.get("organisation", ""),
                 "date": earliest_slot_in_group.date.strftime("%a, %b %d"),
                 "availability": availabilities,

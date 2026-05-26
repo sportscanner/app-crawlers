@@ -1,5 +1,7 @@
+import uuid
 from datetime import date, datetime, time, timedelta
 from typing import List, Optional
+from uuid import uuid4
 
 from sqlalchemy import Column, String
 import sqlalchemy
@@ -169,3 +171,100 @@ class UserPreferences(SQLModel, table=True):
     onboarding_completed: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BusinessPartner(SQLModel, table=True):
+    """Business accounts for Sportscanner Business portal."""
+
+    __tablename__ = "business_partner"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    name: str
+    website: str
+    kinde_user_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String, nullable=True, unique=True, index=True),
+    )
+    email: str = Field(sa_column=Column(String, nullable=False, unique=True, index=True))
+    password_hash: str
+    status: str = Field(default="active")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BusinessApiKey(SQLModel, table=True):
+    """API keys used by third-party business integrations."""
+
+    __tablename__ = "business_api_key"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    partner_id: str = Field(foreign_key="public.business_partner.id", index=True)
+    label: str
+    key_prefix: str
+    key_hash: str = Field(sa_column=Column(String, nullable=False, unique=True, index=True))
+    active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_used_at: Optional[datetime] = None
+
+
+class BusinessVenueAccess(SQLModel, table=True):
+    """Many-to-many style mapping of business partner to managed venues."""
+
+    __tablename__ = "business_venue_access"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    partner_id: str = Field(foreign_key="public.business_partner.id", index=True)
+    composite_key: str = Field(foreign_key="public.sportsvenue.composite_key", index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BusinessIngestionEvent(SQLModel, table=True):
+    """Audit trail for each availability ingest request from portal/integrations."""
+
+    __tablename__ = "business_ingestion_event"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    partner_id: str = Field(foreign_key="public.business_partner.id", index=True)
+    source: str = "portal"
+    sport: str
+    composite_key: str
+    slots_received: int
+    slots_written: int
+    request_id: Optional[str] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+
+class ChatSession(SQLModel, table=True):
+    """Persisted user chat sessions for the Sportscanner agent."""
+
+    __tablename__ = "chat_session"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    kinde_user_id: str = Field(index=True)
+    title: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ChatMessage(SQLModel, table=True):
+    """Persisted chat messages linked to a chat session."""
+
+    __tablename__ = "chat_message"
+    __table_args__ = {"schema": "public"}
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    chat_session_id: str = Field(foreign_key="public.chat_session.id", index=True)
+    role: str
+    content: str
+    used_tools: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), nullable=False),
+    )
+    model: Optional[str] = None
+    ui_blocks: Optional[dict | list] = Field(default=None, sa_column=Column(JSONB))
+    created_at: datetime = Field(default_factory=datetime.utcnow)

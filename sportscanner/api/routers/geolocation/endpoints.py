@@ -1,16 +1,14 @@
-from typing import Optional, List
-
-import httpx
+from typing import List
 from fastapi import APIRouter, Query
 
 from sportscanner.api.routers.geolocation.external import (
+    get_nearest_postcode_from_coordinates,
     get_postcode_metadata,
+    resolve_location_query,
     validate_uk_postcode,
     postcode_autocompletion,
 )
-from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
-from sportscanner.api.routers.geolocation.utils import *
-from sportscanner.variables import settings, urljoin
+from sportscanner.api.routers.geolocation.schemas import ResolvedLocationResponseModel
 
 router = APIRouter()
 
@@ -49,12 +47,24 @@ async def reverse_geocode_to_postcode(
     lon: float = Query(..., description="Longitude"),
 ):
     """Return the nearest UK postcode for a lat/lon coordinate."""
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"https://api.postcodes.io/postcodes?lon={lon}&lat={lat}&limit=1"
-        )
-    data = resp.json()
-    results = data.get("result") or []
-    if results:
-        return {"postcode": results[0]["postcode"]}
-    return {"postcode": None}
+    postcode = get_nearest_postcode_from_coordinates(latitude=lat, longitude=lon)
+    return {"postcode": postcode}
+
+
+@router.get("/resolve-location", response_model=ResolvedLocationResponseModel)
+async def resolve_flexible_location_query(
+    q: str = Query(
+        ...,
+        description=(
+            "Flexible location query: full postcode, outcode/district "
+            "(for example `E14`), or London place name (for example `Paddington`)."
+        ),
+    ),
+):
+    """
+    Resolve a flexible location query into a postcode and coordinates.
+
+    This endpoint supports partial postcode and place-name questions used by the
+    SportScanner agent before running venue/availability searches.
+    """
+    return resolve_location_query(q)

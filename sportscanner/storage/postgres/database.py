@@ -297,10 +297,29 @@ def create_db_and_tables(engine):
             UserPreferences.__table__,
             Notification.__table__,
             NotificationAck.__table__,
+            ChatSession.__table__,
+            ChatMessage.__table__,
+            BusinessPartner.__table__,
+            BusinessApiKey.__table__,
+            BusinessVenueAccess.__table__,
+            BusinessIngestionEvent.__table__,
         ]
     )
 
     with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE public.business_partner "
+            "ADD COLUMN IF NOT EXISTS kinde_user_id TEXT"
+        ))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS business_partner_kinde_user_id_idx "
+            "ON public.business_partner (kinde_user_id) "
+            "WHERE kinde_user_id IS NOT NULL"
+        ))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS business_venue_access_partner_composite_idx "
+            "ON public.business_venue_access (partner_id, composite_key)"
+        ))
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
         conn.execute(text(
             "ALTER TABLE public.sportsvenue ADD COLUMN IF NOT EXISTS srid geometry(Point, 4326)"

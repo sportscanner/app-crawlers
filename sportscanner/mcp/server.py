@@ -1,27 +1,29 @@
-
-# """Geoapify MCP Server implementation using FastMCP and streamable HTTP."""
+"""SportScanner MCP server entrypoint."""
 
 import asyncio
-from sportscanner.logger import logging
+
 from fastmcp import FastMCP
 from fastmcp.tools import Tool
 
 from sportscanner.mcp.registry import TOOL_FUNCTIONS
 
-mcp = FastMCP(
-    name="Sportscanner Unified MCP",
-    tools=[func for func in TOOL_FUNCTIONS.values()],
+INSTRUCTIONS = (
+    "SportScanner MCP server exposing typed tools for SportScanner API routes. "
+    "These tools wrap venue discovery, slot search, geolocation, health checks, "
+    "user profile operations, and notification operations."
 )
 
-'''Following code block doesn't register tools with some clients like DeepChat'''
-# Register each function as a tool (loop over your dict for convenience)
-# for tool_name, func in TOOL_FUNCTIONS.items():
-#     tool = Tool.from_function(func, name=tool_name)
-#     mcp.add_tool(tool)
+mcp = FastMCP(name="SportScanner API MCP", instructions=INSTRUCTIONS)
+
+for tool_name, tool_fn in TOOL_FUNCTIONS.items():
+    mcp.add_tool(Tool.from_function(tool_fn, name=tool_name))
+
 
 if __name__ == "__main__":
-    async def list_tools():
-        tools = await mcp.get_tools()  # Or mcp.list_tools() in older versions
-        print("Registered tools:", [tool.name for tool in tools.values()])  # Use .values() for Tool objects
+
+    async def list_tools() -> None:
+        tools = await mcp.list_tools(run_middleware=False)
+        print("Registered tools:", [tool.name for tool in tools])
+
     asyncio.run(list_tools())
-    mcp.run(transport="http", port=8080)  # Change 8080 to your desired port
+    mcp.run(transport="http", port=8080)
