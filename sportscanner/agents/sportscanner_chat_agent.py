@@ -1790,7 +1790,7 @@ class SportScannerChatAgent:
         raw_reply_text = ""
         emitted_reply_text = ""
         events: list[Event] = []
-        stream_from_partial_events = True
+        stream_from_partial_events = False
 
         try:
             yield AgentStreamUpdate(
