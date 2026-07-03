@@ -5,7 +5,7 @@ import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.parsers.core.schemas import RawResponseData, RequestDetailsWithMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractResponseParserStrategy, AbstractAsyncTaskCreationStrategy, AbstractRequestStrategy
 from datetime import date, datetime
-from typing import Any, Coroutine, List
+from typing import Any, Coroutine, List, Optional
 from sportscanner.crawlers.helpers import override
 
 import httpx
@@ -112,33 +112,39 @@ class BetterLeisureTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
             ]
             return results
 
-        try:
-            response = await client.get(request_details.url, headers=request_details.headers) # Add payload if request_details.payload
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "")
-            validated_response = validate_api_response(response, content_type, request_details.url)
-            validated_response_data = validated_response.get("data")
-            if validated_response_data:
-                raw_data_obj = RawResponseData(
-                    content=validated_response_data,
-                    status_code=response.status_code,
-                    headers=dict(response.headers),
-                    requestMetadata=request_details
-                )
-                parsed_common_schema_response: List[UnifiedParserSchema] = parser.parse(raw_data_obj)
-                return parsed_common_schema_response
-            else:
-                logging.debug(f"No 'data' field in API response from {request_details.url} - populating blanks for upserts")
-                blanks = populate_blank_response_for_upserts(
-                    category=request_details.metadata.category,
-                    composite_key=request_details.metadata.sportsCentre.composite_key,
-                    search_date=request_details.metadata.date
-                )
-                return blanks
-        except httpx.HTTPStatusError as e:
-            logging.error(f"HTTP error for {request_details.url}: {e}")
-        except Exception as e:
-            logging.error(f"Error fetching/parsing {request_details.url}: {e}")
+        urls_to_try = [request_details.url] + (request_details.fallback_urls or [])
+        last_http_error: Optional[httpx.HTTPStatusError] = None
+        for attempt_url in urls_to_try:
+            try:
+                response = await client.get(attempt_url, headers=request_details.headers) # Add payload if request_details.payload
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "")
+                validated_response = validate_api_response(response, content_type, attempt_url)
+                validated_response_data = validated_response.get("data")
+                if validated_response_data:
+                    raw_data_obj = RawResponseData(
+                        content=validated_response_data,
+                        status_code=response.status_code,
+                        headers=dict(response.headers),
+                        requestMetadata=request_details
+                    )
+                    parsed_common_schema_response: List[UnifiedParserSchema] = parser.parse(raw_data_obj)
+                    return parsed_common_schema_response
+                else:
+                    logging.debug(f"No 'data' field in API response from {attempt_url} - populating blanks for upserts")
+                    blanks = populate_blank_response_for_upserts(
+                        category=request_details.metadata.category,
+                        composite_key=request_details.metadata.sportsCentre.composite_key,
+                        search_date=request_details.metadata.date
+                    )
+                    return blanks
+            except httpx.HTTPStatusError as e:
+                last_http_error = e
+                continue # try next fallback URL, if any
+            except Exception as e:
+                logging.error(f"Error fetching/parsing {attempt_url}: {e}")
+                return []
+        logging.error(f"HTTP error for {request_details.url} (tried {len(urls_to_try)} URL variant(s)): {last_http_error}")
         return []
 
     @override
