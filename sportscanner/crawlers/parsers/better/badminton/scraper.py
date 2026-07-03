@@ -29,10 +29,16 @@ class BetterLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
         # Better/GLL is mid-rollout of a "/v2" times endpoint per venue - the legacy
         # (no-suffix) endpoint 422s once a venue has been migrated, and vice versa.
         # Try v2 first (already live for most venues) and fall back to v1.
-        activity_slug_pairs = [
-            ("badminton-40min/v2", "badminton-40min"),
-            ("badminton-60min/v2", "badminton-60min"),
-        ]
+        # shene-sports-and-fitness-centre doesn't split badminton into 40/60min
+        # activities at all - it only exposes a single "badminton-court" activity
+        # (v2 only, v1 404s), which returns slots of mixed durations.
+        if sports_venue.slug in ["shene-sports-and-fitness-centre"]:
+            activity_slug_pairs = [("badminton-court/v2", "badminton-court")]
+        else:
+            activity_slug_pairs = [
+                ("badminton-40min/v2", "badminton-40min"),
+                ("badminton-60min/v2", "badminton-60min"),
+            ]
         formatted_date: str = fetch_date.strftime('%Y-%m-%d')  # YYYY-MM-DD
         for activityId, fallback_activityId in activity_slug_pairs:
             url = (
