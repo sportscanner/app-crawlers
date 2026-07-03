@@ -36,6 +36,9 @@ def httpxAsyncClientWithoutProxyRotation() -> httpx.AsyncClient:
             connect=10.0,  # Max time to establish a connection
             read=10.0,  # Max time to read a response
         ),
+        # Transparently retries connection-level failures (DNS blips, resets,
+        # dropped connections) - does not retry on HTTP error status codes.
+        transport=httpx.AsyncHTTPTransport(retries=2),
     )
 
 
