@@ -12,6 +12,7 @@ import sportscanner.storage.postgres.database as db
 from sqlmodel import col, select
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.utils import async_timer, timeit
+from sportscanner.variables import settings
 import itertools # Keep this
 
 
@@ -65,6 +66,15 @@ class BaseCrawler(ABC):
     async def _send_concurrent_requests(self, parameter_sets: List[Tuple[
         sportscanner.storage.postgres.tables.SportsVenue, date]]) -> List[UnifiedParserSchema]:
         all_tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
+        # Firing hundreds of requests at once in a single burst (no pacing) causes a
+        # random fraction to get connection-reset/timed-out by the origin. Cap how many
+        # of this provider's requests are in flight at once to smooth that out.
+        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+
+        async def _bounded(task: Coroutine[Any, Any, List[UnifiedParserSchema]]) -> List[UnifiedParserSchema]:
+            async with semaphore:
+                return await task
+
         async with httpxAsyncClient() as client:
             for sports_venue, fetch_date in parameter_sets:
                 # Delegate task creation for this specific item context to the strategy
@@ -74,7 +84,7 @@ class BaseCrawler(ABC):
                 all_tasks.extend(item_tasks)
 
             logging.info(f"Total number of concurrent request tasks for {self.organisation_website} : {len(all_tasks)}")
-            responses = await asyncio.gather(*all_tasks)
+            responses = await asyncio.gather(*(_bounded(task) for task in all_tasks))
             successful_responses = []
             for idx, response in enumerate(responses):
                 if isinstance(response, Exception):
