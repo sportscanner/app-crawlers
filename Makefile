@@ -33,7 +33,7 @@ reset-database-tables:
 
 dev-api-server:
 	@echo "Locally running API server on localhost (connected databases: gondor)"
-	@fastapi dev sportscanner/api/root.py
+	@uv run fastapi dev sportscanner/api/root.py
 
 
 api-server-container:

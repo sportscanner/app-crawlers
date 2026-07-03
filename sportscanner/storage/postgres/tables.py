@@ -169,3 +169,30 @@ class UserPreferences(SQLModel, table=True):
     onboarding_completed: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ApiToken(SQLModel, table=True):
+    """
+    Personal API tokens for programmatic + MCP access, tied to a user account.
+
+    The raw token is shown to the user exactly once at creation time; only a
+    SHA-256 hash is persisted, so a leaked database never exposes usable
+    credentials. `token_prefix` stores a short, non-secret identifier
+    (e.g. "ssc_A1b2C3d") purely so the UI can show which token is which.
+    """
+
+    __tablename__ = "api_tokens"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(primary_key=True)
+    kinde_user_id: str = Field(
+        foreign_key="public.users.kinde_user_id",
+        index=True,
+    )
+    name: str
+    token_prefix: str
+    token_hash: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: Optional[datetime] = Field(default=None)
+    last_used_at: Optional[datetime] = Field(default=None)
+    revoked: bool = Field(default=False)

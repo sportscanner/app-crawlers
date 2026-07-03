@@ -13,8 +13,11 @@ from typing import Annotated, Literal, Optional
 from pydantic import Field
 from dotenv import load_dotenv
 from sportscanner.mcp.tools.schemas import PostcodeSearch, ForwardGeocoding
-# Load environment variables
-load_dotenv()
+# Load environment variables from the same env file the rest of the app uses
+# (.dev.env for local dev, .env for prod). A bare load_dotenv() would auto-discover
+# the prod .env and clobber the dev database selection.
+_env_file = ".env" if os.getenv("ENV") == "prod" else ".dev.env"
+load_dotenv(_env_file)
 GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_KEY", "641bb8358e4741119e51746ae3476049")
 # Base URL for Geoapify API
 GEOAPIFY_BASE_URL = "https://api.geoapify.com"
