@@ -26,19 +26,26 @@ class BetterLeisurePickleballRequestStrategy(AbstractRequestStrategy):
             self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
-        _version = "/v2" if sports_venue.slug in ["woolwich-waves-leisure-centre"] else ""
+        # Better/GLL is mid-rollout of a "/v2" times endpoint per venue (see badminton
+        # scraper for details). Unlike badminton/squash, pickleball's v2 endpoint is
+        # currently erroring (HTTP 500) for every venue, so v1 is tried first here with
+        # v2 as the fallback - inverse order to badminton/squash.
         if sports_venue.slug in ["lee-valley-velopark"]:
-            activity_ids_list = ["pickleball-60mins-court"]
+            activity_slug_pairs = [("pickleball-60mins-court", "pickleball-60mins-court/v2")]
         else:
-            activity_ids_list = [
-                "pickleball-40mins" + _version,
-                "pickleball-60mins" + _version
+            activity_slug_pairs = [
+                ("pickleball-40mins", "pickleball-40mins/v2"),
+                ("pickleball-60mins", "pickleball-60mins/v2"),
             ]
-        for activityId in activity_ids_list:
+        for activityId, fallback_activityId in activity_slug_pairs:
             formatted_date: str = fetch_date.strftime('%Y-%m-%d') # YYYY-MM-DD
             url = (
                 f"https://better-admin.org.uk/api/activities/venue/"
                 f"{sports_venue.slug}/activity/{activityId}/times?date={formatted_date}"
+            )
+            fallback_url = (
+                f"https://better-admin.org.uk/api/activities/venue/"
+                f"{sports_venue.slug}/activity/{fallback_activityId}/times?date={formatted_date}"
             )
             logging.debug(url)
             headers: dict = {
@@ -50,6 +57,7 @@ class BetterLeisurePickleballRequestStrategy(AbstractRequestStrategy):
             request_generator_list.append(
                 RequestDetailsWithMetadata(
                     url=url,
+                    fallback_urls=[fallback_url],
                     headers=headers,
                     payload=payload,
                     token=None,

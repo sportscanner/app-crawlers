@@ -26,16 +26,22 @@ class BetterLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
             self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
-        _version = "/v2" if sports_venue.slug in ["woolwich-waves-leisure-centre"] else ""
-        activityIds = {
-            0: "badminton-40min" + _version,
-            1:"badminton-60min" + _version
-        }
+        # Better/GLL is mid-rollout of a "/v2" times endpoint per venue - the legacy
+        # (no-suffix) endpoint 422s once a venue has been migrated, and vice versa.
+        # Try v2 first (already live for most venues) and fall back to v1.
+        activity_slug_pairs = [
+            ("badminton-40min/v2", "badminton-40min"),
+            ("badminton-60min/v2", "badminton-60min"),
+        ]
         formatted_date: str = fetch_date.strftime('%Y-%m-%d')  # YYYY-MM-DD
-        for activityId in activityIds.values():
+        for activityId, fallback_activityId in activity_slug_pairs:
             url = (
                 f"https://better-admin.org.uk/api/activities/venue/"
                 f"{sports_venue.slug}/activity/{activityId}/times?date={formatted_date}"
+            )
+            fallback_url = (
+                f"https://better-admin.org.uk/api/activities/venue/"
+                f"{sports_venue.slug}/activity/{fallback_activityId}/times?date={formatted_date}"
             )
             logging.debug(url)
             headers: dict = {
@@ -47,6 +53,7 @@ class BetterLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
             request_generator_list.append(
                 RequestDetailsWithMetadata(
                     url=url,
+                    fallback_urls=[fallback_url],
                     headers=headers,
                     payload=payload,
                     token=None,

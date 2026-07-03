@@ -23,6 +23,7 @@ class RequestDetailsWithMetadata(BaseModel):
     token: Optional[str] = None,
     cookies: Optional[str] = None,
     metadata: Optional[AdditionalRequestMetadata] = None # To carry over any specific context
+    fallback_urls: Optional[List[str]] = None # Tried in order if `url` returns an HTTP error
 
 class RawResponseData(BaseModel): # Example, adjust as needed
     content: Any
