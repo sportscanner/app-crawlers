@@ -136,12 +136,29 @@ class BaseCrawler(ABC):
                 last_http_error = e
                 continue  # try next fallback URL variant, if any
             except Exception as e:
-                logging.error(f"Error fetching/parsing {attempt_url}: {e}")
+                # Connection-level failures (ConnectError, ReadTimeout, resets) frequently
+                # carry an empty str(e), which used to log as a blank message. Log the
+                # exception type + repr so these are actually diagnosable, and keep them at
+                # ERROR since an unreachable host is a real, actionable problem.
+                logging.error(f"Fetch failed for {attempt_url}: {type(e).__name__}: {e!r}")
                 return []
-        logging.error(
-            f"HTTP error for {request_details.url} "
-            f"(tried {len(urls_to_try)} URL variant(s)): {last_http_error}"
-        )
+        # Every URL variant returned an HTTP error status. This is an upstream response,
+        # not a crawler fault, so it shouldn't be logged at ERROR (which should mean
+        # "look at this"). Split by class:
+        #   4xx  -> expected: the venue doesn't publish this activity/duration for the
+        #           requested window (Better/GLL's canned 422 "date not within valid days").
+        #   5xx  -> upstream server error worth noticing (e.g. Better's broken pickleball v2).
+        status = last_http_error.response.status_code if last_http_error is not None else None
+        if status is not None and 400 <= status < 500:
+            logging.debug(
+                f"No data ({status}) for {request_details.url} "
+                f"(tried {len(urls_to_try)} URL variant(s)) — activity not offered for this window"
+            )
+        else:
+            logging.warning(
+                f"Upstream error ({status}) for {request_details.url} "
+                f"(tried {len(urls_to_try)} URL variant(s))"
+            )
         return []
 
     async def _create_tasks_for_item(
@@ -190,6 +207,22 @@ class BaseCrawler(ABC):
                 else:
                     successful_responses.append(response)
             flattened_responses = list(itertools.chain.from_iterable(successful_responses))
+
+            # One-line health summary per provider. A failed request returns [], so a
+            # provider coming back all-empty is the signal worth surfacing (upstream
+            # outage / IP block / withdrawn activity) rather than inferring it from a
+            # wall of per-request WARNINGs above.
+            total = len(responses)
+            with_data = sum(1 for r in successful_responses if r)
+            if total and with_data == 0:
+                logging.warning(
+                    f"{self.organisation_website}: 0/{total} requests returned data "
+                    f"— likely upstream outage, IP block, or withdrawn activity"
+                )
+            else:
+                logging.info(
+                    f"{self.organisation_website}: {with_data}/{total} requests returned data"
+                )
         return flattened_responses
 
     def ScraperCoroutines(
