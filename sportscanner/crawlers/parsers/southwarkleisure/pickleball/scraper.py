@@ -8,7 +8,7 @@ from sportscanner.crawlers.helpers import override
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.southwarkleisure.core.strategy import SouthwarkLeisureTaskCreationStrategy, SouthwarkLeisureResponseParserStrategy
+from sportscanner.crawlers.parsers.southwarkleisure.core.strategy import SouthwarkLeisureResponseParserStrategy
 from sportscanner.crawlers.parsers.southwarkleisure.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
@@ -67,7 +67,6 @@ class SouthwarkLeisureCrawler(BaseCrawler):
         super().__init__(
             request_strategy = SouthwarkLeisurePickleballRequestStrategy(),
             response_parser_strategy = SouthwarkLeisureResponseParserStrategy(),
-            task_creation_strategy = SouthwarkLeisureTaskCreationStrategy(),
             organisation_website = "https://southwarkleisure.co.uk/"
         )
 

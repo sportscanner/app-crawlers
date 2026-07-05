@@ -1,8 +1,6 @@
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple, Coroutine, Optional
+from typing import Any, Dict, List, Optional
 from datetime import date, datetime, time
-import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from sportscanner.storage.postgres.tables import SportsVenue
 
@@ -11,7 +9,9 @@ class AdditionalRequestMetadata(BaseModel):
     category: str
     date: Optional[date]
     price: Optional[str] = None # can be pre-defined, or extracted from response
-    last_refreshed: Optional[datetime] = datetime.now()
+    # default_factory so each request stamps its own fetch time, rather than
+    # freezing the module-import timestamp (feeds the "deprecated after 35 min" check).
+    last_refreshed: Optional[datetime] = Field(default_factory=datetime.now)
     booking_url: Optional[str] = None # can be pre-defined, or extracted from response
     sportsCentre: SportsVenue
 
@@ -19,9 +19,9 @@ class AdditionalRequestMetadata(BaseModel):
 class RequestDetailsWithMetadata(BaseModel):
     url: str
     headers: Dict[str, Any]
-    payload: Optional[Dict[str, Any]] = None,
-    token: Optional[str] = None,
-    cookies: Optional[str] = None,
+    payload: Optional[Dict[str, Any]] = None
+    token: Optional[str] = None
+    cookies: Optional[str] = None
     metadata: Optional[AdditionalRequestMetadata] = None # To carry over any specific context
     fallback_urls: Optional[List[str]] = None # Tried in order if `url` returns an HTTP error
 
@@ -30,17 +30,6 @@ class RawResponseData(BaseModel): # Example, adjust as needed
     status_code: int
     headers: Dict[str, str]
     requestMetadata: RequestDetailsWithMetadata
-
-
-class SportsVenue(BaseModel):
-    composite_key: str
-    organisation: str
-    organisation_website: str
-    venue_name: str
-    slug: str
-    postcode: str
-    latitude: float
-    longitude: float
 
 
 class UnifiedParserSchema(BaseModel):

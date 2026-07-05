@@ -8,7 +8,7 @@ from sportscanner.crawlers.helpers import override
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, BetterLeisureTaskCreationStrategy
+from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, BetterStyleCrawler
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
@@ -64,12 +64,11 @@ class ActiveLambethBadmintonRequestStrategy(AbstractRequestStrategy):
         return request_generator_list
 
 
-class ActiveLambethCrawler(BaseCrawler):
+class ActiveLambethCrawler(BetterStyleCrawler):
     def __init__(self):
         super().__init__(
             request_strategy = ActiveLambethBadmintonRequestStrategy(),
             response_parser_strategy = BetterLeisureResponseParserStrategy(),
-            task_creation_strategy = BetterLeisureTaskCreationStrategy(),
             organisation_website = "https://active.lambeth.gov.uk/"
         )
 
@@ -93,18 +92,7 @@ def run(
     return crawler.crawl(sport_venues_to_crawl, allowable_search_dates)
 
 def coroutines(search_dates: List[date]):
-    crawler = ActiveLambethCrawler()
-    allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=6)
-    logging.warning(
-        f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
-    )
-    # sport_venues_to_crawl: List[db.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
-    sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="squash")
-    if not sport_venues_to_crawl:
-        logging.warning("No venues found for this organisation / sports offerings")
-        return []
-    return crawler.ScraperCoroutines(sport_venues_to_crawl, allowable_search_dates)
+    return ActiveLambethCrawler().coroutines(search_dates, sport="squash", delta=6)
 
 
 if __name__ == "__main__":

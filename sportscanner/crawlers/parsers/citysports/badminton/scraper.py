@@ -8,8 +8,7 @@ from sportscanner.crawlers.helpers import override
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.citysports.core.strategy import CitySportsResponseParserStrategy, \
-    CitySportsTaskCreationStrategy
+from sportscanner.crawlers.parsers.citysports.core.strategy import CitySportsResponseParserStrategy
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
@@ -61,7 +60,6 @@ class CitySportsCrawler(BaseCrawler):
         super().__init__(
             request_strategy = CitySportsBadmintonRequestStrategy(),
             response_parser_strategy = CitySportsResponseParserStrategy(),
-            task_creation_strategy = CitySportsTaskCreationStrategy(),
             organisation_website = "https://citysport.org.uk"
         )
 
@@ -85,17 +83,7 @@ def run(
 
 
 def coroutines(search_dates: List[date]):
-    crawler = CitySportsCrawler()
-    allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=6)
-    logging.warning(
-        f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
-    )
-    sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
-    if not sport_venues_to_crawl:
-        logging.warning("No venues found for this organisation / sports offerings")
-        return []
-    return crawler.ScraperCoroutines(sport_venues_to_crawl, allowable_search_dates)
+    return CitySportsCrawler().coroutines(search_dates, sport="badminton", delta=6)
 
 
 if __name__ == "__main__":
