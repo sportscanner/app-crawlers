@@ -367,6 +367,27 @@ def truncate_by_composite_key_and_reload(slots_from_all_venues, TableForLoading:
         logging.success(f"Reloaded {len(slots_from_all_venues)} slots into {TableForLoading.__tablename__}")
 
 
+def delete_past_slots(TableForLoading: sqlmodel.main.SQLModelMetaclass) -> int:
+    """Housekeeping: delete slots whose date has already passed.
+
+    The crawl window only ever moves forward and search/display surface only
+    future slots (starting_time > NOW()), so past-date rows are pure dead weight.
+    Without this, each day the date that ages out of the crawl window is never
+    touched again and lingers forever, so the table grows unbounded. Padel — the
+    highest-volume sport — hit the DB size limit within ~2 weeks (over half its
+    rows were past-date orphans). Runs every pipeline for every sport.
+    """
+    with Session(engine) as session:
+        result = session.exec(
+            delete(TableForLoading).where(TableForLoading.date < date.today())
+        )
+        session.commit()
+        logging.info(
+            f"Housekeeping: deleted {result.rowcount} past-date rows from {TableForLoading.__tablename__}"
+        )
+        return result.rowcount
+
+
 if __name__ == "__main__":
     logging.info("Database being initialised, cache deleted and mappings reloaded")
     initialize_db_and_tables(engine)
