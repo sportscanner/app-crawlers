@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Coroutine, Dict, List, Optional
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -30,7 +30,6 @@ import httpx
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
-    AbstractAsyncTaskCreationStrategy,
     AbstractRequestStrategy,
     AbstractResponseParserStrategy,
 )
@@ -224,8 +223,13 @@ class PlaytomicResponseParserStrategy(AbstractResponseParserStrategy):
         return raw_response.content
 
 
-class PlaytomicTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
-    """Creates per-(venue, date) availability tasks using hardcoded tenant_ids."""
+class PlaytomicAvailabilityFetcher:
+    """Fetches per-(venue, date) availability using hardcoded tenant_ids.
+
+    Not a BaseCrawler strategy — PlaytomicPadelCrawler overrides ScraperCoroutines
+    and drives this helper directly (the availability API is queried by tenant_id
+    query-param, not the per-venue URL loop the standard crawlers use).
+    """
 
     async def fetch_venue_date(
         self,
@@ -267,17 +271,3 @@ class PlaytomicTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
                 f"Playtomic: failed for {venue.venue_name} on {fetch_date}: {exc}"
             )
             return []
-
-    @override
-    async def create_tasks_for_item(
-        self,
-        client: httpx.AsyncClient,
-        sports_venue: Any,
-        fetch_date: date,
-        request_strategy: AbstractRequestStrategy,
-        response_parser_strategy: AbstractResponseParserStrategy,
-    ) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
-        raise NotImplementedError(
-            "PlaytomicTaskCreationStrategy uses fetch_venue_date(); "
-            "call via PlaytomicPadelCrawler.ScraperCoroutines."
-        )

@@ -21,7 +21,7 @@ import asyncio
 from datetime import date, timedelta
 from typing import Any, Coroutine, Dict, List
 
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import BaseCrawler
@@ -29,7 +29,7 @@ from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.playtomic.core.strategy import (
     PlaytomicRequestStrategy,
     PlaytomicResponseParserStrategy,
-    PlaytomicTaskCreationStrategy,
+    PlaytomicAvailabilityFetcher,
     PLAYTOMIC_ORGANISATION_WEBSITE,
     SLUG_TO_TENANT_ID,
 )
@@ -40,18 +40,17 @@ from rich import print
 
 class PlaytomicPadelCrawler(BaseCrawler):
     def __init__(self):
-        self._task_strategy = PlaytomicTaskCreationStrategy()
+        self._fetcher = PlaytomicAvailabilityFetcher()
         super().__init__(
             request_strategy=PlaytomicRequestStrategy(),
             response_parser_strategy=PlaytomicResponseParserStrategy(),
-            task_creation_strategy=self._task_strategy,
             organisation_website=PLAYTOMIC_ORGANISATION_WEBSITE,
         )
 
     @async_timer
     async def _crawl_async(
         self,
-        sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue],
+        sports_venues: List[SportsVenue],
         dates: List[date],
     ) -> List[UnifiedParserSchema]:
         logging.info(
@@ -77,7 +76,7 @@ class PlaytomicPadelCrawler(BaseCrawler):
         logging.info(f"Playtomic: fetching availability for {len(matched)} venues × {len(dates)} dates")
         async with httpxAsyncClient() as client:
             tasks = [
-                self._task_strategy.fetch_venue_date(client, venue, tenant_id, d)
+                self._fetcher.fetch_venue_date(client, venue, tenant_id, d)
                 for venue, tenant_id in matched
                 for d in dates
             ]
@@ -95,7 +94,7 @@ class PlaytomicPadelCrawler(BaseCrawler):
     @override
     def ScraperCoroutines(
         self,
-        sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue],
+        sports_venues: List[SportsVenue],
         dates: List[date],
     ) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
         return self._crawl_async(sports_venues, dates)

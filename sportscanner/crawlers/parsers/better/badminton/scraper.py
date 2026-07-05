@@ -1,4 +1,4 @@
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date
@@ -9,11 +9,11 @@ from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, \
-    BetterLeisureTaskCreationStrategy
+    BetterStyleCrawler
+from sportscanner.crawlers.parsers.better.core.activities import activity_slug_pairs
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
-    filter_for_allowable_search_dates_for_venue  # Keep this
+    filter_for_allowable_search_dates_for_venue
 
 
 class BetterLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
@@ -23,24 +23,11 @@ class BetterLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
-        # Better/GLL is mid-rollout of a "/v2" times endpoint per venue - the legacy
-        # (no-suffix) endpoint 422s once a venue has been migrated, and vice versa.
-        # Try v2 first (already live for most venues) and fall back to v1.
-        # shene-sports-and-fitness-centre doesn't split badminton into 40/60min
-        # activities at all - it only exposes a single "badminton-court" activity
-        # (v2 only, v1 404s), which returns slots of mixed durations.
-        if sports_venue.slug in ["shene-sports-and-fitness-centre"]:
-            activity_slug_pairs = [("badminton-court/v2", "badminton-court")]
-        else:
-            activity_slug_pairs = [
-                ("badminton-40min/v2", "badminton-40min"),
-                ("badminton-60min/v2", "badminton-60min"),
-            ]
         formatted_date: str = fetch_date.strftime('%Y-%m-%d')  # YYYY-MM-DD
-        for activityId, fallback_activityId in activity_slug_pairs:
+        for activityId, fallback_activityId in activity_slug_pairs("badminton", sports_venue.slug):
             url = (
                 f"https://better-admin.org.uk/api/activities/venue/"
                 f"{sports_venue.slug}/activity/{activityId}/times?date={formatted_date}"
@@ -80,12 +67,11 @@ class BetterLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
         return request_generator_list
 
 
-class BetterLeisureCrawler(BaseCrawler):
+class BetterLeisureCrawler(BetterStyleCrawler):
     def __init__(self):
         super().__init__(
             request_strategy = BetterLeisureBadmintonRequestStrategy(),
             response_parser_strategy = BetterLeisureResponseParserStrategy(),
-            task_creation_strategy = BetterLeisureTaskCreationStrategy(),
             organisation_website = "https://www.better.org.uk" # add url stuff using urllib
         )
 
@@ -101,7 +87,7 @@ def run(
         f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
     )
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
+        SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []
@@ -109,17 +95,7 @@ def run(
 
 
 def coroutines(search_dates: List[date]):
-    crawler = BetterLeisureCrawler()
-    allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=6)
-    logging.warning(
-        f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
-    )
-    sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
-    if not sport_venues_to_crawl:
-        logging.warning("No venues found for this organisation / sports offerings")
-        return []
-    return crawler.ScraperCoroutines(sport_venues_to_crawl, allowable_search_dates)
+    return BetterLeisureCrawler().coroutines(search_dates, sport="badminton", delta=6)
 
 
 if __name__ == "__main__":

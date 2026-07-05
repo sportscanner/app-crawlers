@@ -1,4 +1,4 @@
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date, datetime
@@ -9,16 +9,14 @@ from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
-
+from sportscanner.crawlers.parsers.towerhamlets.core.authenticate import get_authorization_token
 from sportscanner.crawlers.parsers.towerhamlets.core.mappings import HyperlinkGenerator, Parameters, siteIdsActivityIds
-from sportscanner.crawlers.parsers.towerhamlets.core.strategy import TowerHamletsTaskCreationStrategy, \
-    TowerHamletsResponseParserStrategy
-from sportscanner.crawlers.parsers.utils import formatted_date_list # Keep this
+from sportscanner.crawlers.parsers.towerhamlets.core.strategy import TowerHamletsResponseParserStrategy
+from sportscanner.crawlers.parsers.utils import formatted_date_list
 
 
 def generate_parameters_set(
-    hyperlinks: List[HyperlinkGenerator], venues: List[sportscanner.storage.postgres.tables.SportsVenue]
+    hyperlinks: List[HyperlinkGenerator], venues: List[SportsVenue]
 ) -> List[Parameters]:
     # Convert list of SportsVenue to a dictionary for fast lookup
     venue_dict = {venue.slug: venue for venue in venues}
@@ -85,7 +83,7 @@ class TowerHamletsBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         activityIdsLookupForSiteIds: List[Parameters] = generate_parameters_set(
@@ -130,9 +128,15 @@ class TowerHamletsCrawler(BaseCrawler):
         super().__init__(
             request_strategy = TowerHamletsBadmintonRequestStrategy(),
             response_parser_strategy = TowerHamletsResponseParserStrategy(),
-            task_creation_strategy = TowerHamletsTaskCreationStrategy(),
             organisation_website = "https://be-well.org.uk/"
         )
+        # Gladstone/Be-Well API needs a session JWT; fetched once per crawler and
+        # threaded into every request via the _auth_token hook.
+        self._token: str = get_authorization_token()
+
+    @override
+    def _auth_token(self):
+        return self._token
 
 
 def run(
@@ -147,7 +151,7 @@ def run(
         f"Override search dates as 1 URL response contain Month's data: {formatted_date_list(search_dates)}"
     )
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
+        SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []
@@ -163,7 +167,7 @@ def coroutines(search_dates: List[date]):
         f"Override search dates as 1 URL response contain Month's data: {formatted_date_list(search_dates)}"
     )
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
+        SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
     if not sport_venues_to_crawl:
         logging.warning("No venues found for this organisation / sports offerings")
         return []

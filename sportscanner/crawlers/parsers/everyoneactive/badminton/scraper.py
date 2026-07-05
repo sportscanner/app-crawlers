@@ -1,4 +1,4 @@
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date, timedelta
@@ -8,11 +8,9 @@ from sportscanner.crawlers.helpers import override
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.everyoneactive.core.strategy import EveryoneActiveTaskCreationStrategy, EveryoneActiveResponseParserStrategy
+from sportscanner.crawlers.parsers.everyoneactive.core.strategy import EveryoneActiveResponseParserStrategy
 from sportscanner.crawlers.parsers.everyoneactive.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
-
 class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     If there are multiple variations like badminton-40 / badminton-60 min, add those here
@@ -20,7 +18,7 @@ class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         activityIds = {
@@ -72,7 +70,6 @@ class EveryoneActiveCrawler(BaseCrawler):
         super().__init__(
             request_strategy = EveryoneActiveBadmintonRequestStrategy(),
             response_parser_strategy = EveryoneActiveResponseParserStrategy(),
-            task_creation_strategy = EveryoneActiveTaskCreationStrategy(),
             organisation_website = "https://www.everyoneactive.com/"
         )
 
@@ -83,20 +80,15 @@ def run(
     sport_venues_composite_ids: List[str]
 ) -> List[UnifiedParserSchema]:
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
+        SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []
     return crawler.crawl(sport_venues_to_crawl, search_dates)
 
 def coroutines(search_dates: List[date]):
-    crawler = EveryoneActiveCrawler()
-    sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
-    if not sport_venues_to_crawl:
-        logging.warning("No venues found for this organisation / sports offerings")
-        return []
-    return crawler.ScraperCoroutines(sport_venues_to_crawl, search_dates)
+    # delta=None: EveryoneActive's API has no per-venue date window, so crawl every requested date.
+    return EveryoneActiveCrawler().coroutines(search_dates, sport="badminton", delta=None)
 
 
 if __name__ == "__main__":
