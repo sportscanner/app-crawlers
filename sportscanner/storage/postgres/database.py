@@ -3,7 +3,7 @@ from enum import Enum
 
 import sqlmodel
 from sportscanner.logger import logging
-from sqlalchemy import Engine, text, func
+from sqlalchemy import Engine, text, func, update
 from sqlalchemy.dialects.postgresql import insert
 import hashlib
 
@@ -168,103 +168,80 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
     Also handles stale slots: for any existing slots in DB that are NOT in the incoming
     data (i.e., the API no longer returns them), they will be marked as spaces=0.
     This ensures stale slots don't show old availability.
+
+    Previously this read every existing row for the incoming composite_keys/dates into
+    Python, diffed it against the incoming batch, and re-upserted the stale ones — an
+    app-side read-modify-write on every pipeline run. Marking stale slots is now a
+    single indexed UPDATE (WHERE composite_key/date match AND uid wasn't refreshed),
+    so nothing is read back from the DB at all.
     """
     if not slots_from_all_venues:
         logging.warning("No slots provided for insert; skipping.")
         return
 
+    now = datetime.now()
+
+    # De-dup the incoming batch by uid, preferring the entry with spaces > 0. This
+    # handles cases where both 40min and 60min API calls return the same slot, but one
+    # returns spaces=0 (fallback from an empty response) and one returns real availability.
+    uid_to_slots = {}
+    for slots in slots_from_all_venues:
+        key = f"{slots.composite_key}-{slots.category}-{slots.date}-{slots.starting_time}-{slots.ending_time}"
+        uid = hashlib.md5(key.encode("utf-8")).hexdigest()
+        existing = uid_to_slots.get(uid)
+        if existing is None or (slots.spaces > 0 and existing.spaces == 0):
+            uid_to_slots[uid] = slots
+
+    all_data = []
+    for uid, slots in uid_to_slots.items():
+        all_data.append(dict(
+            uid=uid,
+            composite_key=slots.composite_key,
+            category=slots.category,
+            starting_time=slots.starting_time,
+            ending_time=slots.ending_time,
+            date=slots.date,
+            price=slots.price,
+            spaces=slots.spaces,
+            last_refreshed=slots.last_refreshed,
+            booking_url=slots.booking_url,
+            starts_at=datetime.combine(slots.date, slots.starting_time),
+        ))
+
+    if not all_data:
+        logging.warning("No data to insert after processing.")
+        return
+
+    composite_keys = {slots.composite_key for slots in slots_from_all_venues}
+    dates = {slots.date for slots in slots_from_all_venues}
+    incoming_uids = list(uid_to_slots.keys())
+
     with Session(engine) as session:
-        # Step 1: Build set of incoming slot keys for comparison
-        incoming_keys = set()
-        for slots in slots_from_all_venues:
-            key = f"{slots.composite_key}-{slots.category}-{slots.date}-{slots.starting_time}-{slots.ending_time}"
-            incoming_keys.add(key)
-
-        # Step 2: Get unique composite_keys and dates from incoming data
-        composite_keys = {slots.composite_key for slots in slots_from_all_venues}
-        dates = {slots.date for slots in slots_from_all_venues}
-
-        # Step 3: Fetch existing slots for these composite_keys and dates from DB
-        existing_slots = session.exec(
-            select(TableForLoading).where(
-                TableForLoading.composite_key.in_(composite_keys),
-                TableForLoading.date.in_(dates)
-            )
-        ).all()
-
-        # Step 4: Identify missing slots (exist in DB but not in incoming data)
-        # and add them to the upsert list with spaces=0
-        now = datetime.now()
-        for existing in existing_slots:
-            key = f"{existing.composite_key}-{existing.category}-{existing.date}-{existing.starting_time}-{existing.ending_time}"
-            if key not in incoming_keys:
-                # This slot exists in DB but not in incoming API data - mark as unavailable
-                uid = hashlib.md5(key.encode("utf-8")).hexdigest()
-                slots_from_all_venues.append(
-                    TableForLoading(
-                        uid=uid,
-                        composite_key=existing.composite_key,
-                        category=existing.category,
-                        starting_time=existing.starting_time,
-                        ending_time=existing.ending_time,
-                        date=existing.date,
-                        price=existing.price,
-                        spaces=0,  # Mark as unavailable
-                        last_refreshed=now,
-                        booking_url=existing.booking_url
-                    )
-                )
-                logging.debug(f"Marked missing slot as unavailable: {key}")
-
-        logging.debug(f"Loading fresh data items to db: {len(slots_from_all_venues)}")
-
-        # Group slots by UID and prefer the one with available spaces (spaces > 0)
-        # This handles cases where both 40min and 60min API calls return the same slot,
-        # but one returns spaces=0 (fallback from empty response) and one returns actual availability
-        uid_to_slots = {}
-        for slots in slots_from_all_venues:
-            key = f"{slots.composite_key}-{slots.category}-{slots.date}-{slots.starting_time}-{slots.ending_time}"
-            uid = hashlib.md5(key.encode("utf-8")).hexdigest()
-
-            if uid not in uid_to_slots:
-                uid_to_slots[uid] = slots
-            else:
-                # If we already have this slot, prefer the one with available spaces
-                existing = uid_to_slots[uid]
-                if slots.spaces > 0 and existing.spaces == 0:
-                    uid_to_slots[uid] = slots
-
-        all_data = []
-        for uid, slots in uid_to_slots.items():
-            all_data.append(dict(
-                uid=uid,
-                composite_key=slots.composite_key,
-                category=slots.category,
-                starting_time=slots.starting_time,
-                ending_time=slots.ending_time,
-                date=slots.date,
-                price=slots.price,
-                spaces=slots.spaces,
-                last_refreshed=slots.last_refreshed,
-                booking_url=slots.booking_url
-            ))
-
-        if not all_data:
-            logging.warning("No data to insert after processing.")
-            return
-
-        # Step 5: create the insert
         stmt = insert(TableForLoading).values(all_data)
-
-        # Step 6: tell Postgres how to upsert
         stmt = stmt.on_conflict_do_update(
             index_elements=['uid'],
             set_={c: stmt.excluded[c] for c in all_data[0] if c != 'uid'}
         )
-
         session.exec(stmt)
+
+        # Any row already in the DB for these composite_keys/dates that wasn't just
+        # refreshed above no longer appears in the source API response — mark it
+        # unavailable rather than leaving stale availability showing.
+        mark_stale_stmt = (
+            update(TableForLoading)
+            .where(TableForLoading.composite_key.in_(composite_keys))
+            .where(TableForLoading.date.in_(dates))
+            .where(TableForLoading.spaces != 0)
+            .where(TableForLoading.uid.not_in(incoming_uids))
+            .values(spaces=0, last_refreshed=now)
+        )
+        stale_result = session.exec(mark_stale_stmt)
+
         session.commit()
-        logging.success(f"Upserted {len(all_data)} slots into {TableForLoading.__tablename__}")
+        logging.success(
+            f"Upserted {len(all_data)} slots into {TableForLoading.__tablename__} "
+            f"(marked {stale_result.rowcount} stale rows unavailable)"
+        )
 
 
 def get_all_rows(engine, table: sqlmodel.main.SQLModelMetaclass, expression: select, params=None):
@@ -305,6 +282,59 @@ def create_db_and_tables(engine):
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
         conn.execute(text(
             "ALTER TABLE public.sportsvenue ADD COLUMN IF NOT EXISTS srid geometry(Point, 4326)"
+        ))
+        conn.commit()
+
+    ensure_starts_at_column(engine)
+    ensure_performance_indexes(engine)
+
+
+_SLOT_TABLES = ("badminton", "squash", "pickleball", "padel")
+
+
+def ensure_starts_at_column(engine):
+    """Additive-only migration — adds `starts_at` and backfills it from existing
+    date+starting_time. Safe to run repeatedly against a live DB (each statement is
+    idempotent: ADD COLUMN IF NOT EXISTS, and the backfill only touches NULL rows)."""
+    with engine.connect() as conn:
+        for table in _SLOT_TABLES:
+            conn.execute(text(f'ALTER TABLE public.{table} ADD COLUMN IF NOT EXISTS starts_at timestamp'))
+            conn.execute(text(f'''
+                UPDATE public.{table}
+                SET starts_at = (date::text || ' ' || starting_time::text)::timestamp
+                WHERE starts_at IS NULL
+            '''))
+        conn.commit()
+
+
+def ensure_performance_indexes(engine):
+    """Additive-only index migration — safe to run repeatedly against a live DB.
+
+    Every search filters `composite_key IN (...) AND date == X AND spaces > 0`, and
+    delete_past_slots() filters `date < today()`; with only the primary key (uid) to
+    go on, both were full table scans. Adds:
+      - a plain composite index (composite_key, date) per slot table — covers the
+        general composite_key/date lookups (search, delete_past_slots, the
+        insert-time stale-marking UPDATE).
+      - a partial composite index on the same columns WHERE spaces > 0 — near-free
+        given spaces > 0 is search's dominant filter; keeps the index small since
+        stale/unavailable rows (spaces = 0) are excluded from it entirely.
+      - a GiST index on sportsvenue.srid — ST_DWithin/ST_Distance in /venues/near
+        would otherwise sequential-scan as venue count grows.
+    """
+    with engine.connect() as conn:
+        for table in _SLOT_TABLES:
+            conn.execute(text(
+                f'CREATE INDEX IF NOT EXISTS ix_{table}_composite_key_date '
+                f'ON public.{table} (composite_key, date)'
+            ))
+            conn.execute(text(
+                f'CREATE INDEX IF NOT EXISTS ix_{table}_composite_key_date_active '
+                f'ON public.{table} (composite_key, date) WHERE spaces > 0'
+            ))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_sportsvenue_srid_gist "
+            "ON public.sportsvenue USING GIST (srid)"
         ))
         conn.commit()
 
@@ -360,6 +390,7 @@ def truncate_by_composite_key_and_reload(slots_from_all_venues, TableForLoading:
                 spaces=slots.spaces,
                 last_refreshed=slots.last_refreshed,
                 booking_url=slots.booking_url,
+                starts_at=datetime.combine(slots.date, slots.starting_time),
             )
             session.add(orm_object)
 
