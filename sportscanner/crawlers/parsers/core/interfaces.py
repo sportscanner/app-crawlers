@@ -162,6 +162,17 @@ class BaseCrawler(ABC):
 
         urls_to_try = [request_details.url] + (request_details.fallback_urls or [])
         last_http_error: Optional[httpx.HTTPStatusError] = None
+        # True if ANY attempted variant returned a 4xx, not just the last one tried.
+        # Pickleball's fallback order is v1 (primary) then v2 (fallback), and v2 is a
+        # known-broken endpoint that always 500s - so a request where v1 correctly
+        # 422s "this venue doesn't offer this duration" (expected, no data) always
+        # ends the loop on v2's 500 (the last error tried). Classifying by "last error
+        # only" would treat every such request as an infra failure, even though we
+        # already got a definitive, coherent "no data" answer from v1. A 4xx anywhere
+        # in the chain means some server understood the request and had an answer;
+        # only count this as a provider-health failure if every attempt was a genuine
+        # server error or connection failure.
+        saw_client_error = False
         for attempt_url in urls_to_try:
             try:
                 response = await client.get(attempt_url, headers=request_details.headers)
@@ -184,6 +195,8 @@ class BaseCrawler(ABC):
                 return parser.parse(raw_data_obj)
             except httpx.HTTPStatusError as e:
                 last_http_error = e
+                if 400 <= e.response.status_code < 500:
+                    saw_client_error = True
                 continue  # try next fallback URL variant, if any
             except Exception as e:
                 # Connection-level failures (ConnectError, ReadTimeout, resets) frequently
@@ -197,16 +210,17 @@ class BaseCrawler(ABC):
         # Every URL variant returned an HTTP error status. This is an upstream response,
         # not a crawler fault, so it shouldn't be logged at ERROR (which should mean
         # "look at this"). Split by class:
-        #   4xx  -> expected: the venue doesn't publish this activity/duration for the
-        #           requested window (Better/GLL's canned 422 "date not within valid days").
-        #           Not a provider health signal - doesn't count against the circuit breaker.
-        #   5xx  -> upstream server error worth noticing (e.g. Better's broken pickleball v2).
-        #           Does count against the circuit breaker.
+        #   any 4xx seen -> expected: some server gave a coherent "no data" answer, e.g.
+        #           the venue doesn't publish this activity/duration for the requested
+        #           window (Better/GLL's canned 422 "date not within valid days").
+        #           Not a provider health signal - doesn't count against the circuit breaker,
+        #           even if a later fallback attempt happened to 500.
+        #   all 5xx / no 4xx anywhere -> upstream server error worth noticing (e.g.
+        #           Better's broken pickleball v2). Does count against the circuit breaker.
         status = last_http_error.response.status_code if last_http_error is not None else None
-        is_client_error = status is not None and 400 <= status < 500
         if breaker is not None:
-            breaker.record(failed=not is_client_error)
-        if is_client_error:
+            breaker.record(failed=not saw_client_error)
+        if saw_client_error:
             logging.debug(
                 f"No data ({status}) for {request_details.url} "
                 f"(tried {len(urls_to_try)} URL variant(s)) — activity not offered for this window"
