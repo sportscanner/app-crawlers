@@ -1,4 +1,4 @@
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date
@@ -10,10 +10,10 @@ from sportscanner.logger import logging
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, \
     BetterStyleCrawler
+from sportscanner.crawlers.parsers.better.core.activities import activity_slug_pairs
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
-    filter_for_allowable_search_dates_for_venue  # Keep this
+    filter_for_allowable_search_dates_for_venue
 
 
 class BetterLeisurePickleballRequestStrategy(AbstractRequestStrategy):
@@ -23,21 +23,10 @@ class BetterLeisurePickleballRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
-        # Better/GLL is mid-rollout of a "/v2" times endpoint per venue (see badminton
-        # scraper for details). Unlike badminton/squash, pickleball's v2 endpoint is
-        # currently erroring (HTTP 500) for every venue, so v1 is tried first here with
-        # v2 as the fallback - inverse order to badminton/squash.
-        if sports_venue.slug in ["lee-valley-velopark"]:
-            activity_slug_pairs = [("pickleball-60mins-court", "pickleball-60mins-court/v2")]
-        else:
-            activity_slug_pairs = [
-                ("pickleball-40mins", "pickleball-40mins/v2"),
-                ("pickleball-60mins", "pickleball-60mins/v2"),
-            ]
-        for activityId, fallback_activityId in activity_slug_pairs:
+        for activityId, fallback_activityId in activity_slug_pairs("pickleball", sports_venue.slug):
             formatted_date: str = fetch_date.strftime('%Y-%m-%d') # YYYY-MM-DD
             url = (
                 f"https://better-admin.org.uk/api/activities/venue/"
@@ -99,7 +88,7 @@ def run(
     )
     # sport_venues_to_crawl: List[db.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="pickleball")
+        SportsVenue] = crawler.get_venues_by_sport_offering(sport="pickleball")
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []

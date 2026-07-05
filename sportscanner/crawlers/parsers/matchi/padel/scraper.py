@@ -20,7 +20,7 @@ import asyncio
 from datetime import date, timedelta
 from typing import Coroutine, Dict, List, Any
 
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import BaseCrawler
@@ -48,10 +48,10 @@ class MatchiPadelCrawler(BaseCrawler):
     @async_timer
     async def _crawl_async(
         self,
-        sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue],
+        sports_venues: List[SportsVenue],
         dates: List[date],
     ) -> List[UnifiedParserSchema]:
-        venue_by_slug: Dict[str, sportscanner.storage.postgres.tables.SportsVenue] = {
+        venue_by_slug: Dict[str, SportsVenue] = {
             v.slug: v for v in sports_venues
         }
         logging.info(
@@ -76,7 +76,7 @@ class MatchiPadelCrawler(BaseCrawler):
     @override
     def ScraperCoroutines(
         self,
-        sports_venues: List[sportscanner.storage.postgres.tables.SportsVenue],
+        sports_venues: List[SportsVenue],
         dates: List[date],
     ) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
         return self._crawl_async(sports_venues, dates)

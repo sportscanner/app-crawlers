@@ -1,4 +1,4 @@
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date, timedelta
@@ -11,8 +11,6 @@ import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.everyoneactive.core.strategy import EveryoneActiveResponseParserStrategy
 from sportscanner.crawlers.parsers.everyoneactive.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
-
 class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     If there are multiple variations like badminton-40 / badminton-60 min, add those here
@@ -20,7 +18,7 @@ class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         activityIds = {
@@ -82,7 +80,7 @@ def run(
     sport_venues_composite_ids: List[str]
 ) -> List[UnifiedParserSchema]:
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
+        SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []
@@ -91,7 +89,7 @@ def run(
 def coroutines(search_dates: List[date]):
     crawler = EveryoneActiveCrawler()
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
+        SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
     if not sport_venues_to_crawl:
         logging.warning("No venues found for this organisation / sports offerings")
         return []

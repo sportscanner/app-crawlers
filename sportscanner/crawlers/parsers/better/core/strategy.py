@@ -15,6 +15,17 @@ from sportscanner.crawlers.parsers.better.core.schema import BetterApiResponseSc
 from sportscanner.crawlers.parsers.core.schemas import (UnifiedParserSchema)
 
 
+# Slot categories map 1:1 to their master tables. Allow-listed because a table
+# name can't be a bound SQL parameter — this keeps it off the f-string injection
+# path even though `category` is internally controlled today.
+_CATEGORY_TO_TABLE = {
+    "badminton": "badminton",
+    "squash": "squash",
+    "pickleball": "pickleball",
+    "padel": "padel",
+}
+
+
 def populate_blank_response_for_upserts(
         category: str, composite_key: str, search_date: date
 ) -> List[UnifiedParserSchema]:
@@ -24,16 +35,15 @@ def populate_blank_response_for_upserts(
     withdrawn. Rather than leaving stale availability in the master table, we
     reload those same slots with spaces=0 so the upsert marks them unavailable.
     """
-    clause: str = f"""
-        SELECT
-            *
-        FROM
-            {category.lower()} t1
-        WHERE
-            t1.composite_key = '{composite_key}' AND
-            t1.date = '{search_date}'
-    """
-    rows = db.get_all_rows(db.engine, None, text(clause))
+    table_name = _CATEGORY_TO_TABLE.get(category.lower())
+    if table_name is None:
+        logging.error(f"No master table mapped for category '{category}'; skipping blanks")
+        return []
+    clause = text(
+        f"SELECT * FROM {table_name} t1 "
+        f"WHERE t1.composite_key = :composite_key AND t1.date = :search_date"
+    ).bindparams(composite_key=composite_key, search_date=search_date)
+    rows = db.get_all_rows(db.engine, None, clause)
     return [
         UnifiedParserSchema(
             category=row.category,
