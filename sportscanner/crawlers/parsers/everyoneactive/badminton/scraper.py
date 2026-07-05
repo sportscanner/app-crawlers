@@ -87,13 +87,8 @@ def run(
     return crawler.crawl(sport_venues_to_crawl, search_dates)
 
 def coroutines(search_dates: List[date]):
-    crawler = EveryoneActiveCrawler()
-    sport_venues_to_crawl: List[
-        SportsVenue] = crawler.get_venues_by_sport_offering(sport="badminton")
-    if not sport_venues_to_crawl:
-        logging.warning("No venues found for this organisation / sports offerings")
-        return []
-    return crawler.ScraperCoroutines(sport_venues_to_crawl, search_dates)
+    # delta=None: EveryoneActive's API has no per-venue date window, so crawl every requested date.
+    return EveryoneActiveCrawler().coroutines(search_dates, sport="badminton", delta=None)
 
 
 if __name__ == "__main__":
