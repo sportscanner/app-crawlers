@@ -28,6 +28,40 @@ from sportscanner.variables import settings
 SportsVenue = sportscanner.storage.postgres.tables.SportsVenue
 
 
+class _CircuitBreaker:
+    """Tracks failure rate for one provider within a single _send_concurrent_requests
+    run. Once at least `min_sample` requests have completed and the failure rate is
+    at or above `failure_rate_threshold`, it trips: remaining not-yet-started requests
+    short-circuit to an empty result instead of hitting the network, and in-flight
+    ones are cancelled. Stops a dead/blocked provider from burning its full request
+    budget (and wall-clock time) once it is already clear the provider is down, rather
+    than firing every remaining request only to get empty or failed responses.
+
+    "Failure" here means a connection-level error or a 5xx from the origin - both
+    signal something is wrong with the provider itself. A 4xx (venue doesn't publish
+    this activity/duration) is not counted; that is expected, per-request behaviour,
+    not a provider health signal.
+    """
+
+    def __init__(self, min_sample: int = 20, failure_rate_threshold: float = 0.5):
+        self.min_sample = min_sample
+        self.failure_rate_threshold = failure_rate_threshold
+        self.completed = 0
+        self.failures = 0
+        self.tripped = False
+
+    def record(self, failed: bool) -> None:
+        self.completed += 1
+        if failed:
+            self.failures += 1
+        if (
+            not self.tripped
+            and self.completed >= self.min_sample
+            and (self.failures / self.completed) >= self.failure_rate_threshold
+        ):
+            self.tripped = True
+
+
 # Strategy Interfaces
 class AbstractRequestStrategy(ABC):
     """
@@ -80,6 +114,10 @@ class BaseCrawler(ABC):
         self.request_strategy = request_strategy
         self.response_parser_strategy = response_parser_strategy
         self.organisation_website = organisation_website
+        # Set fresh at the start of each _send_concurrent_requests call (a new
+        # BaseCrawler subclass instance is created per pipeline run, so this never
+        # carries state across runs).
+        self._circuit_breaker: Optional[_CircuitBreaker] = None
 
     # ------------------------------------------------------------------ hooks
     def _auth_token(self) -> Optional[str]:
@@ -113,7 +151,15 @@ class BaseCrawler(ABC):
         tried in order only if the previous variant returned an HTTP error status
         (e.g. Better/GLL 422-ing a not-yet-migrated v1 or v2 endpoint). Transient
         connection-level failures are already retried inside the httpx client.
+
+        Records each outcome against `self._circuit_breaker` (connection errors and
+        5xx count as failures; 4xx and genuine successes/empty-responses do not) —
+        see `_CircuitBreaker` and `_send_concurrent_requests`.
         """
+        breaker = self._circuit_breaker
+        if breaker is not None and breaker.tripped:
+            return []
+
         urls_to_try = [request_details.url] + (request_details.fallback_urls or [])
         last_http_error: Optional[httpx.HTTPStatusError] = None
         for attempt_url in urls_to_try:
@@ -124,6 +170,8 @@ class BaseCrawler(ABC):
                 validated_response = validate_api_response(response, content_type, attempt_url)
                 content = self._extract_content(validated_response)
                 if self._is_empty_content(content):
+                    if breaker is not None:
+                        breaker.record(failed=False)
                     return self._on_empty_response(request_details)
                 raw_data_obj = RawResponseData(
                     content=content,
@@ -131,6 +179,8 @@ class BaseCrawler(ABC):
                     headers=dict(response.headers),
                     requestMetadata=request_details,
                 )
+                if breaker is not None:
+                    breaker.record(failed=False)
                 return parser.parse(raw_data_obj)
             except httpx.HTTPStatusError as e:
                 last_http_error = e
@@ -141,15 +191,22 @@ class BaseCrawler(ABC):
                 # exception type + repr so these are actually diagnosable, and keep them at
                 # ERROR since an unreachable host is a real, actionable problem.
                 logging.error(f"Fetch failed for {attempt_url}: {type(e).__name__}: {e!r}")
+                if breaker is not None:
+                    breaker.record(failed=True)
                 return []
         # Every URL variant returned an HTTP error status. This is an upstream response,
         # not a crawler fault, so it shouldn't be logged at ERROR (which should mean
         # "look at this"). Split by class:
         #   4xx  -> expected: the venue doesn't publish this activity/duration for the
         #           requested window (Better/GLL's canned 422 "date not within valid days").
+        #           Not a provider health signal - doesn't count against the circuit breaker.
         #   5xx  -> upstream server error worth noticing (e.g. Better's broken pickleball v2).
+        #           Does count against the circuit breaker.
         status = last_http_error.response.status_code if last_http_error is not None else None
-        if status is not None and 400 <= status < 500:
+        is_client_error = status is not None and 400 <= status < 500
+        if breaker is not None:
+            breaker.record(failed=not is_client_error)
+        if is_client_error:
             logging.debug(
                 f"No data ({status}) for {request_details.url} "
                 f"(tried {len(urls_to_try)} URL variant(s)) — activity not offered for this window"
@@ -184,12 +241,21 @@ class BaseCrawler(ABC):
         # random fraction to get connection-reset/timed-out by the origin. Cap how many
         # of this provider's requests are in flight at once to smooth that out.
         semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        self._circuit_breaker = _CircuitBreaker()
 
         async def _bounded(
                 task: Coroutine[Any, Any, List[UnifiedParserSchema]]
         ) -> List[UnifiedParserSchema]:
-            async with semaphore:
-                return await task
+            try:
+                async with semaphore:
+                    return await task
+            except asyncio.CancelledError:
+                # If cancelled while still queued on the semaphore (circuit breaker
+                # tripped before this task got its turn), `task` was never started —
+                # close it explicitly so Python doesn't warn about an abandoned
+                # never-awaited coroutine. A no-op if `task` already ran/finished.
+                task.close()
+                raise
 
         async with httpxAsyncClient() as client:
             for sports_venue, fetch_date in parameter_sets:
@@ -199,22 +265,49 @@ class BaseCrawler(ABC):
             logging.info(
                 f"Total number of concurrent request tasks for {self.organisation_website} : {len(all_tasks)}"
             )
-            responses = await asyncio.gather(*(_bounded(task) for task in all_tasks))
-            successful_responses = []
-            for idx, response in enumerate(responses):
-                if isinstance(response, Exception):
-                    logging.error(f"Task {idx} failed with error: {response}")
-                else:
-                    successful_responses.append(response)
+
+            # Tracked as real asyncio.Task objects (not bare coroutines) so that if the
+            # circuit breaker trips partway through, the remaining not-yet-completed
+            # tasks can be cancelled outright instead of left to run to completion.
+            pending = {asyncio.ensure_future(_bounded(task)) for task in all_tasks}
+            successful_responses: List[List[UnifiedParserSchema]] = []
+            completed_count = 0
+            breaker_tripped_at: Optional[int] = None
+            while pending:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for fut in done:
+                    completed_count += 1
+                    exc = fut.exception()
+                    if exc is not None:
+                        logging.error(f"Task {completed_count} failed with error: {exc}")
+                    else:
+                        successful_responses.append(fut.result())
+                if self._circuit_breaker.tripped and pending:
+                    breaker_tripped_at = completed_count
+                    logging.warning(
+                        f"{self.organisation_website}: circuit breaker tripped "
+                        f"({self._circuit_breaker.failures}/{self._circuit_breaker.completed} requests failed) "
+                        f"— cancelling {len(pending)} remaining request(s) instead of burning the full budget"
+                    )
+                    for fut in pending:
+                        fut.cancel()
+                    await asyncio.gather(*pending, return_exceptions=True)
+                    break
+
             flattened_responses = list(itertools.chain.from_iterable(successful_responses))
 
             # One-line health summary per provider. A failed request returns [], so a
             # provider coming back all-empty is the signal worth surfacing (upstream
-            # outage / IP block / withdrawn activity) rather than inferring it from a
+            # outage / IP block, or withdrawn activity) rather than inferring it from a
             # wall of per-request WARNINGs above.
-            total = len(responses)
+            total = len(all_tasks)
             with_data = sum(1 for r in successful_responses if r)
-            if total and with_data == 0:
+            if breaker_tripped_at is not None:
+                logging.warning(
+                    f"{self.organisation_website}: {with_data}/{total} requests returned data "
+                    f"(stopped early after {breaker_tripped_at} via circuit breaker)"
+                )
+            elif total and with_data == 0:
                 logging.warning(
                     f"{self.organisation_website}: 0/{total} requests returned data "
                     f"— likely upstream outage, IP block, or withdrawn activity"

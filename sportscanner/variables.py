@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     ENV: str
     KINDE_DOMAIN: str
     KINDE_CLIENT_ID: str
+    # Valkey (Redis-protocol-compatible) cache for near-static lookups (postcode
+    # geocoding, venues-within-radius). Optional — caching is skipped entirely if unset.
+    VALKEY_URL: Optional[str] = None
+    CACHE_TTL_SECONDS: int = 300
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8", extra="ignore")
 

@@ -2,6 +2,12 @@
 
 **Purpose**: This file provides context for Claude Code about the Sportscanner backend repository. It documents architecture, key components, common issues, and recent fixes to help future Claude interactions understand the codebase quickly.
 
+## Documentation Style
+
+- No em dashes in any documentation (this file, `docs/`, `README.md`, `ARCHITECTURE.md`). Use a comma, a colon, or a full stop instead.
+- No emojis in documentation.
+- Keep language crisp. Document high-level architecture and design decisions, not line-by-line explanations of what code does.
+
 ## Project Overview
 Sportscanner is a court availability aggregator for racket sports (badminton, squash, pickleball) across London. It consists of:
 - **Crawlers**: Python scripts that fetch court availability from various booking websites
@@ -31,11 +37,10 @@ Sportscanner is a court availability aggregator for racket sports (badminton, sq
 
 ### 2. Database Schema (`sportscanner/storage/postgres/`)
 - **SportsVenue**: Venue metadata with geospatial `srid` column for distance queries
-- **BadmintonMasterTable**, **SquashMasterTable**, **PickleballMasterTable**: Court availability slots (production)
-- **BadmintonStagingTable**, **SquashStagingTable**, **PickleballStagingTable**: Staging tables for zero-downtime updates
+- **BadmintonMasterTable**, **SquashMasterTable**, **PickleballMasterTable**, **PadelMasterTable**: Court availability slots, written directly (no staging/swap tables exist in the current schema)
 - **Notification**, **NotificationAck**: User notifications system
 - **Critical**: `srid` column must be populated with `ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)`
-- **Table Swapping**: `swap_tables()` function swaps staging → master for zero-downtime updates
+- Writes go through `insert_records_to_table()` (upsert on `uid`, stale rows marked `spaces=0` via SQL `UPDATE`) or `truncate_by_composite_key_and_reload()` (delete + reinsert by `composite_key`, used by TowerHamlets). See `docs/database.md` for the write-path rationale.
 
 ### 3. Crawler System (`sportscanner/crawlers/parsers/`)
 Strategy pattern implementation. A provider supplies only two strategies:
