@@ -30,7 +30,7 @@ from sportscanner.crawlers.parsers.playtomic.padel.scraper import coroutines as 
 
 
 from sportscanner.storage.postgres.database import (
-insert_records_to_table, truncate_by_composite_key_and_reload
+insert_records_to_table, truncate_by_composite_key_and_reload, delete_past_slots
 )
 from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, PadelMasterTable
 from sportscanner.utils import timeit
@@ -74,6 +74,9 @@ def badminton_scraping_pipeline():
     flattened_responses_for_upsertion: List[UnifiedParserSchema] = flatten_responses(responses_for_upsertion)
     flattened_responses_for_reload: List[UnifiedParserSchema] = flatten_responses(responses_for_reload)
 
+    # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
+    delete_past_slots(BadmintonMasterTable)
+
     if flattened_responses_for_upsertion or flattened_responses_for_reload:
         logging.success(f"Total slots collected for Upsert: {len(flattened_responses_for_upsertion)}")
         logging.success(f"Total slots collected for Reload: {len(flattened_responses_for_reload)}")
@@ -103,6 +106,8 @@ def squash_scraping_pipeline():
     )
     # Flatten nested list structure and remove empty or failed responses
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
+    delete_past_slots(SquashMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
         logging.info(f"Upserting all data to master table: {SquashMasterTable.__tablename__}")
@@ -130,6 +135,8 @@ def pickleball_scraping_pipeline():
     )
     # Flatten nested list structure and remove empty or failed responses
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
+    delete_past_slots(PickleballMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
         logging.info(f"Upserting all data to master table: {PickleballMasterTable.__tablename__}")
@@ -155,6 +162,8 @@ def padel_scraping_pipeline():
         )
     )
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
+    delete_past_slots(PadelMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
         logging.info(f"Upserting all data to master table: {PadelMasterTable.__tablename__}")
