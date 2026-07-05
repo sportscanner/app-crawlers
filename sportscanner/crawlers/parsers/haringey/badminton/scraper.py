@@ -1,5 +1,5 @@
 from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, BetterStyleCrawler
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date
@@ -11,7 +11,7 @@ from sportscanner.logger import logging
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
-    filter_for_allowable_search_dates_for_venue  # Keep this
+    filter_for_allowable_search_dates_for_venue
 
 
 class HaringeyLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
@@ -21,7 +21,7 @@ class HaringeyLeisureBadmintonRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         activityIds = {
@@ -83,7 +83,7 @@ def run(
         f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
     )
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
+        SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []
