@@ -53,6 +53,11 @@ def sort_and_format_grouped_slots_for_ui(
         grouped_slots, distance_from_venues_reference
         ) -> List[dict]:
     processed_slots: List = []
+    # Was called once per group inside the loop below: a full `SELECT * FROM
+    # sportsvenue` re-run for every distinct (venue, date) result, dominating
+    # search latency (29 groups -> 29 redundant full-table round trips). Venue
+    # metadata doesn't change per-group, so look it up once per call.
+    lookup_dict = generate_venue_lookup()
     for groups in grouped_slots:
         # Sort the groups based on 'date' and 'starting_time'
         sorted_slots_in_group = sorted(
@@ -87,7 +92,6 @@ def sort_and_format_grouped_slots_for_ui(
             )
 
         # Populating metadata from venues into main availability items
-        lookup_dict = generate_venue_lookup()
         lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key, None)
 
         now_uk = datetime.now(ZoneInfo("Europe/London"))
