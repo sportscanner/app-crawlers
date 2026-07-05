@@ -38,11 +38,18 @@ Sportscanner is a court availability aggregator for racket sports (badminton, sq
 - **Table Swapping**: `swap_tables()` function swaps staging → master for zero-downtime updates
 
 ### 3. Crawler System (`sportscanner/crawlers/parsers/`)
-Strategy pattern implementation:
+Strategy pattern implementation. A provider supplies only two strategies:
 - **AbstractRequestStrategy**: Generates API requests for a venue/date
 - **AbstractResponseParserStrategy**: Parses API responses to `UnifiedParserSchema`
-- **AbstractAsyncTaskCreationStrategy**: Creates async tasks for concurrent fetching
-- **BaseCrawler**: Orchestrates the crawling process
+- **BaseCrawler** (`core/interfaces.py`): Owns the shared fetch → validate → parse →
+  error-handling loop, per-provider concurrency cap, and fallback-URL retries.
+  Providers whose API differs override small hooks instead of the loop:
+  `_auth_token` (session token), `_extract_content` (unwrap the slot payload),
+  `_is_empty_content`, `_on_empty_response`. Better/GLL-style providers (Better,
+  ActiveLambeth, Haringey) share the `BetterStyleCrawler` subclass; Playtomic/Matchi
+  override `ScraperCoroutines` (their APIs iterate by date/tenant, not per-venue URL).
+  (The old per-provider `AbstractAsyncTaskCreationStrategy` was removed — the fetch
+  loop now lives once in `BaseCrawler`.)
 
 #### Provider Structure:
 ```
@@ -190,9 +197,16 @@ venue = get_venue_by_composite_key(composite_key)
 
 ## Provider-Specific Variations
 ### Better/GLL (`better/`)
-- **Activity IDs**: `badminton-40min`, `badminton-60min`, `squash-court-40min`, `pickleball-40mins`, `pickleball-60mins`
-- **v2 Endpoints**: Woolwich Waves uses `/v2` suffix: `badminton-40min/v2`
-- **Lee Valley**: Special pickleball activity ID: `pickleball-60mins-court`
+- **Activity-slug config lives in `better/core/activities.py`** — a declarative registry of
+  per-sport `(primary, fallback)` activity-slug pairs plus per-venue overrides. Add a
+  venue quirk there (one data entry), not as an `if` branch in the request builder.
+- **v1/v2 rollout**: Better is mid-migrating to a `/v2` times endpoint per venue/activity;
+  each pair tries the primary slug then falls back to the other on an HTTP error. Squash's
+  slug name also changes on v2 (`squash-court-40min` → `squash-40min`). Pickleball's v2
+  currently 500s site-wide, so it lists v1 primary / v2 fallback.
+- **Per-venue overrides**: e.g. `shene-sports-and-fitness-centre` (single `badminton-court`
+  activity), `lee-valley-velopark` (`pickleball-60mins-court`).
+- **API Response Format**: slots under a top-level `data` key; sometimes dict with numeric keys, sometimes list
 - **API Response Format**: Sometimes returns dict with numeric keys, sometimes list
 
 ### Everyone Active (`everyoneactive/`)

@@ -203,15 +203,20 @@ class BaseCrawler(ABC):
         return self._send_concurrent_requests(parameter_sets)
 
     def coroutines(
-            self, search_dates: List[date], sport: str, delta: int = 6
+            self, search_dates: List[date], sport: str, delta: Optional[int] = 6
     ) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
         """Pipeline entry point: narrow dates, resolve this provider's venues for
         `sport`, and return the scrape coroutine. Returns an empty list when the
-        provider has no venues for the sport (nothing to await)."""
-        allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=delta)
-        logging.warning(
-            f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
-        )
+        provider has no venues for the sport (nothing to await). Pass `delta=None`
+        to crawl every requested date (providers whose API has no per-venue date
+        window, e.g. EveryoneActive / Southwark)."""
+        if delta is None:
+            allowable_search_dates = search_dates
+        else:
+            allowable_search_dates = filter_for_allowable_search_dates_for_venue(search_dates, delta=delta)
+            logging.warning(
+                f"Search dates for crawler narrowed down to: {formatted_date_list(allowable_search_dates)}"
+            )
         sport_venues_to_crawl = self.get_venues_by_sport_offering(sport=sport)
         if not sport_venues_to_crawl:
             logging.warning(

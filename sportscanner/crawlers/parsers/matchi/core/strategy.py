@@ -26,7 +26,7 @@ import html as html_lib
 import json
 import re
 from datetime import date, datetime, timezone
-from typing import Any, Coroutine, Dict, List, Optional
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import httpx

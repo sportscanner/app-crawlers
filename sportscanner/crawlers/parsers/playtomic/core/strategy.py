@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Coroutine, Dict, List, Optional
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import httpx
