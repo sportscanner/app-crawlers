@@ -3,24 +3,20 @@ from sportscanner.logger import logging
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-import httpx
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Path
 from rich import print
-from sqlalchemy import case, func, text
-from sqlmodel import col
 from starlette import status
-from starlette.responses import JSONResponse
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.storage.postgres.tables import BadmintonMasterTable, SquashMasterTable, PickleballMasterTable, PadelMasterTable
 from sportscanner.api.routers.search.schemas import SearchCriteria, SortByOptions
 from sportscanner.api.routers.users.service.userService import UserService
+from sportscanner.api.routers.venues.utils import get_venues_near_postcode
 from sportscanner.crawlers.pipeline import *
 from sportscanner.storage.postgres.dataset_transform import (
     group_slots_by_attributes,
     sort_and_format_grouped_slots_for_ui,
 )
-from sportscanner.variables import settings, urljoin
 
 router = APIRouter()
 
@@ -50,32 +46,19 @@ async def search(
     """Returns all court availability relevant to specified filters passed via payload"""
     queryTable = find_query_table(sport)
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(
-                urljoin(
-                    settings.API_BASE_URL,
-                    f"/venues/near?postcode={filters.postcode}&distance={filters.radius}",
-                )
-            )
-            json_response: List[dict] = response.json()
-        except:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one.",
-            )
+    try:
+        nearby_venues = await get_venues_near_postcode(filters.postcode, filters.radius)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unable to fetch metadata - {filters.postcode} is not a valid UK postcode. Try changing the postcode to another one.",
+        )
     if filters.analytics.specifiedVenues:
         composite_keys: List[str] = filters.analytics.specifiedVenues
     else:
-        composite_keys = [venue["composite_key"] for venue in json_response]
+        composite_keys = [venue.composite_key for venue in nearby_venues]
 
     current_timestamp = datetime.now()
-
-    datetime_expr = func.to_timestamp(
-        func.concat(queryTable.date, text("' '"),
-                    queryTable.starting_time),
-        text("'YYYY-MM-DD HH24:MI:SS'"),
-    )
 
     slots = db.get_all_rows(
         db.engine,
@@ -86,15 +69,13 @@ async def search(
         .where(queryTable.starting_time >= filters.timeRange.starting)
         .where(queryTable.ending_time <= filters.timeRange.ending)
         .where(queryTable.date == date)
-        .where(
-            datetime_expr > current_timestamp
-        ),
+        .where(queryTable.starts_at > current_timestamp),
     )
     grouped_slots = group_slots_by_attributes(
         slots, attributes=("composite_key", "date")
     )
     distance_from_venues_reference = {
-        venue["composite_key"]: venue["distance"] for venue in json_response
+        venue.composite_key: venue.distance for venue in nearby_venues
     }
     _response = sort_and_format_grouped_slots_for_ui(
         grouped_slots, distance_from_venues_reference
@@ -121,11 +102,6 @@ async def search(
     queryTable = find_query_table(sport)
 
     current_timestamp = datetime.now()
-    datetime_expr = func.to_timestamp(
-        func.concat(queryTable.date, text("' '"),
-                    queryTable.starting_time),
-        text("'YYYY-MM-DD HH24:MI:SS'"),
-    )
 
     slots = db.get_all_rows(
         db.engine,
@@ -134,9 +110,7 @@ async def search(
         .where(queryTable.composite_key == composite_key)
         .where(queryTable.spaces > 0)  # Ignore empty courts
         .where(queryTable.date == date)
-        .where(
-            datetime_expr > current_timestamp
-        ),
+        .where(queryTable.starts_at > current_timestamp),
     )
     return slots
 
