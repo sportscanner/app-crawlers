@@ -1,18 +1,21 @@
 import json
+import re
 from typing import Annotated, List, Literal, Optional
 
+import httpx
 from sportscanner.logger import logging
 from pydantic import Field, ValidationError
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner import config
+from sportscanner.cache import cache_get_json, cache_set_json
 from enum import Enum
 from typing import Tuple
 from pydantic import BaseModel
 from sportscanner.api.routers.geolocation.utils import *
 from dataclasses import dataclass
-from sqlalchemy import text, bindparam
+from sqlalchemy import text
 from typing import Optional, Sequence
 from sportscanner.api.routers.core.schemas import *
 
@@ -74,52 +77,83 @@ def get_sports_venues_within_radius(
     return venues_within_defined_radius
 
 
-def build_geodistance_text_clause(
-    longitude: float,
-    latitude: float,
-    miles: float = 5.0,
-    table_name: str = "sportsvenue",
-) -> text:
-    """Builds a parameterized SQL TextClause that finds venues within `miles` miles of a point.
+def _normalize_postcode_for_cache_key(postcode: str) -> str:
+    return re.sub(r"\s+", "", postcode).upper()
 
-    Returns a SQLAlchemy TextClause with bound parameters (lon, lat, meters, limit) so it can be
-    passed to `get_all_rows(engine, SportsVenue, expression)` directly.
 
-    Example usage:
-        clause = build_geodistance_text_clause(-0.03837, 51.502283, miles=5.0, limit=10)
-        rows = get_all_rows(engine, SportsVenue, clause)
+async def geocode_postcode(postcode: str) -> "PostcodeAPIResponse":
+    """Resolve a UK postcode to lat/lng via postcodes.io, cached (near-static data)."""
+    cache_key = f"geocode:{_normalize_postcode_for_cache_key(postcode)}"
+    cached = cache_get_json(cache_key)
+    if cached is not None:
+        return PostcodeAPIResponse(**cached)
 
-    Notes:
-        - This assumes your table has a `geog_point` geography column (PostGIS) and a `venue_name` column.
-        - The function precomputes meters = miles * 1609.344 and binds it as a parameter.
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"https://api.postcodes.io/postcodes/{postcode}")
+    payload = response.json()
+    result = PostcodeAPIResponse(**payload)
+    cache_set_json(cache_key, payload)
+    return result
+
+
+async def get_venues_near_postcode(postcode: str, distance: float = 10.0) -> List[VenueDistanceModel]:
+    """Venues within `distance` miles of `postcode`. Both the geocode lookup and the
+    resulting venue list are cached (short TTL) since this is near-static data re-queried
+    on every search. Used directly by both GET /venues/near and POST /search/{sport} —
+    search calls this in-process rather than looping back over HTTP to its own API.
     """
+    venues_cache_key = f"venues_near:{_normalize_postcode_for_cache_key(postcode)}:{distance}"
+    cached = cache_get_json(venues_cache_key)
+    if cached is not None:
+        return [VenueDistanceModel(**row) for row in cached]
 
-    meters = float(miles) * 1609.344
+    geocoded = await geocode_postcode(postcode)
+    if geocoded.result is None:
+        raise ValueError(f"{postcode!r} is not a valid UK postcode")
+    longitude, latitude = geocoded.result.longitude, geocoded.result.latitude
 
-    sql = f"""
-    SELECT
-        venue_name,
-        ST_Distance(
-            geog_point,
-            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
-        ) / 1609.344 AS distance_miles
-    FROM
-        {table_name}
-    WHERE
-        ST_DWithin(
-            geog_point,
-            ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
-            :meters
-        )
-    ORDER BY
-        distance_miles
-    """
-
-    clause = text(sql).bindparams(
-        bindparam("lon", type_=float),
-        bindparam("lat", type_=float),
-        bindparam("meters", type_=float),
+    clause = text("""
+        SELECT
+            composite_key,
+            venue_name,
+            ROUND((ST_Distance(
+                srid,
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
+            ) / 1609.344)::numeric, 1) AS distance_miles,
+            address,
+            sports,
+            latitude,
+            longitude
+        FROM
+            sportsvenue
+        WHERE
+            ST_DWithin(
+                srid,
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                :meters
+            )
+        ORDER BY
+            ST_Distance(
+                srid,
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
+            )
+    """).bindparams(
+        lon=longitude,
+        lat=latitude,
+        meters=distance * 1609.344,
     )
-
-    # attach actual parameter values so calling code can pass clause directly to session.exec
-    return clause
+    rows = db.get_all_rows(db.engine, SportsVenue, clause)
+    results = [
+        VenueDistanceModel(
+            composite_key=row.composite_key,
+            venue_name=row.venue_name,
+            distance=row.distance_miles,
+            address=row.address,
+            sports=row.sports,
+            latitude=row.latitude,
+            longitude=row.longitude,
+        )
+        for row in rows
+    ]
+    cache_set_json(venues_cache_key, [r.model_dump() for r in results])
+    return results

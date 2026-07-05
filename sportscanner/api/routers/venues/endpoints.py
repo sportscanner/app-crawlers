@@ -2,13 +2,12 @@ from datetime import datetime
 from typing import List
 from rich import print
 from urllib.parse import urljoin
-import httpx
-from fastapi import APIRouter, Path, Query
-from sqlmodel import text
+from fastapi import APIRouter, HTTPException, Path, Query
+from starlette import status
 
 from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
 from sportscanner.api.routers.geolocation.utils import *
-from sportscanner.api.routers.venues.utils import build_geodistance_text_clause, get_venues_from_database, get_venue_by_composite_key
+from sportscanner.api.routers.venues.utils import get_venues_near_postcode, get_venues_from_database, get_venue_by_composite_key
 from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.variables import *
 from sportscanner.api.routers.core.schemas import *
@@ -67,70 +66,10 @@ async def venues_near_postcode_and_radius(
     ),
 ) -> List[VenueDistanceModel]:
     """Get metadata associated with postcode"""
-    async with httpx.AsyncClient() as client:
-        geolocation_api_url = f"https://api.postcodes.io/postcodes/{postcode}"
-        logging.info("Requesting:", geolocation_api_url)
-        response = await client.get(geolocation_api_url)
-    
-    search_postcode_metadata: PostcodeAPIResponse = PostcodeAPIResponse(
-        **response.json()
-    )
-
-    clause = build_geodistance_text_clause(
-        search_postcode_metadata.result.longitude,
-        search_postcode_metadata.result.latitude,
-        miles=distance
-    ).params(
-        lon=search_postcode_metadata.result.longitude,
-        lat=search_postcode_metadata.result.latitude,
-        meters=distance * 1609.34
-    )
-
-    clause: str = f"""
-        SELECT
-            composite_key,
-            venue_name,
-            ROUND((ST_Distance(
-                srid,
-                ST_SetSRID(ST_MakePoint({search_postcode_metadata.result.longitude}, {search_postcode_metadata.result.latitude}), 4326)::geography
-            ) / 1609.344)::numeric, 1) AS distance_miles,
-            address,
-            sports,
-            latitude,
-            longitude
-        FROM
-            sportsvenue
-        WHERE
-            ST_DWithin(
-                srid,
-                ST_SetSRID(ST_MakePoint({search_postcode_metadata.result.longitude}, {search_postcode_metadata.result.latitude}), 4326)::geography,
-                {distance} * 1609.344
-            )
-        ORDER BY
-            ST_Distance(
-                srid,
-                ST_SetSRID(ST_MakePoint({search_postcode_metadata.result.longitude}, {search_postcode_metadata.result.latitude}), 4326)::geography
-            )
-        """
-    
-    rows= db.get_all_rows(
-        db.engine, 
-        SportsVenue, 
-        text(clause)
-    )
-    results: List[VenueDistanceModel] = [
-        VenueDistanceModel(
-            composite_key=row.composite_key,
-            venue_name=row.venue_name,
-            distance=row.distance_miles,
-            address=row.address,
-            sports=row.sports,
-            latitude=row.latitude,
-            longitude=row.longitude,
-        )
-        for row in rows
-    ]
-    return results
+    try:
+        return await get_venues_near_postcode(postcode, distance)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/{composite_key}") # /venues/{composite}
