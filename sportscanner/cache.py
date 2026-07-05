@@ -46,13 +46,22 @@ def _get_client():
 
 
 def cache_get_json(key: str) -> Optional[Any]:
-    """Returns the cached value for `key`, or None on a miss/any cache failure."""
+    """Returns the cached value for `key`, or None on a miss/any cache failure.
+
+    Logs an explicit HIT/MISS at INFO so cache behaviour is directly visible in
+    logs instead of having to be inferred from request timing (which stops being
+    a reliable signal once the cache is warm and everything is already fast).
+    """
     client = _get_client()
     if client is None:
         return None
     try:
         raw = client.get(key)
-        return json.loads(raw) if raw is not None else None
+        if raw is not None:
+            logging.info(f"Cache HIT: {key}")
+            return json.loads(raw)
+        logging.info(f"Cache MISS: {key}")
+        return None
     except Exception as e:
         logging.warning(f"Cache GET failed for key={key}: {e}")
         return None
@@ -64,6 +73,8 @@ def cache_set_json(key: str, value: Any, ttl_seconds: Optional[int] = None) -> N
     if client is None:
         return
     try:
-        client.set(key, json.dumps(value), ex=ttl_seconds or settings.CACHE_TTL_SECONDS)
+        ttl = ttl_seconds or settings.CACHE_TTL_SECONDS
+        client.set(key, json.dumps(value), ex=ttl)
+        logging.info(f"Cache SET: {key} (ttl={ttl}s)")
     except Exception as e:
         logging.warning(f"Cache SET failed for key={key}: {e}")
