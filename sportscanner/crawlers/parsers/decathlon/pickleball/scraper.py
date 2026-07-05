@@ -8,7 +8,7 @@ import datetime
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.decathlon.core.strategy import DecathlonResponseParserStrategy, DecathlonTaskCreationStrategy
+from sportscanner.crawlers.parsers.decathlon.core.strategy import DecathlonResponseParserStrategy
 from sportscanner.crawlers.parsers.decathlon.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
@@ -67,7 +67,6 @@ class DecathlonCrawler(BaseCrawler):
         super().__init__(
             request_strategy = DecathlonPickleballRequestStrategy(),
             response_parser_strategy = DecathlonResponseParserStrategy(),
-            task_creation_strategy = DecathlonTaskCreationStrategy(),
             organisation_website = "https://decathlon.co.uk/"
         )
 

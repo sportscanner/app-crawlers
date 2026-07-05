@@ -11,9 +11,9 @@ import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
 
+from sportscanner.crawlers.parsers.towerhamlets.core.authenticate import get_authorization_token
 from sportscanner.crawlers.parsers.towerhamlets.core.mappings import HyperlinkGenerator, Parameters, siteIdsActivityIds
-from sportscanner.crawlers.parsers.towerhamlets.core.strategy import TowerHamletsTaskCreationStrategy, \
-    TowerHamletsResponseParserStrategy
+from sportscanner.crawlers.parsers.towerhamlets.core.strategy import TowerHamletsResponseParserStrategy
 from sportscanner.crawlers.parsers.utils import formatted_date_list # Keep this
 
 
@@ -130,9 +130,15 @@ class TowerHamletsCrawler(BaseCrawler):
         super().__init__(
             request_strategy = TowerHamletsBadmintonRequestStrategy(),
             response_parser_strategy = TowerHamletsResponseParserStrategy(),
-            task_creation_strategy = TowerHamletsTaskCreationStrategy(),
             organisation_website = "https://be-well.org.uk/"
         )
+        # Gladstone/Be-Well API needs a session JWT; fetched once per crawler and
+        # threaded into every request via the _auth_token hook.
+        self._token: str = get_authorization_token()
+
+    @override
+    def _auth_token(self):
+        return self._token
 
 
 def run(

@@ -35,7 +35,6 @@ from bs4 import BeautifulSoup
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
-    AbstractAsyncTaskCreationStrategy,
     AbstractRequestStrategy,
     AbstractResponseParserStrategy,
 )
@@ -189,11 +188,11 @@ class MatchiResponseParserStrategy(AbstractResponseParserStrategy):
         return raw_response.content
 
 
-class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
+class MatchiSlotFetcher:
     """
-    Not used via the standard BaseCrawler iteration — MatchiPadelCrawler calls
-    crawl_date() directly.  The create_tasks_for_item stub is here only to
-    satisfy the abstract interface.
+    Not a BaseCrawler strategy — MatchiPadelCrawler overrides ScraperCoroutines
+    and calls crawl_date() directly (Matchi's endpoint returns all venues per
+    date, so the crawl iterates dates rather than the per-venue URL loop).
     """
 
     # -- public API used by MatchiPadelCrawler --------------------------------
@@ -298,20 +297,4 @@ class MatchiTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
                 f"{MATCHI_ORGANISATION_WEBSITE}/facilities/"
                 f"{ms.facility_slug}?date={search_date.isoformat()}&sport={PADEL_SPORT_ID}"
             ),
-        )
-
-    # -- interface stub -------------------------------------------------------
-
-    @override
-    async def create_tasks_for_item(
-        self,
-        client: httpx.AsyncClient,
-        sports_venue: Any,
-        fetch_date: date,
-        request_strategy: AbstractRequestStrategy,
-        response_parser_strategy: AbstractResponseParserStrategy,
-    ) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
-        raise NotImplementedError(
-            "MatchiTaskCreationStrategy uses crawl_date(); "
-            "call via MatchiPadelCrawler.ScraperCoroutines."
         )

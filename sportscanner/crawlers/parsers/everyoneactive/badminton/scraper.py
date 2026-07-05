@@ -8,7 +8,7 @@ from sportscanner.crawlers.helpers import override
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.everyoneactive.core.strategy import EveryoneActiveTaskCreationStrategy, EveryoneActiveResponseParserStrategy
+from sportscanner.crawlers.parsers.everyoneactive.core.strategy import EveryoneActiveResponseParserStrategy
 from sportscanner.crawlers.parsers.everyoneactive.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 # In your main script or pipeline orchestrator
@@ -72,7 +72,6 @@ class EveryoneActiveCrawler(BaseCrawler):
         super().__init__(
             request_strategy = EveryoneActiveBadmintonRequestStrategy(),
             response_parser_strategy = EveryoneActiveResponseParserStrategy(),
-            task_creation_strategy = EveryoneActiveTaskCreationStrategy(),
             organisation_website = "https://www.everyoneactive.com/"
         )
 

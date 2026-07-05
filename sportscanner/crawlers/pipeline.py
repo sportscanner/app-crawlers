@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import itertools
 from datetime import date, timedelta
-from math import lgamma
 from typing import Any, List, Tuple, Union
 
 from sportscanner.logger import logging

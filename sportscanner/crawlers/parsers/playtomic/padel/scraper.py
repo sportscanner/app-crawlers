@@ -29,7 +29,7 @@ from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.playtomic.core.strategy import (
     PlaytomicRequestStrategy,
     PlaytomicResponseParserStrategy,
-    PlaytomicTaskCreationStrategy,
+    PlaytomicAvailabilityFetcher,
     PLAYTOMIC_ORGANISATION_WEBSITE,
     SLUG_TO_TENANT_ID,
 )
@@ -40,11 +40,10 @@ from rich import print
 
 class PlaytomicPadelCrawler(BaseCrawler):
     def __init__(self):
-        self._task_strategy = PlaytomicTaskCreationStrategy()
+        self._fetcher = PlaytomicAvailabilityFetcher()
         super().__init__(
             request_strategy=PlaytomicRequestStrategy(),
             response_parser_strategy=PlaytomicResponseParserStrategy(),
-            task_creation_strategy=self._task_strategy,
             organisation_website=PLAYTOMIC_ORGANISATION_WEBSITE,
         )
 
@@ -77,7 +76,7 @@ class PlaytomicPadelCrawler(BaseCrawler):
         logging.info(f"Playtomic: fetching availability for {len(matched)} venues × {len(dates)} dates")
         async with httpxAsyncClient() as client:
             tasks = [
-                self._task_strategy.fetch_venue_date(client, venue, tenant_id, d)
+                self._fetcher.fetch_venue_date(client, venue, tenant_id, d)
                 for venue, tenant_id in matched
                 for d in dates
             ]
