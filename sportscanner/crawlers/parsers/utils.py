@@ -1,10 +1,14 @@
 from sportscanner.logger import logging
 from datetime import date, timedelta
-from typing import List
+from typing import Any, List, Optional
 
 
-def validate_api_response(response, content_type: str, url: str):
-    """Validating API response based on the status codes and content type"""
+def validate_api_response(response, content_type: str, url: str) -> Optional[Any]:
+    """Validate an API response by status code and content type.
+
+    Returns the parsed JSON body on a successful (200 + JSON) response, or
+    ``None`` on any failure. Callers treat ``None`` the same as an empty body.
+    """
     if response.status_code == 200 and "application/json" in content_type:
         json_response = response.json()
         logging.trace(f"Raw response for url: {url} \n{json_response}")
@@ -15,14 +19,14 @@ def validate_api_response(response, content_type: str, url: str):
             f"\nURL: {url}"
             f"\nResponse: {response}"
         )
-        return {}
+        return None
     else:
         logging.error(
             f"Request failed: status code {response.status_code}"
             f"\nURL: {url}"
             f"\nResponse: {response}"
         )
-        return {}
+        return None
 
 
 def formatted_date_list(search_dates: List[date]):

@@ -1,4 +1,4 @@
-import sportscanner.storage.postgres.tables
+from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date, timedelta
@@ -8,10 +8,9 @@ import datetime
 from sportscanner.logger import logging
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.crawlers.parsers.decathlon.core.strategy import DecathlonResponseParserStrategy, DecathlonTaskCreationStrategy
+from sportscanner.crawlers.parsers.decathlon.core.strategy import DecathlonResponseParserStrategy
 from sportscanner.crawlers.parsers.decathlon.core.utils import get_utc_timestamps
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
-# In your main script or pipeline orchestrator
 from rich import print
 
 class DecathlonPickleballRequestStrategy(AbstractRequestStrategy):
@@ -21,7 +20,7 @@ class DecathlonPickleballRequestStrategy(AbstractRequestStrategy):
     """
     @override
     def generate_request_details(
-            self, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, token: Optional[str] = None
+            self, sports_venue: SportsVenue, fetch_date: date, token: Optional[str] = None
     ) -> List[RequestDetailsWithMetadata]:
         request_generator_list = []
         activityIds = [
@@ -67,7 +66,6 @@ class DecathlonCrawler(BaseCrawler):
         super().__init__(
             request_strategy = DecathlonPickleballRequestStrategy(),
             response_parser_strategy = DecathlonResponseParserStrategy(),
-            task_creation_strategy = DecathlonTaskCreationStrategy(),
             organisation_website = "https://decathlon.co.uk/"
         )
 
@@ -78,7 +76,7 @@ def run(
     sport_venues_composite_ids: List[str]
 ) -> List[UnifiedParserSchema]:
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
+        SportsVenue] = crawler.query_sport_venues_details(sport_venues_composite_ids)
     if not sport_venues_to_crawl:
         logging.warning(f"No item contexts found for identifiers: {sport_venues_composite_ids} for this crawler.")
         return []
@@ -87,7 +85,7 @@ def run(
 def coroutines(search_dates: List[date]):
     crawler = DecathlonCrawler()
     sport_venues_to_crawl: List[
-        sportscanner.storage.postgres.tables.SportsVenue] = crawler.get_venues_by_sport_offering(sport="pickleball")
+        SportsVenue] = crawler.get_venues_by_sport_offering(sport="pickleball")
     if not sport_venues_to_crawl:
         logging.warning("No venues found for this organisation / sports offerings")
         return []

@@ -1,21 +1,63 @@
 from pydantic import ValidationError
 from sqlalchemy import text
 
-import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.parsers.core.schemas import RawResponseData, RequestDetailsWithMetadata
-from sportscanner.crawlers.parsers.core.interfaces import AbstractResponseParserStrategy, AbstractAsyncTaskCreationStrategy, AbstractRequestStrategy
+from sportscanner.crawlers.parsers.core.interfaces import AbstractResponseParserStrategy, BaseCrawler
 from datetime import date, datetime
-from typing import Any, Coroutine, List, Optional
+from typing import Any, List
 from sportscanner.crawlers.helpers import override
 
-import httpx
 from sportscanner.logger import logging
 from rich import print
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.better.core.schema import BetterApiResponseSchema
 from sportscanner.crawlers.parsers.core.schemas import (UnifiedParserSchema)
-from sportscanner.crawlers.parsers.utils import validate_api_response
+
+
+# Slot categories map 1:1 to their master tables. Allow-listed because a table
+# name can't be a bound SQL parameter — this keeps it off the f-string injection
+# path even though `category` is internally controlled today.
+_CATEGORY_TO_TABLE = {
+    "badminton": "badminton",
+    "squash": "squash",
+    "pickleball": "pickleball",
+    "padel": "padel",
+}
+
+
+def populate_blank_response_for_upserts(
+        category: str, composite_key: str, search_date: date
+) -> List[UnifiedParserSchema]:
+    """Re-emit a venue/date's existing DB rows as zeroed-out (spaces=0) slots.
+
+    Better/GLL returns a 200 with no `data` when a previously-listed activity is
+    withdrawn. Rather than leaving stale availability in the master table, we
+    reload those same slots with spaces=0 so the upsert marks them unavailable.
+    """
+    table_name = _CATEGORY_TO_TABLE.get(category.lower())
+    if table_name is None:
+        logging.error(f"No master table mapped for category '{category}'; skipping blanks")
+        return []
+    clause = text(
+        f"SELECT * FROM {table_name} t1 "
+        f"WHERE t1.composite_key = :composite_key AND t1.date = :search_date"
+    ).bindparams(composite_key=composite_key, search_date=search_date)
+    rows = db.get_all_rows(db.engine, None, clause)
+    return [
+        UnifiedParserSchema(
+            category=row.category,
+            starting_time=row.starting_time,
+            ending_time=row.ending_time,
+            date=row.date,
+            price=row.price,
+            spaces=0,
+            composite_key=row.composite_key,
+            last_refreshed=datetime.now(),
+            booking_url=None,
+        )
+        for row in rows
+    ]
 
 
 class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
@@ -78,83 +120,26 @@ class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
         return unified_schema_output
 
 
-class BetterLeisureTaskCreationStrategy(AbstractAsyncTaskCreationStrategy):
-    async def fetch_and_transform_via_response_parser(self, client: httpx.AsyncClient, request_details: RequestDetailsWithMetadata, parser: AbstractResponseParserStrategy) -> List[UnifiedParserSchema]:
-        """Fetches/Parses/Transforms data to a unified schema for a single request"""
-        def populate_blank_response_for_upserts(category: str, composite_key: str, search_date: date) -> List[UnifiedParserSchema]:
-            clause: str = f"""
-                SELECT
-                    *
-                FROM
-                    {category.lower()} t1
-                WHERE
-                    t1.composite_key = '{composite_key}' AND
-                    t1.date = '{search_date}'
-            """
-            rows= db.get_all_rows(
-                db.engine, 
-                None, 
-                text(clause)
-            )
-            results: List[UnifiedParserSchema] = [
-                UnifiedParserSchema(
-                    category=row.category,
-                    starting_time=row.starting_time,
-                    ending_time=row.ending_time,
-                    date=row.date,
-                    price=row.price,
-                    spaces=0,
-                    composite_key=row.composite_key,
-                    last_refreshed=datetime.now(),
-                    booking_url=None
-                )
-                for row in rows
-            ]
-            return results
+class BetterStyleCrawler(BaseCrawler):
+    """BaseCrawler variant for the Better/GLL-style times API (also used by the
+    flow.onl instances — ActiveLambeth, Haringey).
 
-        urls_to_try = [request_details.url] + (request_details.fallback_urls or [])
-        last_http_error: Optional[httpx.HTTPStatusError] = None
-        for attempt_url in urls_to_try:
-            try:
-                response = await client.get(attempt_url, headers=request_details.headers) # Add payload if request_details.payload
-                response.raise_for_status()
-                content_type = response.headers.get("content-type", "")
-                validated_response = validate_api_response(response, content_type, attempt_url)
-                validated_response_data = validated_response.get("data")
-                if validated_response_data:
-                    raw_data_obj = RawResponseData(
-                        content=validated_response_data,
-                        status_code=response.status_code,
-                        headers=dict(response.headers),
-                        requestMetadata=request_details
-                    )
-                    parsed_common_schema_response: List[UnifiedParserSchema] = parser.parse(raw_data_obj)
-                    return parsed_common_schema_response
-                else:
-                    logging.debug(f"No 'data' field in API response from {attempt_url} - populating blanks for upserts")
-                    blanks = populate_blank_response_for_upserts(
-                        category=request_details.metadata.category,
-                        composite_key=request_details.metadata.sportsCentre.composite_key,
-                        search_date=request_details.metadata.date
-                    )
-                    return blanks
-            except httpx.HTTPStatusError as e:
-                last_http_error = e
-                continue # try next fallback URL, if any
-            except Exception as e:
-                logging.error(f"Error fetching/parsing {attempt_url}: {e}")
-                return []
-        logging.error(f"HTTP error for {request_details.url} (tried {len(urls_to_try)} URL variant(s)): {last_http_error}")
-        return []
+    These APIs wrap the slot list under a top-level `data` key, and a 200 with an
+    empty/absent `data` means "this activity has no live listing" — which we treat
+    as a signal to zero-out any existing DB rows rather than as "no slots found".
+    """
 
     @override
-    async def create_tasks_for_item(self, client: httpx.AsyncClient, sports_venue: sportscanner.storage.postgres.tables.SportsVenue, fetch_date: date, request_strategy: AbstractRequestStrategy, response_parser_strategy: AbstractResponseParserStrategy) -> List[Coroutine[Any, Any, List[UnifiedParserSchema]]]:
-        tasks: List[Coroutine[Any, Any, List[UnifiedParserSchema]]] = []
-        request_details_list: List[RequestDetailsWithMetadata] = request_strategy.generate_request_details(
-            sports_venue=sports_venue,
-            fetch_date=fetch_date,
-            token = None
+    def _extract_content(self, validated_response: Any) -> Any:
+        return validated_response.get("data") if isinstance(validated_response, dict) else None
+
+    @override
+    def _on_empty_response(self, request_details: RequestDetailsWithMetadata) -> List[UnifiedParserSchema]:
+        logging.debug(
+            f"No 'data' field in API response for {request_details.url} - populating blanks for upserts"
         )
-        for req_details in request_details_list:
-            tasks.append(self.fetch_and_transform_via_response_parser(client, req_details, response_parser_strategy))
-        return tasks
+        return populate_blank_response_for_upserts(
+            category=request_details.metadata.category,
+            composite_key=request_details.metadata.sportsCentre.composite_key,
+            search_date=request_details.metadata.date,
+        )
