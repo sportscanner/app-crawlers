@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import time
 
+from sportscanner.logger import logging
 from sportscanner.variables import settings
 import httpx
 from fastapi import HTTPException
@@ -38,8 +39,12 @@ async def _exchange_refresh_token(refresh_token: str) -> str:
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
+    # TEMPORARY DIAGNOSTIC - see note above.
+    logging.warning(f"[kinde-diag] outgoing payload keys={list(payload.keys())} refresh_token_len={len(payload['refresh_token'])}")
+
     response = await _client.post(url, data=payload, headers=headers)
     if response.status_code != 200:
+        logging.warning(f"[kinde-diag] Kinde token exchange failed: {response.status_code} {response.text}")
         raise HTTPException(status_code=response.status_code, detail=response.json())
     return response.json().get("access_token")
 
@@ -53,8 +58,25 @@ async def get_kinde_access_token(refresh_token: str):
                 "error_description": "Refresh token not provided.",
             },
         )
+    # TEMPORARY DIAGNOSTIC (remove once the "more than one refresh token
+    # provided" incident is root-caused): logs shape/fingerprint only, never
+    # the raw token - checking whether the incoming header already contains
+    # multiple bearer/comma-separated values before we ever touch it, which
+    # would point at something upstream (proxy/CDN/browser) duplicating the
+    # header rather than our own request construction.
+    logging.warning(
+        f"[kinde-diag] raw Authorization header: len={len(refresh_token)} "
+        f"commas={refresh_token.count(',')} bearer_occurrences={refresh_token.lower().count('bearer')} "
+        f"prefix={refresh_token[:12]!r} suffix={refresh_token[-6:]!r}"
+    )
+
     if refresh_token.lower().startswith("bearer "):
         refresh_token = refresh_token.split(" ", 1)[1].strip()
+
+    logging.warning(
+        f"[kinde-diag] after bearer-strip: len={len(refresh_token)} "
+        f"commas={refresh_token.count(',')} prefix={refresh_token[:12]!r} suffix={refresh_token[-6:]!r}"
+    )
 
     token_hash = _token_hash(refresh_token)
 
