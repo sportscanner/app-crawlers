@@ -18,15 +18,15 @@ router = APIRouter()
 repo = McpAuthorizedClientRepository(db.engine)
 
 
-def _kinde_user_id(refresh_token):
-    access_token = get_kinde_access_token(refresh_token=refresh_token)
-    return get_kinde_user_details(access_token)["id"]
+async def _kinde_user_id(refresh_token):
+    access_token = await get_kinde_access_token(refresh_token=refresh_token)
+    return (await get_kinde_user_details(access_token))["id"]
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
 async def list_connections(Authorization: str = Header(default=None)):
     """List the caller's authorized MCP clients."""
-    user_id = _kinde_user_id(Authorization)
+    user_id = await _kinde_user_id(Authorization)
     return [
         {
             "id": row.id,
@@ -42,7 +42,7 @@ async def revoke_connection(
     connection_id: str = Path(..., description="Connection id to revoke"),
     Authorization: str = Header(default=None),
 ):
-    user_id = _kinde_user_id(Authorization)
+    user_id = await _kinde_user_id(Authorization)
     row = repo.get_owned(user_id, connection_id)
     if not row:
         raise HTTPException(status_code=404, detail="Connection not found")
