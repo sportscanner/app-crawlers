@@ -15,15 +15,63 @@ selector specificity, so this only needs to override colors/fonts, not
 reimplement the page. `*args, **kwargs` avoids depending on the function's
 exact positional signature.
 
+The Inter font itself is embedded as base64 `data:` URIs (files in
+`sportscanner/mcp/assets/`) rather than linked from Google Fonts, so it
+renders with no external request and no CSP relaxation beyond adding
+`font-src data:` (see `CONSENT_CSP_POLICY`, wired into `OIDCProxy(
+consent_csp_policy=...)` in `server.py`) — the default policy's
+`default-src 'none'` blocks `font-src` entirely otherwise, which is why the
+font silently failed to load even though `font-family: 'Inter'` was already
+declared.
+
 Fragility: this reaches into an undocumented, internal fastmcp module path.
 If a future fastmcp version renames it, `apply()` logs a warning and no-ops —
 the consent page just falls back to default FastMCP styling rather than the
 API failing to start. Re-check this file after bumping the `fastmcp` version.
 """
 
+import base64
+from pathlib import Path
+
 from sportscanner.logger import logging
 
-_BRAND_CSS = """
+_ASSETS_DIR = Path(__file__).parent / "assets"
+
+# The default CSP (`default-src 'none'`) blocks font-src entirely, so even a
+# base64 data: URI font won't load without this. Kept as narrow as possible -
+# only adds font-src, doesn't loosen anything else (no external hosts allowed).
+CONSENT_CSP_POLICY = (
+    "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; "
+    "font-src data:; base-uri 'none'"
+)
+
+
+def _font_face_css() -> str:
+    try:
+        regular = base64.b64encode((_ASSETS_DIR / "Inter-Regular.woff2").read_bytes()).decode()
+        semibold = base64.b64encode((_ASSETS_DIR / "Inter-SemiBold.woff2").read_bytes()).decode()
+    except Exception as exc:  # pragma: no cover - defensive
+        logging.warning(f"MCP consent page: Inter font assets missing, falling back to system font ({exc})")
+        return ""
+    return f"""
+    @font-face {{
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(data:font/woff2;base64,{regular}) format('woff2');
+    }}
+    @font-face {{
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url(data:font/woff2;base64,{semibold}) format('woff2');
+    }}
+"""
+
+
+_BRAND_CSS = _font_face_css() + """
     body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         background: #F7F9FC;
