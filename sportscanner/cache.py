@@ -16,6 +16,10 @@ from sportscanner.variables import settings
 _client = None
 _client_init_attempted = False
 
+# VALKEY_URL points at a shared instance (other apps use it too), so every
+# key we touch is namespaced to avoid colliding with theirs.
+KEY_PREFIX = "sportscanner:"
+
 
 def _get_client():
     """Lazily create a single Valkey client for the process. Returns None if
@@ -56,7 +60,7 @@ def cache_get_json(key: str) -> Optional[Any]:
     if client is None:
         return None
     try:
-        raw = client.get(key)
+        raw = client.get(KEY_PREFIX + key)
         if raw is not None:
             logging.info(f"Cache HIT: {key}")
             return json.loads(raw)
@@ -74,7 +78,7 @@ def cache_set_json(key: str, value: Any, ttl_seconds: Optional[int] = None) -> N
         return
     try:
         ttl = ttl_seconds or settings.CACHE_TTL_SECONDS
-        client.set(key, json.dumps(value), ex=ttl)
+        client.set(KEY_PREFIX + key, json.dumps(value), ex=ttl)
         logging.info(f"Cache SET: {key} (ttl={ttl}s)")
     except Exception as e:
         logging.warning(f"Cache SET failed for key={key}: {e}")

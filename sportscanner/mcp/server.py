@@ -34,6 +34,7 @@ def _build_client_storage():
         from cryptography.fernet import Fernet
         from key_value.aio.stores.redis import RedisStore
         from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
+        from key_value.aio.wrappers.prefix_collections import PrefixCollectionsWrapper
         from fastmcp.server.auth.jwt_issuer import derive_jwt_key
 
         encryption_key = derive_jwt_key(
@@ -46,8 +47,16 @@ def _build_client_storage():
         # Building the client ourselves via Redis.from_url() sidesteps that
         # library bug and matches the sync client's proven-working TLS setup.
         redis_client = redis_asyncio.Redis.from_url(settings.VALKEY_URL, decode_responses=True)
+        # VALKEY_URL is a shared instance (other apps use it too) - namespace
+        # every collection (mcp-upstream-tokens, mcp-jti-mappings, etc.) under
+        # a "sportscanner" prefix so keys can't collide with theirs. Uses the
+        # library's own separators ("__"/"::"), not a literal "sportscanner:",
+        # since this wrapper doesn't expose a custom separator - still fully
+        # collision-proof, just a slightly different delimiter than cache.py's
+        # plain "sportscanner:" keys.
+        namespaced_store = PrefixCollectionsWrapper(key_value=RedisStore(client=redis_client), prefix="sportscanner")
         return FernetEncryptionWrapper(
-            key_value=RedisStore(client=redis_client),
+            key_value=namespaced_store,
             fernet=Fernet(key=encryption_key),
             raise_on_decryption_error=False,
         )
