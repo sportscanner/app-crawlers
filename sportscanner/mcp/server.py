@@ -71,6 +71,9 @@ auth = TrackingOIDCProxy(
     token_verifier=HybridTokenVerifier(),
     client_storage=_build_client_storage(),
     client_repository=McpAuthorizedClientRepository(db.engine),
+    # Narrowly permits the embedded base64 Inter font (see branding.py) on the
+    # consent screen; the library's default CSP blocks all font loading.
+    consent_csp_policy=branding.CONSENT_CSP_POLICY,
     # OIDCProxy signs its own downstream session tokens (separate from Kinde's
     # tokens); required whenever no upstream client_secret is provided. Reuses
     # the existing (currently otherwise-unused) JWT_SECRET rather than adding
