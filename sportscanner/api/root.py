@@ -19,18 +19,29 @@ from sportscanner.api.routers.notifications.endpoints import router as Notificat
 from sportscanner.api.routers.tokens.endpoints import router as TokensRouter
 
 from sportscanner.logger import logging
-from sportscanner.storage.postgres.api_token_repository import ApiTokenRepository
-import sportscanner.storage.postgres.database as db
-from starlette.responses import JSONResponse
 
 import httpx
 
 
 # ── MCP server (optional dependency: fastmcp) ────────────────────────────────
 # The MCP layer is mounted into this same FastAPI app so the REST API and the
-# MCP server ship as a single deployment. Requests to /mcp are authenticated
-# with personal API tokens (see _McpTokenAuth below). Import is defensive: a
-# missing/incompatible fastmcp must never take the core API down.
+# MCP server ship as a single deployment. Auth (personal API tokens and Kinde
+# OAuth) is enforced inside the FastMCP app itself via its `auth=` provider
+# (see sportscanner/mcp/server.py). Import is defensive: a missing/incompatible
+# fastmcp must never take the core API down.
+#
+# The FastMCP app is mounted at the FastAPI app's true root (not under /mcp),
+# with its own internal MCP endpoint path set to "/mcp" (so the externally
+# visible URL is unchanged: https://api.sportscanner.co.uk/mcp). This matters
+# for OAuth: RFC 9728 requires protected-resource metadata to be served at
+# `{origin}/.well-known/oauth-protected-resource{resource_path}` — a fixed
+# location FastMCP computes from `base_url`/`resource_path` alone, with no
+# awareness of an extra outer mount prefix. Nesting the FastMCP app under an
+# additional "/mcp" Mount (as before) made that metadata route only reachable
+# at "/mcp/.well-known/..." — a path Claude (and any spec-compliant client)
+# never requests, since it fetches the RFC-mandated root-level path. Mounting
+# at the true root keeps the metadata (and /authorize, /token, /register,
+# /auth/callback) at root while the JSON-RPC endpoint stays at /mcp.
 _mcp_app = None
 try:
     from sportscanner.mcp.server import mcp as _sportscanner_mcp
@@ -40,65 +51,9 @@ try:
     # request/response (geocoding, DB lookups) with no session state or
     # server-push, so a plain `curl … tools/list` works. Standard MCP clients
     # (Claude Desktop via mcp-remote, Cursor) remain compatible.
-    _mcp_app = _sportscanner_mcp.http_app(path="/", stateless_http=True)
+    _mcp_app = _sportscanner_mcp.http_app(path="/mcp", stateless_http=True)
 except Exception as exc:  # pragma: no cover - defensive
     logging.warning(f"MCP server not mounted (fastmcp unavailable?): {exc}")
-
-
-class _McpTokenAuth:
-    """
-    Raw-ASGI wrapper that gates the mounted MCP app behind a personal API token.
-
-    Implemented at the ASGI layer (rather than BaseHTTPMiddleware) so it only
-    inspects request headers and never buffers the MCP streaming/SSE responses.
-    """
-
-    def __init__(self, app):
-        self.app = app
-        self._repo = ApiTokenRepository(db.engine)
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            headers = dict(scope.get("headers") or [])
-            authorization = headers.get(b"authorization", b"").decode() or None
-            kinde_user_id = self._repo.authenticate(authorization)
-            if not kinde_user_id:
-                response = JSONResponse(
-                    {
-                        "error": "invalid_or_missing_api_token",
-                        "detail": "Provide a valid Sportscanner API token via 'Authorization: Bearer <token>'.",
-                    },
-                    status_code=401,
-                )
-                await response(scope, receive, send)
-                return
-            scope.setdefault("state", {})
-            scope["state"]["kinde_user_id"] = kinde_user_id
-        await self.app(scope, receive, send)
-
-
-class _McpTrailingSlashMiddleware:
-    """
-    Rewrite a bare `/mcp` request to `/mcp/` before routing.
-
-    The MCP app is mounted at `/mcp`, so Starlette only matches `/mcp/…` and a
-    bare `/mcp` would be answered with a 307 redirect to `/mcp/`. Several MCP
-    clients mishandle that redirect on POST (they drop the body/method), so we
-    rewrite the path at the ASGI layer — ahead of the router — and serve it
-    directly. Runs as raw ASGI so it never buffers the MCP streaming responses.
-    """
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope.get("path") == "/mcp":
-            scope = dict(scope)
-            scope["path"] = "/mcp/"
-            raw_path = scope.get("raw_path")
-            if raw_path is not None and not raw_path.endswith(b"/"):
-                scope["raw_path"] = raw_path + b"/"
-        await self.app(scope, receive, send)
 
 
 description = """
@@ -132,9 +87,6 @@ app = FastAPI(
     lifespan=_mcp_app.lifespan if _mcp_app is not None else None,
 )
 
-# Serve /mcp (no trailing slash) directly instead of 307-redirecting to /mcp/.
-app.add_middleware(_McpTrailingSlashMiddleware)
-
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -166,11 +118,6 @@ app.include_router(
     tags=["Notifications"],
 )
 
-# Mount the token-authenticated MCP server at /mcp (single deployment).
-if _mcp_app is not None:
-    app.mount("/mcp", _McpTokenAuth(_mcp_app))
-    logging.info("Sportscanner MCP server mounted at /mcp")
-
 @app.get("/", tags=["Root"])
 async def root():
     """Root API landing page (should be deployed at api.domain.com)"""
@@ -184,3 +131,13 @@ async def root():
             "/docs": "Documentation for API endpoints",
         },
     }
+
+# Mounted last, at the app's true root, so every route defined above (and
+# FastAPI's own /docs, /openapi.json, /redoc) is matched first by Starlette;
+# this only catches what nothing else claimed — the MCP endpoint (/mcp) and
+# FastMCP's OAuth routes (/authorize, /token, /register, /auth/callback,
+# /.well-known/...). See the comment above `_mcp_app`'s construction for why
+# it can't be nested under an extra "/mcp" prefix.
+if _mcp_app is not None:
+    app.mount("/", _mcp_app)
+    logging.info("Sportscanner MCP server mounted (JSON-RPC endpoint at /mcp)")

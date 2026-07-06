@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     # geocoding, venues-within-radius). Optional — caching is skipped entirely if unset.
     VALKEY_URL: Optional[str] = None
     CACHE_TTL_SECONDS: int = 300
+    # Public origin the MCP server's OAuth proxy is reachable at. Must be the
+    # true domain root (no "/mcp" suffix) — the proxy builds its OAuth routes
+    # (redirect callback, /token, /authorize) and RFC 9728 protected-resource
+    # metadata relative to this, and that metadata is required to live at the
+    # origin root regardless of where the MCP JSON-RPC endpoint itself sits.
+    MCP_PUBLIC_BASE_URL: str = "https://api.sportscanner.co.uk"
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8", extra="ignore")
 
