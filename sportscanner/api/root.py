@@ -17,6 +17,7 @@ from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 from sportscanner.api.routers.health.endpoints import router as HealthRouter
 from sportscanner.api.routers.notifications.endpoints import router as NotificationsRouter
 from sportscanner.api.routers.tokens.endpoints import router as TokensRouter
+from sportscanner.api.routers.mcp_connections.endpoints import router as McpConnectionsRouter
 
 from sportscanner.logger import logging
 
@@ -109,6 +110,8 @@ app.include_router(
 app.include_router(router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False)
 
 app.include_router(router=TokensRouter, prefix="/user/tokens", tags=["Developer"], include_in_schema=False)
+
+app.include_router(router=McpConnectionsRouter, prefix="/user/mcp-connections", tags=["Developer"], include_in_schema=False)
 
 app.include_router(router=HealthRouter, prefix="/health", tags=["Health"])
 

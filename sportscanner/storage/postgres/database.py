@@ -273,6 +273,7 @@ def create_db_and_tables(engine):
             User.__table__,
             UserPreferences.__table__,
             ApiToken.__table__,
+            McpAuthorizedClient.__table__,
             Notification.__table__,
             NotificationAck.__table__,
         ]

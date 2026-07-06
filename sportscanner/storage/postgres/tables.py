@@ -216,3 +216,30 @@ class ApiToken(SQLModel, table=True):
     expires_at: Optional[datetime] = Field(default=None)
     last_used_at: Optional[datetime] = Field(default=None)
     revoked: bool = Field(default=False)
+
+
+class McpAuthorizedClient(SQLModel, table=True):
+    """
+    Tracks which OAuth clients (Claude, Cursor, etc.) a user has authorized
+    for the MCP server via the Kinde OAuth proxy flow (see `sportscanner/mcp/`).
+
+    `access_jti`/`refresh_jti` are the FastMCP-issued token IDs for this grant
+    (`jti` claim) - revoking deletes their entries from the OAuth proxy's own
+    `_jti_mapping_store`, which every authenticated MCP request and refresh
+    checks against, so revocation takes effect immediately.
+    """
+
+    __tablename__ = "mcp_authorized_clients"
+    __table_args__ = {"schema": "public"}
+
+    id: str = Field(primary_key=True)
+    kinde_user_id: str = Field(
+        foreign_key="public.users.kinde_user_id",
+        index=True,
+    )
+    client_id: str
+    client_name: str
+    access_jti: str
+    refresh_jti: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    revoked: bool = Field(default=False)
