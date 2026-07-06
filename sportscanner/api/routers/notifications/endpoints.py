@@ -13,9 +13,9 @@ from .schemas import NotificationIn, NotificationOut, NotificationUpdate
 router = APIRouter()
 
 
-def _get_user_id(Authorization: str) -> str:
-    access_token = get_kinde_access_token(refresh_token=Authorization)
-    user_details = get_kinde_user_details(access_token)
+async def _get_user_id(Authorization: str) -> str:
+    access_token = await get_kinde_access_token(refresh_token=Authorization)
+    user_details = await get_kinde_user_details(access_token)
     return user_details["id"]
 
 
@@ -26,7 +26,7 @@ async def list_notifications(
     ),
 ):
     """List all active notifications for the current user, with acknowledged_at set when the user has dismissed it."""
-    user_id = _get_user_id(Authorization)
+    user_id = await _get_user_id(Authorization)
     with Session(engine) as session:
         notifications = session.exec(
             select(Notification).where(Notification.active == True).order_by(Notification.created_at.desc())
@@ -59,7 +59,7 @@ async def acknowledge_notification(
     ),
 ):
     """Mark a notification as acknowledged (dismissed) for the current user."""
-    user_id = _get_user_id(Authorization)
+    user_id = await _get_user_id(Authorization)
     with Session(engine) as session:
         notification = session.get(Notification, notification_id)
         if not notification:
@@ -88,7 +88,7 @@ async def create_notification(
     ),
 ):
     """Create a new notification (all users will see it until they acknowledge)."""
-    _get_user_id(Authorization)  # require auth
+    await _get_user_id(Authorization)  # require auth
     notification = Notification(
         id=str(uuid.uuid4()),
         title=body.title,
@@ -119,7 +119,7 @@ async def update_notification(
     ),
 ):
     """Update a notification (e.g. edit message or set active=false to hide from everyone)."""
-    _get_user_id(Authorization)  # require auth
+    await _get_user_id(Authorization)  # require auth
     with Session(engine) as session:
         notification = session.get(Notification, notification_id)
         if not notification:

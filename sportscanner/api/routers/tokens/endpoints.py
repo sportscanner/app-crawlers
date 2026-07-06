@@ -26,9 +26,9 @@ repo = ApiTokenRepository(db.engine)
 MAX_EXPIRY_DAYS = 365
 
 
-def _kinde_user_id(refresh_token: Optional[str]) -> str:
-    access_token = get_kinde_access_token(refresh_token=refresh_token)
-    return get_kinde_user_details(access_token)["id"]
+async def _kinde_user_id(refresh_token: Optional[str]) -> str:
+    access_token = await get_kinde_access_token(refresh_token=refresh_token)
+    return (await get_kinde_user_details(access_token))["id"]
 
 
 def _serialize(token: ApiToken) -> dict:
@@ -48,7 +48,7 @@ def _serialize(token: ApiToken) -> dict:
 @router.get("/", status_code=status.HTTP_200_OK)
 async def list_tokens(Authorization: str = Header(default=None)):
     """List the caller's API tokens (metadata only — never the raw secret)."""
-    user_id = _kinde_user_id(Authorization)
+    user_id = await _kinde_user_id(Authorization)
     return [_serialize(token) for token in repo.list_for_user(user_id)]
 
 
@@ -59,7 +59,7 @@ async def create_token(request: Request, Authorization: str = Header(default=Non
     The raw `token` is returned exactly once in this response.
     """
     body = await request.json()
-    user_id = _kinde_user_id(Authorization)
+    user_id = await _kinde_user_id(Authorization)
 
     name = (body.get("name") or "API token").strip()[:60] or "API token"
 
@@ -84,7 +84,7 @@ async def revoke_token(
     token_id: str = Path(..., description="Token id to revoke"),
     Authorization: str = Header(default=None),
 ):
-    user_id = _kinde_user_id(Authorization)
+    user_id = await _kinde_user_id(Authorization)
     if not repo.revoke(user_id, token_id):
         raise HTTPException(status_code=404, detail="Token not found")
     return {"success": True}
