@@ -53,6 +53,25 @@ _VENUE_OVERRIDES: Dict[Tuple[str, str], List[ActivitySlugPair]] = {
     ("badminton", "shene-sports-and-fitness-centre"): [
         ("badminton-court/v2", "badminton-court"),
     ],
+    # Neither venue follows the standard 40/60min duration split for pickleball at
+    # all — discovered via GET /api/activities/venue/{slug}/categories/pickleball,
+    # which lists a venue's real activity slugs under a sport category (the most
+    # reliable way to find the correct slug when the 40min/60min guesses 422).
+    # Both are v2-only ("v1_slug": null in that response).
+    #
+    # shene exposes "pickleball-court" (a resources/court-booking activity, same
+    # shape as badminton/squash) alongside "pickleball-drop-in" (a ticketed
+    # session activity — different response shape, untested here since it had no
+    # scheduled sessions in the visible window; investigate its parsing if it
+    # ever 200s with non-empty data and looks wrong).
+    ("pickleball", "shene-sports-and-fitness-centre"): [
+        ("pickleball-court/v2", "pickleball-drop-in/v2"),
+    ],
+    # britannia only has the ticketed "pickleball-drop-in" activity, no separate
+    # court-booking activity at all.
+    ("pickleball", "britannia-leisure-centre"): [
+        ("pickleball-drop-in/v2", "pickleball-drop-in"),
+    ],
 }
 
 
