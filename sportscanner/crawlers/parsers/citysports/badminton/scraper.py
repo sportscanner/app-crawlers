@@ -1,8 +1,13 @@
 from sportscanner.storage.postgres.tables import SportsVenue
-from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata
+from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata, \
+    RawResponseData
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date
-from typing import List, Optional
+from typing import Any, Coroutine, List, Optional
+import asyncio
+import itertools
+from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 from sportscanner.crawlers.helpers import override
 
 from sportscanner.logger import logging
@@ -11,7 +16,8 @@ import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.citysports.core.strategy import CitySportsResponseParserStrategy
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
-    filter_for_allowable_search_dates_for_venue
+    filter_for_allowable_search_dates_for_venue, validate_api_response
+from sportscanner.variables import settings
 from rich import print
 
 class CitySportsBadmintonRequestStrategy(AbstractRequestStrategy):
@@ -55,12 +61,95 @@ class CitySportsBadmintonRequestStrategy(AbstractRequestStrategy):
 
 
 class CitySportsCrawler(BaseCrawler):
+    """CitySport sits behind a WAF that fingerprints the TLS handshake itself
+    (JA3), not just headers - a plain httpx/curl-less client gets the
+    connection reset mid-handshake before any HTTP request is even sent,
+    regardless of User-Agent. curl_cffi impersonates a real browser's TLS
+    fingerprint and gets a clean 200. This is why CitySport bypasses
+    BaseCrawler's shared `_send_concurrent_requests` fetch loop (which is
+    hardwired to httpx) and overrides `ScraperCoroutines` directly, same
+    pattern Matchi/Playtomic use for their own reasons. See
+    `docs/clubs/citysport.md` for how this was diagnosed.
+    """
+
     def __init__(self):
         super().__init__(
             request_strategy = CitySportsBadmintonRequestStrategy(),
             response_parser_strategy = CitySportsResponseParserStrategy(),
             organisation_website = "https://citysport.org.uk"
         )
+
+    async def _fetch_venue_date(
+            self,
+            session: AsyncSession,
+            sports_venue: SportsVenue,
+            fetch_date: date,
+            semaphore: asyncio.Semaphore,
+    ) -> List[UnifiedParserSchema]:
+        request_details_list = self.request_strategy.generate_request_details(
+            sports_venue=sports_venue, fetch_date=fetch_date
+        )
+        results: List[UnifiedParserSchema] = []
+        for request_details in request_details_list:
+            try:
+                async with semaphore:
+                    response = await session.get(
+                        request_details.url,
+                        headers=request_details.headers,
+                        impersonate="chrome124",
+                        timeout=30,
+                    )
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "")
+                validated_response = validate_api_response(response, content_type, request_details.url)
+                if not validated_response:
+                    continue
+                raw_data_obj = RawResponseData(
+                    content=validated_response,
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    requestMetadata=request_details,
+                )
+                results.extend(self.response_parser_strategy.parse(raw_data_obj))
+            except CurlHTTPError as e:
+                status = e.response.status_code if e.response is not None else None
+                logging.debug(
+                    f"No data ({status}) for {request_details.url} — "
+                    f"activity not offered for this window"
+                )
+            except Exception as e:
+                logging.error(f"CitySport fetch failed for {request_details.url}: {type(e).__name__}: {e!r}")
+        return results
+
+    @override
+    def ScraperCoroutines(
+            self, sports_venues: List[SportsVenue], dates: List[date]
+    ) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+        return self._crawl_async(sports_venues, dates)
+
+    async def _crawl_async(
+            self, sports_venues: List[SportsVenue], dates: List[date]
+    ) -> List[UnifiedParserSchema]:
+        parameter_sets = list(itertools.product(sports_venues, dates))
+        logging.info(
+            f"CitySport: crawling {len(sports_venues)} venue(s) across {len(dates)} dates "
+            f"via curl_cffi (TLS-fingerprint impersonation). Total parameter sets: {len(parameter_sets)}"
+        )
+        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        async with AsyncSession() as session:
+            tasks = [
+                self._fetch_venue_date(session, venue, fetch_date, semaphore)
+                for venue, fetch_date in parameter_sets
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        all_slots: List[UnifiedParserSchema] = []
+        for r in results:
+            if isinstance(r, Exception):
+                logging.error(f"CitySport task raised: {r}")
+            elif r:
+                all_slots.extend(r)
+        return all_slots
 
 
 def run(
