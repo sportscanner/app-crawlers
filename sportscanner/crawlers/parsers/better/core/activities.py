@@ -25,11 +25,24 @@ _DEFAULTS: Dict[str, List[ActivitySlugPair]] = {
     "squash": [
         ("squash-40min/v2", "squash-court-40min"),
     ],
-    # pickleball's v2 endpoint currently 500s for every venue, so v1 is primary
-    # and v2 is the fallback here — inverse ordering to badminton/squash.
+    # Pickleball is itself mid-rollout, same as badminton/squash, but the slug
+    # spelling changes *between* v1 and v2 instead of staying fixed: legacy v1
+    # is plural ("pickleball-40mins", no version suffix); v2 dropped the "s"
+    # ("pickleball-40min/v2"). A handful of venues (confirmed: score-leisure-centre,
+    # barking-sporthouse-and-gym, waltham-forest-feel-good-centre,
+    # walthamstow-leisure-centre, leytonstone-leisure-centre) are still v1-only —
+    # v2 404s/500s for them. The rest of the pickleball roster (confirmed: 17 of
+    # 22 venues, including lee-valley-velopark, woolwich-waves-leisure-centre,
+    # the-plumstead-centre) have migrated and are v2-only — v1 answers with a
+    # generic "date should be within the valid days you are able to view" 422
+    # (not a clean 404) because the plural activity no longer exists for them, so
+    # plural/v1 as primary + singular/v2 as fallback covers both groups.
+    # (Previously the fallback here was still plural ("pickleball-40mins/v2"),
+    # which 500s — that's what caused woolwich-waves/plumstead/lee-valley to sit
+    # with zero pickleball rows despite the venues genuinely having availability.)
     "pickleball": [
-        ("pickleball-40mins", "pickleball-40mins/v2"),
-        ("pickleball-60mins", "pickleball-60mins/v2"),
+        ("pickleball-40mins", "pickleball-40min/v2"),
+        ("pickleball-60mins", "pickleball-60min/v2"),
     ],
 }
 
@@ -39,10 +52,6 @@ _VENUE_OVERRIDES: Dict[Tuple[str, str], List[ActivitySlugPair]] = {
     # "badminton-court" activity (v2 only; v1 404s) of mixed durations.
     ("badminton", "shene-sports-and-fitness-centre"): [
         ("badminton-court/v2", "badminton-court"),
-    ],
-    # lee-valley uses a distinct pickleball activity slug
-    ("pickleball", "lee-valley-velopark"): [
-        ("pickleball-60mins-court", "pickleball-60mins-court/v2"),
     ],
 }
 

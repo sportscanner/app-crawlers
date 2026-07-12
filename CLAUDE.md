@@ -207,10 +207,21 @@ venue = get_venue_by_composite_key(composite_key)
   venue quirk there (one data entry), not as an `if` branch in the request builder.
 - **v1/v2 rollout**: Better is mid-migrating to a `/v2` times endpoint per venue/activity;
   each pair tries the primary slug then falls back to the other on an HTTP error. Squash's
-  slug name also changes on v2 (`squash-court-40min` → `squash-40min`). Pickleball's v2
-  currently 500s site-wide, so it lists v1 primary / v2 fallback.
+  slug name also changes on v2 (`squash-court-40min` → `squash-40min`).
+- **Pickleball's slug spelling changes between v1 and v2**, not just the version suffix:
+  v1 is plural, no version (`pickleball-40mins`); v2 dropped the "s" (`pickleball-40min/v2`).
+  Confirmed v1-only (legacy) venues: `score-leisure-centre`, `barking-sporthouse-and-gym`,
+  `waltham-forest-feel-good-centre`, `walthamstow-leisure-centre`, `leytonstone-leisure-centre`.
+  The other ~17 of 22 pickleball venues (including `lee-valley-velopark`,
+  `woolwich-waves-leisure-centre`, `the-plumstead-centre`) are v2-only — v1 answers with
+  Better's generic "date should be within the valid days you are able to view" 422 (not a
+  clean 404) since the plural activity no longer exists for them, so `activity_slug_pairs`
+  uses plural/v1 as primary and singular/v2 as fallback to cover both groups in one config.
+  Getting the fallback's pluralization wrong here previously left ~17 venues with silently
+  zero pickleball rows despite genuinely having availability — check both spellings before
+  assuming a venue has none.
 - **Per-venue overrides**: e.g. `shene-sports-and-fitness-centre` (single `badminton-court`
-  activity), `lee-valley-velopark` (`pickleball-60mins-court`).
+  activity).
 - **API Response Format**: slots under a top-level `data` key; sometimes dict with numeric keys, sometimes list
 - **API Response Format**: Sometimes returns dict with numeric keys, sometimes list
 
