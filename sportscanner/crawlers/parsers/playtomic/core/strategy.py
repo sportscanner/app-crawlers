@@ -20,6 +20,7 @@ the correct website slug; None means no working public page exists for that venu
 
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Dict, List, Optional
@@ -237,22 +238,24 @@ class PlaytomicAvailabilityFetcher:
         venue: sportscanner.storage.postgres.tables.SportsVenue,
         tenant_id: str,
         fetch_date: date,
+        semaphore: asyncio.Semaphore,
     ) -> List[UnifiedParserSchema]:
         """Fetch and parse availability for one venue + date."""
         try:
-            resp = await client.get(
-                _AVAILABILITY_API,
-                params={
-                    "tenant_id": tenant_id,
-                    "date": fetch_date.isoformat(),
-                    "sport_id": _SPORT_ID,
-                },
-                headers={
-                    **_HEADERS,
-                    "referer": f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{venue.slug}",
-                },
-                timeout=30,
-            )
+            async with semaphore:
+                resp = await client.get(
+                    _AVAILABILITY_API,
+                    params={
+                        "tenant_id": tenant_id,
+                        "date": fetch_date.isoformat(),
+                        "sport_id": _SPORT_ID,
+                    },
+                    headers={
+                        **_HEADERS,
+                        "referer": f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{venue.slug}",
+                    },
+                    timeout=30,
+                )
             resp.raise_for_status()
             resources = [PlaytomicResource(**r) for r in resp.json()]
             slots = _resources_to_unified(resources, venue, fetch_date)

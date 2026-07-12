@@ -35,6 +35,7 @@ from sportscanner.crawlers.parsers.playtomic.core.strategy import (
 )
 from sportscanner.logger import logging
 from sportscanner.utils import async_timer
+from sportscanner.variables import settings
 from rich import print
 
 
@@ -74,9 +75,18 @@ class PlaytomicPadelCrawler(BaseCrawler):
             return []
 
         logging.info(f"Playtomic: fetching availability for {len(matched)} venues × {len(dates)} dates")
+        # Playtomic bypasses BaseCrawler's own semaphore-bounded fetch loop (it
+        # overrides ScraperCoroutines directly, same as Matchi), so it needs its
+        # own cap: venues x dates can be 300+ requests fired in one unbounded
+        # burst, which was intermittently 403ing a handful of venues per run
+        # (Powerleague Mill Hill, Padel Tree Brentford, Boxx Padel, Catford Padel
+        # Collective, S3 Padel Brent Cross) even though each responds cleanly to
+        # an isolated request - the WAF was rate-limiting the burst, not blocking
+        # those venues specifically.
+        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
         async with httpxAsyncClient() as client:
             tasks = [
-                self._fetcher.fetch_venue_date(client, venue, tenant_id, d)
+                self._fetcher.fetch_venue_date(client, venue, tenant_id, d, semaphore)
                 for venue, tenant_id in matched
                 for d in dates
             ]
