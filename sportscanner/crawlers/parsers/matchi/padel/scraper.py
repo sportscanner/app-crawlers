@@ -33,6 +33,7 @@ from sportscanner.crawlers.parsers.matchi.core.strategy import (
 )
 from sportscanner.logger import logging
 from sportscanner.utils import async_timer
+from sportscanner.variables import settings
 from rich import print
 
 
@@ -58,9 +59,14 @@ class MatchiPadelCrawler(BaseCrawler):
             f"Matchi: crawling {len(dates)} dates against "
             f"{len(venue_by_slug)} registered padel venues"
         )
+        # Matchi bypasses BaseCrawler's own semaphore-bounded fetch loop (it
+        # crawls date-major instead of venue-major), so it needs its own cap:
+        # firing all dates x facilities concurrently (previously unbounded) blasted
+        # Matchi's WAF with ~100 simultaneous requests and got every one 403'd.
+        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
         async with httpxAsyncClient() as client:
             tasks = [
-                self._fetcher.crawl_date(client, d, venue_by_slug)
+                self._fetcher.crawl_date(client, d, venue_by_slug, semaphore)
                 for d in dates
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
