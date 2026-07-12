@@ -103,6 +103,14 @@ class BaseCrawler(ABC):
       * `_extract_content`   - pull the slot payload out of the validated body
       * `_is_empty_content`  - decide what counts as "no slots in this response"
       * `_on_empty_response` - what to return when the response has no slots
+      * `_http_client`       - the httpx.AsyncClient to fetch with (default: direct,
+                               no proxy). Override when a provider's origin blocks
+                               requests from this host's IP/ASN specifically (seen
+                               with GitHub Actions runner IPs) but works fine
+                               otherwise - route just that provider through
+                               `httpxAsyncClientWithProxyRotation()` rather than
+                               flipping the global `USE_PROXIES` setting for every
+                               provider.
     """
 
     def __init__(
@@ -137,6 +145,13 @@ class BaseCrawler(ABC):
     ) -> List[UnifiedParserSchema]:
         """Result to emit when a response is fetched OK but has no slots."""
         return []
+
+    def _http_client(self) -> httpx.AsyncClient:
+        """The client `_send_concurrent_requests` fetches with. Default: direct
+        connection, no proxy (`httpxAsyncClient()`, which itself honours the
+        global `USE_PROXIES` setting). Override to force a specific provider
+        through the rotating proxy regardless of that global setting."""
+        return httpxAsyncClient()
 
     # -------------------------------------------------------------- fetch loop
     async def _fetch_and_transform(
@@ -271,7 +286,7 @@ class BaseCrawler(ABC):
                 task.close()
                 raise
 
-        async with httpxAsyncClient() as client:
+        async with self._http_client() as client:
             for sports_venue, fetch_date in parameter_sets:
                 item_tasks = await self._create_tasks_for_item(client, sports_venue, fetch_date)
                 all_tasks.extend(item_tasks)

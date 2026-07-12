@@ -3,7 +3,9 @@ from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadat
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
 from datetime import date, timedelta
 from typing import List, Optional, Dict
+import httpx
 from sportscanner.crawlers.helpers import override
+from sportscanner.crawlers.anonymize.proxies import httpxAsyncClientWithProxyRotation
 
 from sportscanner.logger import logging
 
@@ -66,12 +68,30 @@ class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
 
 
 class EveryoneActiveCrawler(BaseCrawler):
+    """caching.everyoneactive.com sits behind a WAF/CDN layer that appears to
+    block GitHub Actions runner IP ranges specifically: every request 200s with
+    real data from a residential/dev connection (and through the rotating
+    proxy), but every request from the production GitHub Actions runner comes
+    back with a valid-but-empty response (0/120 requests returned data, on
+    every scheduled run - confirmed consistent, not intermittent). No header or
+    request-shape change fixes this since it isn't a hard error to react to;
+    it's a soft, silent block. Force this provider through the existing
+    rotating proxy (already used for exactly this class of problem elsewhere,
+    see `crawlers/anonymize/proxies.py`) rather than flipping the global
+    `USE_PROXIES` setting for every provider, most of which work fine directly.
+    See `docs/clubs/everyone-active.md`.
+    """
+
     def __init__(self):
         super().__init__(
             request_strategy = EveryoneActiveBadmintonRequestStrategy(),
             response_parser_strategy = EveryoneActiveResponseParserStrategy(),
             organisation_website = "https://www.everyoneactive.com/"
         )
+
+    @override
+    def _http_client(self) -> httpx.AsyncClient:
+        return httpxAsyncClientWithProxyRotation()
 
 
 def run(

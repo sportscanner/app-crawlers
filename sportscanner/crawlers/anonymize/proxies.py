@@ -4,13 +4,14 @@ import httpx
 
 from sportscanner.variables import settings
 
-proxies = {
-    "http://": settings.ROTATING_PROXY_ENDPOINT,
-    "https://": settings.ROTATING_PROXY_ENDPOINT,
-}
-
 
 def httpxAsyncClientWithProxyRotation() -> httpx.AsyncClient:
+    # httpx 0.28 dropped the per-scheme `proxies={"http://": ..., "https://": ...}`
+    # dict mapping in favour of a single `proxy=` string (use `mounts=` instead if
+    # http/https ever need genuinely different proxies) - this was broken (raised
+    # TypeError on the removed `proxies` kwarg) until it was actually exercised for
+    # the first time by a provider-level `_http_client()` override, since
+    # `USE_PROXIES` has always defaulted to False and this path was otherwise dead.
     return httpx.AsyncClient(
         limits=httpx.Limits(
             max_connections=settings.HTTPX_CLIENT_MAX_CONNECTIONS,
@@ -21,7 +22,7 @@ def httpxAsyncClientWithProxyRotation() -> httpx.AsyncClient:
             connect=10.0,  # Max time to establish a connection
             read=10.0,  # Max time to read a response
         ),
-        proxies=proxies,
+        proxy=settings.ROTATING_PROXY_ENDPOINT,
     )
 
 
