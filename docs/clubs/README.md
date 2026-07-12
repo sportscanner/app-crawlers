@@ -19,7 +19,7 @@ detail that sits underneath it.
 | Haringey Council | [haringey.md](haringey.md) | badminton | 2 | healthy |
 | Everyone Active | [everyone-active.md](everyone-active.md) | badminton | 12 | healthy |
 | Tower Hamlets (Be Well) | [tower-hamlets.md](tower-hamlets.md) | badminton | 4 | healthy (fragile auth pattern) |
-| CitySport (City St George's, University of London) | [citysport.md](citysport.md) | badminton | 1 | **broken** — TLS-level block |
+| CitySport (City St George's, University of London) | [citysport.md](citysport.md) | badminton | 1 | healthy (fixed via `curl_cffi` TLS impersonation) |
 | Southwark Leisure | [southwark-leisure.md](southwark-leisure.md) | badminton, pickleball | 2 | healthy |
 | Decathlon | [decathlon.md](decathlon.md) | pickleball | 1 | healthy |
 | Matchi | [matchi.md](matchi.md) | padel | 10 | healthy (2 venues genuinely unbookable) |
