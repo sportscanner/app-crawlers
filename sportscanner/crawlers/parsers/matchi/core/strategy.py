@@ -50,6 +50,20 @@ from sportscanner.logger import logging
 MATCHI_ORGANISATION_WEBSITE = "https://www.matchi.se"
 PADEL_SPORT_ID = 5
 
+# Matchi's crawl bypasses BaseCrawler's per-provider semaphore (see
+# MatchiPadelCrawler docstring), so it never picked up a browser-like
+# User-Agent the way Playtomic's request strategy does. Requests were going
+# out with httpx's bare default headers, which Matchi's WAF was blocking
+# outright (HTTP 403 on every facility/date, site-wide).
+_HEADERS = {
+    "accept": "*/*",
+    "accept-language": "en-US,en;q=0.9",
+    "user-agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+    ),
+}
+
 # Matchi's backend encodes UK venue slot times in Stockholm local time (CEST/CET).
 # Stockholm is always UTC+1 ahead of London — extracting the Stockholm hour/minute
 # directly gives the time as Matchi intends it (and as shown on the Matchi website).
@@ -202,6 +216,7 @@ class MatchiSlotFetcher:
         client: httpx.AsyncClient,
         fetch_date: date,
         venue_by_slug: Dict[str, sportscanner.storage.postgres.tables.SportsVenue],
+        semaphore: asyncio.Semaphore,
     ) -> List[UnifiedParserSchema]:
         """Crawl availability for a single date across all known Matchi venues concurrently."""
         matched = [
@@ -217,7 +232,10 @@ class MatchiSlotFetcher:
             )
 
         slot_lists = await asyncio.gather(
-            *[self._fetch_facility_slots(client, slug, fid, fetch_date) for slug, fid in matched],
+            *[
+                self._fetch_facility_slots(client, slug, fid, fetch_date, semaphore)
+                for slug, fid in matched
+            ],
             return_exceptions=True,
         )
 
@@ -249,19 +267,22 @@ class MatchiSlotFetcher:
         slug: str,
         facility_id: int,
         fetch_date: date,
+        semaphore: asyncio.Semaphore,
     ) -> List[MatchiSlot]:
         """Fetch available slots for one facility on one date via /book/listSlots."""
         try:
-            resp = await client.get(
-                f"{MATCHI_ORGANISATION_WEBSITE}/book/listSlots",
-                params={
-                    "wl": "",
-                    "facility": facility_id,
-                    "date": fetch_date.isoformat(),
-                    "sport": PADEL_SPORT_ID,
-                },
-                timeout=30,
-            )
+            async with semaphore:
+                resp = await client.get(
+                    f"{MATCHI_ORGANISATION_WEBSITE}/book/listSlots",
+                    params={
+                        "wl": "",
+                        "facility": facility_id,
+                        "date": fetch_date.isoformat(),
+                        "sport": PADEL_SPORT_ID,
+                    },
+                    headers=_HEADERS,
+                    timeout=30,
+                )
             resp.raise_for_status()
         except httpx.HTTPStatusError as exc:
             logging.error(f"Matchi {slug} HTTP {exc.response.status_code} for {fetch_date}")
