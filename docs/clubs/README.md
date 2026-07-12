@@ -17,7 +17,7 @@ detail that sits underneath it.
 | Better / GLL | [better-gll.md](better-gll.md) | badminton, squash, pickleball | 35 | healthy (3 known venue-level gaps) |
 | Active Lambeth | [active-lambeth.md](active-lambeth.md) | badminton, squash | 4 | healthy |
 | Haringey Council | [haringey.md](haringey.md) | badminton | 2 | healthy |
-| Everyone Active | [everyone-active.md](everyone-active.md) | badminton | 12 | healthy (fixed — routed through rotating proxy, see below) |
+| Everyone Active | [everyone-active.md](everyone-active.md) | badminton | 12 | healthy (fixed — proxy with retry-on-403, free-tier pool is partly blocklisted) |
 | Tower Hamlets (Be Well) | [tower-hamlets.md](tower-hamlets.md) | badminton | 4 | healthy (fragile auth pattern) |
 | CitySport (City St George's, University of London) | [citysport.md](citysport.md) | badminton | 1 | healthy (fixed via `curl_cffi` TLS impersonation) |
 | Southwark Leisure | [southwark-leisure.md](southwark-leisure.md) | badminton, pickleball | 2 | healthy |

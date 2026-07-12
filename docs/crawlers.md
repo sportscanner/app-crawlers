@@ -40,17 +40,13 @@ This used to be a third strategy class per provider (`AbstractAsyncTaskCreationS
 duplicated near-identically across every provider; it is now one implementation in
 `core/interfaces.py`.
 
-Two providers (Playtomic, Matchi) do not fit the per-venue request loop, since their
-APIs return all venues for a date in one call. They override `ScraperCoroutines`
-directly instead of forcing their shape through the standard strategies. CitySport
-overrides it too, for a different reason (see `docs/clubs/citysport.md`).
-
-`BaseCrawler` also exposes `_http_client()`, overridable to swap which
-`httpx.AsyncClient` a provider fetches with (default: direct, no proxy). Override
-this rather than flipping the global `USE_PROXIES` setting when only one
-provider's origin blocks this host's IP/ASN specifically — see
-`docs/clubs/everyone-active.md` for a real case (GitHub Actions runner IPs
-silently blocked, works fine locally) and how it was diagnosed.
+Several providers don't fit the per-venue request loop and override
+`ScraperCoroutines` directly instead of forcing their shape through the standard
+strategies: Playtomic and Matchi, since their APIs return all venues for a date
+in one call; CitySport, which needs a TLS-impersonating client instead of httpx
+(see `docs/clubs/citysport.md`); and Everyone Active, which needs a
+proxy-with-retry fetch to work around a constrained proxy pool (see
+`docs/clubs/everyone-active.md`).
 
 ## Concurrency: the semaphore
 
