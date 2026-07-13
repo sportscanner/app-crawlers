@@ -1,9 +1,10 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Header, status
+from fastapi import APIRouter, Header, Request, status
 
 from sportscanner.core.kinde.auth import get_kinde_access_token, get_kinde_user_details
+from sportscanner.core.rate_limit import limiter
 
 from .schemas import CancelGameOut, GameCreate, GameDetailOut, GameListOut, GameOut, JoinGameOut
 from .service.gameService import GameService
@@ -68,13 +69,16 @@ async def get_game(
 
 
 @router.post("/{game_id}/join", response_model=JoinGameOut)
+@limiter.limit("10/minute")
 async def join_game(
+    request: Request,
     game_id: uuid.UUID,
     Authorization: str = Header(default=None, title="Bearer token to authenticate user"),
 ):
     """Starts a payment to join a game — returns a PaymentIntent client_secret for
     the frontend to confirm with Stripe.js (card, Apple Pay, and Google Pay all
-    surface automatically via the PaymentElement)."""
+    surface automatically via the PaymentElement). Rate-limited per IP — this
+    endpoint creates real Stripe PaymentIntents, making it a card-testing target."""
     user_id = _get_user_id(Authorization)
     return GameService().join_game(game_id, user_id)
 

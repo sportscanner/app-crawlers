@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Header, HTTPException, Request, status
 
 from sportscanner.core.kinde.auth import get_kinde_access_token, get_kinde_user_details
+from sportscanner.core.rate_limit import limiter
 from sportscanner.core.stripe import client as stripe_client
 from sportscanner.logger import logging as logger
 
@@ -18,10 +19,13 @@ def _kinde_identity(refresh_token: str) -> tuple[str, str]:
 
 
 @router.post("/connect/onboard-link", response_model=OnboardingLinkOut)
+@limiter.limit("5/minute")
 async def create_onboarding_link(
+    request: Request,
     Authorization: str = Header(default=None, title="Bearer token to authenticate user"),
 ):
-    """Returns a Stripe-hosted onboarding URL — creates the Express account on first call."""
+    """Returns a Stripe-hosted onboarding URL — creates the Express account on first
+    call. Rate-limited per IP — each call can create a new Stripe Express account."""
     user_id, email = _kinde_identity(Authorization)
     return PaymentsService().create_onboarding_link(user_id, email)
 

@@ -5,7 +5,11 @@ from typing import List
 from fastapi import FastAPI, Header, Path, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.requests import Request
+
+from sportscanner.core.rate_limit import limiter
 
 from sportscanner.api.routers.geolocation.endpoints import router as GeolocationRouter
 from sportscanner.api.routers.search.endpoints import (
@@ -90,14 +94,33 @@ app = FastAPI(
     lifespan=_mcp_app.lifespan if _mcp_app is not None else None,
 )
 
-# Add CORS middleware
+# Restricted from a "*" wildcard (flagged in security review 2026-07-13) to the
+# actual frontend origins. A wildcard + allow_credentials=True is a combination
+# most scanners flag automatically; auth here is Authorization-header-based
+# (not cookies) so the practical exposure was limited, but there's no reason to
+# leave the door open wider than the one frontend that's meant to call this API.
+# Non-browser MCP clients (Claude Desktop, mcp-remote, Cursor) are unaffected —
+# CORS is a browser-only enforcement mechanism, not something curl/desktop
+# HTTP clients respect.
+ALLOWED_ORIGINS = [
+    "https://sportscanner.co.uk",
+    "https://www.sportscanner.co.uk",
+    "https://beta.sportscanner.co.uk",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace '*' with specific origins if needed
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
+
+# Rate limiting (see sportscanner/core/rate_limit.py) — applied selectively via
+# @limiter.limit(...) on endpoints that touch real money movement, not site-wide.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(
     router=SearchRouter, prefix="/search", tags=["Search"]
