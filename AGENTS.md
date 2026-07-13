@@ -1,6 +1,8 @@
-# Sportscanner Backend - Claude Code Context
+# Sportscanner Backend - Agent Context
 
-**Purpose**: This file provides context for Claude Code about the Sportscanner backend repository. It documents architecture, key components, common issues, and recent fixes to help future Claude interactions understand the codebase quickly.
+**Purpose**: This file provides context for AI coding agents (Claude Code, Codex, or others reading the `AGENTS.md` convention) working in the Sportscanner backend repository. It documents architecture, key components, common issues, and recent fixes so an agent picking this up cold can get productive quickly.
+
+For per-provider detail (API shape, auth, known quirks, live status), see `docs/clubs/` — one file per booking provider, plus a README index. That folder is the authoritative, kept-current source; the "Provider-Specific Variations" section below is a lighter, older summary and may lag behind it.
 
 ## Documentation Style
 
@@ -199,6 +201,124 @@ venue = get_venue_by_composite_key(composite_key)
 3. **Slot Availability**: `spaces = 0` means unavailable (stale or booked)
 4. **Provider Variations**: Some venues use `/v2` endpoints (e.g., Woolwich Waves)
 5. **Error Handling**: Parser error messages should use `slot.starts_at.format_24_hour` not `slot['Time']`
+
+## Adding a New Venue: End-to-End Checklist
+
+Distilled from the venues added July 2026 (UEL SportsDock, Places Leisure) and
+every fix made to existing providers that same month. Work through these in
+order — later steps assume earlier ones are done.
+
+### 1. Research the booking platform before writing any code
+- Find the venue's actual booking flow (not just its info page) and identify
+  the underlying vendor. Check known platforms first before assuming it's
+  bespoke: **Better/GLL** (`better-admin.org.uk`), **Gladstone** (either
+  `{tenant}.gladstonego.cloud` directly, or white-labelled at `flow.onl`),
+  **Leisure Hub / "LhWeb"** (`.../LhWeb/en/api/Sites/{id}/Timetables/ActivityBookings`,
+  used by CitySport, UEL SportsDock), **Matchi**, **Playtomic**. Reusing an
+  already-integrated platform's request/parse logic is far cheaper than a new
+  scraper — see `docs/clubs/README.md`'s "how this was compiled" note on the
+  `/categories/{sport}` discovery trick for Better/GLL specifically.
+- Determine whether availability is genuinely public/anonymous (every
+  provider integrated so far is) or requires a real user login to see
+  anything. If it's login-gated for viewing (not just booking), stop and
+  flag it — that's a scope decision, not something to route around.
+- Test for a TLS-fingerprinting WAF: try a plain `httpx`/`curl` request first;
+  if it's blocked (connection reset mid-handshake, or a bare `curl` succeeds
+  but Python's `ssl` module doesn't), the site needs `curl_cffi` with
+  `impersonate="chrome124"` instead (see `docs/clubs/citysport.md`).
+- Confirm live data with an actual slot response before writing the scraper,
+  not just "the site claims to offer this sport."
+
+### 2. Decide: standard `BaseCrawler` loop, or bypass?
+- If the API is one request per `(venue, date)`, use the standard
+  `AbstractRequestStrategy` + `AbstractResponseParserStrategy` pair — see
+  `sportscanner/crawlers/parsers/uelsportsdock/` as the simplest example.
+- If it doesn't fit that shape (returns all venues per date like
+  Matchi/Playtomic, needs a two-phase fetch like Places Leisure, or needs a
+  different HTTP transport like CitySport's `curl_cffi`), override
+  `ScraperCoroutines` directly and implement your own fetch loop. This is the
+  established, preferred pattern in this codebase — extend `BaseCrawler`,
+  don't fork it. See any of `matchi/`, `playtomic/`, `citysports/`,
+  `placesleisure/` for worked examples of *why* each one needed to bypass.
+- If you add unbounded concurrency in a bypass (no `asyncio.Semaphore`), you
+  will get the provider's WAF blocking every request — this happened to
+  Matchi and Playtomic. Always cap concurrency with
+  `asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)`.
+
+### 3. Write the provider module
+- Follow the existing folder structure: `{provider}/core/schema.py` (response
+  shape), `{provider}/core/strategy.py` (request + parse logic), and one
+  `{provider}/{sport}/scraper.py` per sport offered, each exposing a
+  `coroutines(search_dates)` entry point.
+- Reuse an existing schema class (e.g. `CitySportsResponseSchema`) if you
+  confirmed the same platform — don't reinvent field-for-field-identical
+  Pydantic models.
+
+### 4. Wire it up
+- Add venue(s) to `sportscanner/venues.json` under a new or existing
+  organisation block. Compute `composite_key` yourself to sanity-check it:
+  `generate_composite_key([organisation_website, slug])` (MD5 of
+  `f"{organisation_website}|{slug}"`, first 8 chars — see
+  `sportscanner/storage/postgres/utils.py`).
+- Import the new `coroutines` function and add it to the relevant
+  `*_scraping_pipeline()` call(s) in `sportscanner/crawlers/pipeline.py`.
+
+### 5. Get the venue into the production database
+- **Do not** run `load_sports_centre_mappings()` / `initialize_db_and_tables()`
+  against prod — it uses raw `session.add()` with no upsert handling and is
+  not safe against a non-empty `sportsvenue` table.
+- Instead, `INSERT` the venue row(s) directly into prod `sportsvenue`,
+  matching the exact `composite_key` your `venues.json` entry computes to,
+  including `srid = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)`.
+
+### 6. Verify live, twice
+- **Locally first**: run the real `coroutines()` entry point directly
+  (`ENV=prod python3 -c "..."`) against the production database — `.env` at
+  the repo root has real credentials, this is read-only-safe and standard
+  practice in this codebase. Confirm a realistic slot count and genuine mixed
+  availability (not all-zero, not all-full).
+- **Then check a real GitHub Actions run** after deploying — local
+  verification is not sufficient on its own. Multiple providers this session
+  worked perfectly from a local/dev connection but failed from GitHub
+  Actions' runner IPs specifically: CitySport (TLS fingerprint block, fixed
+  with `curl_cffi`), Everyone Active (soft IP block, fixed by routing through
+  the rotating proxy), UEL SportsDock (`ReadTimeout` from GH Actions only,
+  same proxy fix), and a handful of Matchi/Playtomic venues (403 on ~40-70%
+  of runs, IP-dependent). Always pull the actual job log from the next
+  scheduled run and grep for your new provider before calling it done — see
+  `docs/clubs/everyone-active.md` and `docs/clubs/citysport.md` for how this
+  class of bug was diagnosed each time.
+- If GitHub Actions fails where local succeeds, don't guess — check for a
+  clean HTTP error (403 → try `get_with_proxy_fallback_on_403()` in
+  `crawlers/anonymize/proxies.py`, already used by Matchi/Playtomic) versus a
+  silent hang/timeout (→ the venue needs to route through the proxy directly
+  from the first attempt, like Everyone Active and UEL SportsDock do — a 403
+  fallback doesn't trigger on a timeout, there's no clean error to catch).
+- Re-run a couple of *other* already-working providers after your change to
+  confirm you didn't regress shared code (`core/interfaces.py`,
+  `crawlers/anonymize/proxies.py`).
+
+### 7. Document it
+- Write `docs/clubs/{provider}.md` following the existing files' structure:
+  API shape, auth, quirks/gotchas, known limitations, live status with a
+  date. Add a row to `docs/clubs/README.md`'s index table.
+- If you discovered something generically reusable (a new diagnostic
+  technique, a new failure class), fold it into `docs/crawlers.md` too.
+
+### 8. Frontend
+- Add a `VENUE_DATA` entry in `app-frontend/lib/venue-data.ts`, keyed by the
+  same `composite_key`: `organisation`, `venue_name`, `address`, and
+  `transport` (nearest stations, walk time, lines). Search results and
+  availability come from the live backend API regardless of this file — this
+  only powers the venue detail page's "Get directions" panel and club info.
+  If it's missing, that panel silently renders empty rather than erroring.
+- **Push frontend changes to `dev` (beta.sportscanner.co.uk) first.** Only
+  push to `main` (prod) when the user explicitly confirms — this is a standing
+  rule, not a one-off. If asked to promote a specific fix to `main` without
+  promoting everything on `dev`, cherry-pick that one commit rather than
+  fast-forwarding `main` to `dev`'s tip (which would pull in unrelated
+  in-progress work). After pushing to `main`, cherry-pick the same commit
+  onto `dev` too so the branches don't diverge.
 
 ## Provider-Specific Variations
 ### Better/GLL (`better/`)
