@@ -16,10 +16,26 @@ to actually complete a booking, but the timetable/availability API itself is
 fully public and anonymous — no auth needed to view slots, same as CitySport.
 
 **Unlike CitySport, this instance is not behind a TLS-fingerprinting WAF** —
-plain `httpx` gets a clean `200` (confirmed: CitySport needs `curl_cffi`
-impersonation to get past a JA3-based block; UEL doesn't). So
-`UELSportsDockCrawler` uses `BaseCrawler`'s standard fetch loop directly,
-unlike CitySport's `ScraperCoroutines` bypass.
+plain `httpx` gets a clean `200` from a non-GitHub-Actions connection
+(confirmed: CitySport needs `curl_cffi` impersonation to get past a JA3-based
+block; UEL doesn't).
+
+**But it is soft-blocked from GitHub Actions runner IPs specifically** —
+confirmed on the first two production runs after this venue was added: all
+10/10 requests failed with `ReadTimeout`, not a clean error status, while the
+identical request succeeds in well under a second from any other connection.
+Same class of problem as [Everyone Active](everyone-active.md) (GitHub's
+hosted-runner IP ranges being blocked), just manifesting as a silent hang
+instead of an explicit 403. Since there's no clean error to trigger a
+try-direct-first fallback on (direct connections don't fail fast, they just
+sit there until they time out), `UELSportsDockCrawler` bypasses `BaseCrawler`'s
+shared fetch loop entirely and routes straight through the rotating proxy with
+retry (up to 4 attempts per request) — skipping the direct attempt rather than
+wasting a timeout on it first. Confirmed live end-to-end after the fix.
+
+Low request volume here (1 venue, 10 requests/run) keeps this cheap relative
+to Everyone Active's 120/run, so it doesn't meaningfully compete for the
+shared proxy pool's capacity.
 
 ### Badminton filter differs from CitySport
 
