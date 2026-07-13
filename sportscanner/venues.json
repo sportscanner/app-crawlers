@@ -1489,5 +1489,121 @@
         ]
       }
     ]
+  },
+  {
+    "organisation": "Places Leisure",
+    "organisation_website": "https://www.placesleisure.org",
+    "venues": [
+      {
+        "venue_name": "Chessington Sports Centre",
+        "slug": "chessington-sports-centre",
+        "location": {
+          "postcode": "KT9 2JS",
+          "address": "Garrison Lane, Chessington, KT9 2JS",
+          "latitude": 51.356976,
+          "longitude": -0.308918
+        },
+        "sports": [
+          "badminton"
+        ]
+      },
+      {
+        "venue_name": "Battersea Sports Centre",
+        "slug": "battersea-sports-centre",
+        "location": {
+          "postcode": "SW11 2DA",
+          "address": "Hope St, London, SW11 2DA",
+          "latitude": 51.46476,
+          "longitude": -0.17952
+        },
+        "sports": [
+          "badminton",
+          "pickleball"
+        ]
+      },
+      {
+        "venue_name": "Roehampton Sports and Fitness Centre",
+        "slug": "roehampton-sports-and-fitness-centre",
+        "location": {
+          "postcode": "SW15 4JB",
+          "address": "Laverstoke Gardens, Off Danesbury Avenue, Roehampton, London, SW15 4JB",
+          "latitude": 51.449288,
+          "longitude": -0.243304
+        },
+        "sports": [
+          "badminton",
+          "pickleball"
+        ]
+      },
+      {
+        "venue_name": "Latchmere Leisure Centre",
+        "slug": "latchmere-leisure-centre",
+        "location": {
+          "postcode": "SW11 5AD",
+          "address": "Burns Road, Battersea, London, SW11 5AD",
+          "latitude": 51.471162,
+          "longitude": -0.16377
+        },
+        "sports": [
+          "badminton",
+          "pickleball"
+        ]
+      },
+      {
+        "venue_name": "Malden Centre",
+        "slug": "malden-centre",
+        "location": {
+          "postcode": "KT3 4TA",
+          "address": "Blagdon Road, New Malden, Surrey, KT3 4TA",
+          "latitude": 51.400225,
+          "longitude": -0.254922
+        },
+        "sports": [
+          "badminton"
+        ]
+      },
+      {
+        "venue_name": "Tolworth Recreation Centre",
+        "slug": "tolworth-recreation-centre",
+        "location": {
+          "postcode": "KT6 7LQ",
+          "address": "Fullers Way North, Tolworth, Surrey, KT6 7LQ",
+          "latitude": 51.374246,
+          "longitude": -0.296119
+        },
+        "sports": [
+          "badminton",
+          "pickleball"
+        ]
+      },
+      {
+        "venue_name": "Tooting Leisure Centre",
+        "slug": "tooting-leisure-centre",
+        "location": {
+          "postcode": "SW17 0NE",
+          "address": "Greaves Place, Tooting, London, SW17 0NE",
+          "latitude": 51.42918,
+          "longitude": -0.173911
+        },
+        "sports": [
+          "badminton",
+          "pickleball"
+        ]
+      },
+      {
+        "venue_name": "Wandle Recreation Centre",
+        "slug": "wandle-recreation-centre",
+        "location": {
+          "postcode": "SW18 4DN",
+          "address": "Mapleton Road, Wandsworth, London, SW18 4DN",
+          "latitude": 51.45277,
+          "longitude": -0.194538
+        },
+        "sports": [
+          "badminton",
+          "pickleball"
+        ]
+      }
+    ]
   }
 ]
