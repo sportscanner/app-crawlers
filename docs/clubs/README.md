@@ -25,6 +25,7 @@ detail that sits underneath it.
 | Matchi | [matchi.md](matchi.md) | padel | 10 | healthy (2 venues genuinely unbookable) |
 | Playtomic | [playtomic.md](playtomic.md) | padel | 33 | healthy |
 | South Croydon Sports Club | [south-croydon-sports-club.md](south-croydon-sports-club.md) | (none implemented) | 1 | **not implemented** |
+| UEL SportsDock | [uel-sportsdock.md](uel-sportsdock.md) | badminton | 1 | healthy (added July 2026) |
 
 Better / GLL, Active Lambeth, and Haringey all run on the same underlying
 Gladstone booking engine (Better's is at `better-admin.org.uk`; the other two are

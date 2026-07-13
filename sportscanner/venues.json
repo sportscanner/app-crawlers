@@ -572,6 +572,25 @@
     ]
   },
   {
+    "organisation": "UEL SportsDock",
+    "organisation_website": "https://www.uel.ac.uk",
+    "venues": [
+      {
+        "venue_name": "SportsDock - University of East London",
+        "slug": "sportsdock",
+        "location": {
+          "postcode": "E16 2RD",
+          "address": "University Way, London, E16 2RD",
+          "latitude": 51.507567,
+          "longitude": 0.063234
+        },
+        "sports": [
+          "badminton"
+        ]
+      }
+    ]
+  },
+  {
     "organisation": "Active Lambeth",
     "organisation_website": "https://active.lambeth.gov.uk/",
     "venues": [

@@ -17,6 +17,7 @@ from sportscanner.crawlers.parsers.everyoneactive.badminton.scraper import corou
 from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import coroutines as TowerHamletsBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import coroutines as SouthwarkLeisureBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.haringey.badminton.scraper import coroutines as HaringeyCouncilBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.uelsportsdock.badminton.scraper import coroutines as UELSportsDockBadmintonScraperCoroutines
 
 from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
 from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
@@ -61,7 +62,8 @@ def badminton_scraping_pipeline():
             CitySportsBadmintonScraperCoroutines(dates),
             EveryoneActiveBadmintonScraperCoroutines(dates),
             SouthwarkLeisureBadmintonScraperCoroutines(dates),
-            HaringeyCouncilBadmintonScraperCoroutines(dates)
+            HaringeyCouncilBadmintonScraperCoroutines(dates),
+            UELSportsDockBadmintonScraperCoroutines(dates)
         )
     )
     responses_for_reload: List[UnifiedParserSchema] = asyncio.run(
