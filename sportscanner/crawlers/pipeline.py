@@ -18,6 +18,7 @@ from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import corouti
 from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import coroutines as SouthwarkLeisureBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.haringey.badminton.scraper import coroutines as HaringeyCouncilBadmintonScraperCoroutines
 from sportscanner.crawlers.parsers.uelsportsdock.badminton.scraper import coroutines as UELSportsDockBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.placesleisure.badminton.scraper import coroutines as PlacesLeisureBadmintonScraperCoroutines
 
 from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
 from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
@@ -25,6 +26,7 @@ from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutine
 from sportscanner.crawlers.parsers.better.pickleball.scraper import coroutines as BetterLeisurePickleballScraperCoroutines
 from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import coroutines as SouthwarkLeisurePickleballScraperCoroutines
 from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutines as DecathlonPickleballScraperCoroutines
+from sportscanner.crawlers.parsers.placesleisure.pickleball.scraper import coroutines as PlacesLeisurePickleballScraperCoroutines
 
 from sportscanner.crawlers.parsers.matchi.padel.scraper import coroutines as MatchiPadelScraperCoroutines
 from sportscanner.crawlers.parsers.playtomic.padel.scraper import coroutines as PlaytomicPadelScraperCoroutines
@@ -63,7 +65,8 @@ def badminton_scraping_pipeline():
             EveryoneActiveBadmintonScraperCoroutines(dates),
             SouthwarkLeisureBadmintonScraperCoroutines(dates),
             HaringeyCouncilBadmintonScraperCoroutines(dates),
-            UELSportsDockBadmintonScraperCoroutines(dates)
+            UELSportsDockBadmintonScraperCoroutines(dates),
+            PlacesLeisureBadmintonScraperCoroutines(dates)
         )
     )
     responses_for_reload: List[UnifiedParserSchema] = asyncio.run(
@@ -132,7 +135,8 @@ def pickleball_scraping_pipeline():
         SportscannerCrawlerBot(
             BetterLeisurePickleballScraperCoroutines(dates),
             SouthwarkLeisurePickleballScraperCoroutines(dates),
-            DecathlonPickleballScraperCoroutines(dates)
+            DecathlonPickleballScraperCoroutines(dates),
+            PlacesLeisurePickleballScraperCoroutines(dates)
         )
     )
     # Flatten nested list structure and remove empty or failed responses
