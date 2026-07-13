@@ -40,6 +40,21 @@ class Settings(BaseSettings):
     # origin root regardless of where the MCP JSON-RPC endpoint itself sits.
     MCP_PUBLIC_BASE_URL: str = "https://api.sportscanner.co.uk"
 
+    # Stripe Connect (Express accounts) — powers organizer payouts for the Games
+    # feature. Optional so the app still boots for engineers without Stripe test
+    # keys configured; endpoints that need them raise a clear 500 instead.
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    # Origin the frontend is reachable at, used to build Stripe Connect
+    # onboarding return/refresh URLs (e.g. https://beta.sportscanner.co.uk).
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+    # Platform fee taken out of every game payment before the rest is routed to
+    # the organizer's connected account, expressed as percent + a fixed pence
+    # amount (mirrors Eventbrite/Meetup-style organizer fees — intentionally not
+    # a token/trivial amount). E.g. 8% + 20p on a £10 join = 80p + 20p = £1.00 fee.
+    PLATFORM_FEE_PERCENT: float = 8.0
+    PLATFORM_FEE_FIXED_PENCE: int = 20
+
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8", extra="ignore")
 
 

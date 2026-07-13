@@ -276,6 +276,9 @@ def create_db_and_tables(engine):
             McpAuthorizedClient.__table__,
             Notification.__table__,
             NotificationAck.__table__,
+            StripeConnectedAccount.__table__,
+            Game.__table__,
+            GameParticipant.__table__,
         ]
     )
 

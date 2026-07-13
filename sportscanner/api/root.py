@@ -18,6 +18,8 @@ from sportscanner.api.routers.health.endpoints import router as HealthRouter
 from sportscanner.api.routers.notifications.endpoints import router as NotificationsRouter
 from sportscanner.api.routers.tokens.endpoints import router as TokensRouter
 from sportscanner.api.routers.mcp_connections.endpoints import router as McpConnectionsRouter
+from sportscanner.api.routers.payments.endpoints import router as PaymentsRouter
+from sportscanner.api.routers.games.endpoints import router as GamesRouter
 
 from sportscanner.logger import logging
 
@@ -120,6 +122,10 @@ app.include_router(
     prefix="/notifications",
     tags=["Notifications"],
 )
+
+app.include_router(router=PaymentsRouter, prefix="/payments", tags=["Payments"])
+
+app.include_router(router=GamesRouter, prefix="/games", tags=["Games"])
 
 @app.get("/", tags=["Root"])
 async def root():

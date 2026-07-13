@@ -1,3 +1,5 @@
+import enum
+import uuid
 from datetime import date, datetime, time, timedelta
 from typing import List, Optional
 
@@ -243,3 +245,90 @@ class McpAuthorizedClient(SQLModel, table=True):
     refresh_jti: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     revoked: bool = Field(default=False)
+
+
+class StripeConnectedAccount(SQLModel, table=True):
+    """
+    One row per user who has started/completed Stripe Connect Express onboarding
+    to receive payouts as a game organizer. `charges_enabled`/`payouts_enabled`
+    mirror the Stripe Account object and are kept in sync via the
+    `account.updated` webhook — they gate whether a user is allowed to create
+    a paid Game (see games router).
+    """
+
+    __tablename__ = "stripe_connected_account"
+    __table_args__ = {"schema": "public"}
+
+    kinde_user_id: str = Field(
+        primary_key=True,
+        foreign_key="public.users.kinde_user_id",
+    )
+    stripe_account_id: str = Field(index=True)
+    details_submitted: bool = Field(default=False)
+    charges_enabled: bool = Field(default=False)
+    payouts_enabled: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GameStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    FULL = "FULL"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+
+
+class GameParticipantStatus(str, enum.Enum):
+    PENDING = "PENDING"  # PaymentIntent created, awaiting confirmation
+    PAID = "PAID"
+    REFUNDED = "REFUNDED"
+    FAILED = "FAILED"
+
+
+class Game(SQLModel, table=True):
+    """
+    An upcoming, joinable game session organized by a user. Distinct from the
+    (unmerged) Match/Splitwise concept, which retroactively logs games already
+    played — a Game here is a future booking other users pay upfront to join,
+    with funds routed directly to the organizer's Stripe connected account.
+
+    Money amounts are stored in integer pence (Stripe's own minor-unit
+    convention) to avoid float/Decimal rounding drift when computing fees.
+    """
+
+    __tablename__ = "game"
+    __table_args__ = {"schema": "public"}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    organizer_id: str = Field(foreign_key="public.users.kinde_user_id", index=True)
+    venue_name: str
+    sport: str
+    scheduled_at: datetime
+    duration_minutes: Optional[int] = None
+    capacity: int  # max paid participants (organizer is not counted against this)
+    price_pence: int  # amount each joining participant pays
+    currency: str = Field(default="gbp")
+    platform_fee_percent: float  # snapshot of Settings.PLATFORM_FEE_PERCENT at creation time
+    platform_fee_fixed_pence: int  # snapshot of Settings.PLATFORM_FEE_FIXED_PENCE at creation time
+    status: GameStatus = Field(default=GameStatus.OPEN)
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GameParticipant(SQLModel, table=True):
+    """A user who has joined (or is joining) a Game by paying the organizer via Stripe Connect."""
+
+    __tablename__ = "game_participant"
+    __table_args__ = {"schema": "public"}
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    game_id: uuid.UUID = Field(foreign_key="public.game.id", index=True)
+    user_id: str = Field(foreign_key="public.users.kinde_user_id", index=True)
+    status: GameParticipantStatus = Field(default=GameParticipantStatus.PENDING)
+    stripe_payment_intent_id: str = Field(index=True)
+    amount_pence: int  # total charged to the joining participant
+    platform_fee_pence: int  # portion of amount_pence retained as the platform fee
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
