@@ -6,7 +6,7 @@ on:
 jobs:
   badminton-crawler-pipeline:
     runs-on: ubuntu-latest
-    name: "Badminton Crawler Pipeline"
+    name: "Badminton Crawler"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -34,7 +34,7 @@ jobs:
   squash-crawler-pipeline:
     needs: badminton-crawler-pipeline
     runs-on: ubuntu-latest
-    name: "Squash Crawler Pipeline"
+    name: "Squash Crawler"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -62,7 +62,7 @@ jobs:
   pickleball-crawler-pipeline:
     needs: squash-crawler-pipeline
     runs-on: ubuntu-latest
-    name: "Pickleball Crawler Pipeline"
+    name: "Pickleball Crawler"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -90,7 +90,7 @@ jobs:
   padel-crawler-pipeline:
     needs: pickleball-crawler-pipeline
     runs-on: ubuntu-latest
-    name: "Padel Crawler Pipeline"
+    name: "Padel Crawler"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
