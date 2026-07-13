@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from sportscanner.core.rate_limit import limiter
 
@@ -121,6 +122,32 @@ app.add_middleware(
 # @limiter.limit(...) on endpoints that touch real money movement, not site-wide.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# An unhandled exception (e.g. a bad DB query, a missing table) is caught by
+# Starlette's outermost ServerErrorMiddleware — which is *always* the outermost
+# layer, even for handlers registered via @app.exception_handler(Exception),
+# because Starlette special-cases the bare Exception class to run there
+# regardless of registration order. That means its 500 response never passes
+# through CORSMiddleware, so browsers report the failure as "blocked by CORS
+# policy" instead of the real error (this cost real debugging time chasing a
+# phantom CORS bug that was actually a missing database table). A plain ASGI
+# middleware doesn't have this special-casing — it catches the exception itself
+# before Starlette ever gets a chance to escalate it to ServerErrorMiddleware,
+# so we add the CORS header manually here rather than relying on CORSMiddleware
+# to wrap a response it never sees.
+@app.middleware("http")
+async def _cors_safe_error_handler(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        logging.exception(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
+        response = JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+        origin = request.headers.get("origin")
+        if origin in ALLOWED_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
 
 app.include_router(
     router=SearchRouter, prefix="/search", tags=["Search"]
