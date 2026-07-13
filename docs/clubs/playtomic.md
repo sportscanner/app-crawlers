@@ -60,8 +60,36 @@ regression here (unbounded concurrency creeping back in) before assuming those
 specific venues are the problem — the venue identity of which requests fail is
 a symptom of burst timing, not evidence about that venue.
 
+## Fixed July 2026: 2 specific venues still 403 in a large minority of runs
+
+Even after the concurrency fix above, two venues — Woodford Wells Club and
+Tour Padel - Avery Hill Campus — kept getting HTTP 403 on **every date within
+a run**, in 6 of 10 consecutive scheduled runs, never partially (all-or-nothing
+per run, not per request). Root cause: Playtomic and Matchi (see
+`docs/clubs/matchi.md`) run in the same "Padel Crawler Pipeline" job and share
+one GitHub Actions runner IP per run. Whether that run's IP happens to already
+be blocklisted by Playtomic's WAF for these two specific venues is luck of the
+draw. This wasn't visible from ad hoc `curl` testing (each invocation gets a
+different IP), only from comparing 10 consecutive real runs' logs side by side.
+
+Fixed the same way as Matchi's equivalent 2-venue block and Everyone Active's
+site-wide block (`docs/clubs/everyone-active.md`), but as a **fallback**: on
+HTTP 403 from the direct connection, `fetch_venue_date` retries against a fresh
+`httpxAsyncClientWithProxyRotation()` connection up to 4 times before giving
+up, via the shared `get_with_proxy_fallback_on_403` helper in
+`crawlers/anonymize/proxies.py` (same helper Matchi now uses - both need
+"direct first, proxy only on 403" in the identical shape). Any non-403 error
+is raised immediately, not retried via proxy.
+
 ## Status (July 2026)
 
 Confirmed live: 29 of 33 venues returned data in the probe window; the other 4
 returned clean `200` responses with genuinely empty availability (not errors) —
 re-verified directly with `curl` across a week of dates. Not a bug.
+
+The 403-retry-via-proxy fix (see above) was verified end-to-end for Matchi but
+not yet re-confirmed for Playtomic specifically, since Playtomic's API had a
+genuine, unrelated outage (`502`/`504` from a plain `curl`, no crawler code
+involved) at verification time. Check the next real GitHub Actions run's logs
+for Woodford Wells Club / Tour Padel - Avery Hill Campus before assuming this
+fix is fully confirmed.

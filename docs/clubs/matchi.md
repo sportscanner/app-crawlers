@@ -59,6 +59,31 @@ Fixed by:
 If Matchi starts 403ing again, check whether a code change re-introduced
 unbounded concurrency here before assuming the WAF rules changed.
 
+## Fixed July 2026: 2 specific facilities still 403 in a minority of runs
+
+After the fix above, two facilities — `westhertssportsclub` and
+`towerhillterrace` — kept getting HTTP 403 on **every date within a run**, but
+only in ~4 of 10 consecutive scheduled runs, never partially. Root cause:
+Matchi and Playtomic (see `docs/clubs/playtomic.md`) run in the same "Padel
+Crawler Pipeline" job, so they share one GitHub Actions runner IP for the
+whole run (fresh per job). Whether that run's IP happens to already be
+blocklisted by Matchi's WAF for these two specific facilities is luck of the
+draw - confirmed by the all-or-nothing-per-run pattern across 10 consecutive
+runs' logs, not visible from isolated testing (which uses a different IP each
+time).
+
+Fixed the same way as Everyone Active's site-wide block
+(`docs/clubs/everyone-active.md`), but as a **fallback**, not the default: on
+HTTP 403 from the direct connection, `_fetch_facility_slots` retries against a
+fresh `httpxAsyncClientWithProxyRotation()` connection (a fresh connection is a
+fresh shot at a different proxy exit IP) up to 4 times before giving up. The
+retry helper (`get_with_proxy_fallback_on_403` in `crawlers/anonymize/proxies.py`)
+is shared with Playtomic's identical fix - both need "try direct first (fast,
+works for the vast majority), escalate to proxy only on 403" in the exact same
+shape. Any non-403 error (a genuine 5xx, a connection failure) is raised
+immediately and not retried via proxy - retrying wouldn't help an actual
+outage, only a blocklisted-IP situation.
+
 ## Known-unbookable venues (not crawler bugs)
 
 Two facilities return **zero rows every run, deliberately** — confirmed by

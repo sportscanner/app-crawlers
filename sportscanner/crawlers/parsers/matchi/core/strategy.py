@@ -33,6 +33,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 import sportscanner.storage.postgres.tables
+from sportscanner.crawlers.anonymize.proxies import get_with_proxy_fallback_on_403
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
@@ -269,10 +270,20 @@ class MatchiSlotFetcher:
         fetch_date: date,
         semaphore: asyncio.Semaphore,
     ) -> List[MatchiSlot]:
-        """Fetch available slots for one facility on one date via /book/listSlots."""
+        """Fetch available slots for one facility on one date via /book/listSlots.
+
+        A small number of facilities (confirmed: westhertssportsclub,
+        towerhillterrace) get HTTP 403 on every date within a given GitHub
+        Actions run, in a large minority of runs - each run gets one fresh
+        runner IP, and whether that IP is already blocklisted by Matchi's WAF
+        for that specific facility is luck of the draw (see docs/clubs/matchi.md).
+        On 403, retry via the rotating proxy (a fresh connection is a fresh shot
+        at a different exit IP) rather than treating it as "no slots".
+        """
         try:
             async with semaphore:
-                resp = await client.get(
+                resp = await get_with_proxy_fallback_on_403(
+                    client,
                     f"{MATCHI_ORGANISATION_WEBSITE}/book/listSlots",
                     params={
                         "wl": "",
@@ -282,8 +293,10 @@ class MatchiSlotFetcher:
                     },
                     headers=_HEADERS,
                     timeout=30,
+                    log_label=f"Matchi {slug} {fetch_date}",
                 )
-            resp.raise_for_status()
+            if resp is None:
+                return []
         except httpx.HTTPStatusError as exc:
             logging.error(f"Matchi {slug} HTTP {exc.response.status_code} for {fetch_date}")
             return []

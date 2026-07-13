@@ -29,6 +29,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 import sportscanner.storage.postgres.tables
+from sportscanner.crawlers.anonymize.proxies import get_with_proxy_fallback_on_403
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
@@ -240,10 +241,21 @@ class PlaytomicAvailabilityFetcher:
         fetch_date: date,
         semaphore: asyncio.Semaphore,
     ) -> List[UnifiedParserSchema]:
-        """Fetch and parse availability for one venue + date."""
+        """Fetch and parse availability for one venue + date.
+
+        A small number of venues (confirmed: Woodford Wells Club, Tour Padel -
+        Avery Hill Campus) get HTTP 403 on every date within a given GitHub
+        Actions run, in a large minority of runs - each run gets one fresh
+        runner IP, and whether that IP is already blocklisted by Playtomic's
+        WAF for that specific venue is luck of the draw (see
+        docs/clubs/playtomic.md). On 403, retry via the rotating proxy (a fresh
+        connection is a fresh shot at a different exit IP) rather than treating
+        it as "no slots".
+        """
         try:
             async with semaphore:
-                resp = await client.get(
+                resp = await get_with_proxy_fallback_on_403(
+                    client,
                     _AVAILABILITY_API,
                     params={
                         "tenant_id": tenant_id,
@@ -255,8 +267,10 @@ class PlaytomicAvailabilityFetcher:
                         "referer": f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{venue.slug}",
                     },
                     timeout=30,
+                    log_label=f"Playtomic {venue.venue_name} {fetch_date}",
                 )
-            resp.raise_for_status()
+            if resp is None:
+                return []
             resources = [PlaytomicResource(**r) for r in resp.json()]
             slots = _resources_to_unified(resources, venue, fetch_date)
             logging.debug(
