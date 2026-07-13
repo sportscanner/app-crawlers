@@ -16,16 +16,53 @@ class GameCreate(BaseModel):
     notes: Optional[str] = None
 
 
-class ParticipantOut(BaseModel):
+class ParticipantPublicOut(BaseModel):
+    """What anyone browsing a game is allowed to see about a participant —
+    no raw Kinde user_id, no payment amount, and display_name never falls
+    back to a real email address (see gameService._display_name)."""
+
     id: str
-    user_id: str
     display_name: str
     status: GameParticipantStatus
-    amount_pence: int
     joined_at: datetime
 
 
+class ParticipantOut(ParticipantPublicOut):
+    """Organizer-only view of a participant (returned via GET /games/mine),
+    with the fields needed to manage payouts/disputes."""
+
+    user_id: str
+    amount_pence: int
+
+
+class GameDetailOut(BaseModel):
+    """Public-facing game detail — GET /games/{id}. Deliberately omits
+    organizer_id (internal Kinde ID) and per-participant user_id/amount_pence."""
+
+    id: str
+    organizer_name: str
+    venue_name: str
+    sport: str
+    scheduled_at: datetime
+    duration_minutes: Optional[int]
+    capacity: int
+    spots_remaining: int
+    price_pence: int
+    currency: str
+    platform_fee_percent: float
+    platform_fee_fixed_pence: int
+    status: GameStatus
+    notes: Optional[str]
+    participants: list[ParticipantPublicOut]
+    created_at: datetime
+    is_organizer: bool  # true only when the (optionally) authenticated caller is the organizer —
+    # lets the frontend show the right actions (e.g. "Cancel game") without ever exposing organizer_id
+
+
 class GameOut(BaseModel):
+    """Organizer-only full view — GET /games/mine, POST /games/. Includes
+    organizer_id and the full per-participant ParticipantOut."""
+
     id: str
     organizer_id: str
     organizer_name: str
@@ -63,3 +100,8 @@ class JoinGameOut(BaseModel):
     payment_intent_id: str
     amount_pence: int
     platform_fee_pence: int
+
+
+class CancelGameOut(BaseModel):
+    refunded_count: int
+    failed_participant_ids: list[str]  # non-empty means those refunds need manual follow-up in Stripe

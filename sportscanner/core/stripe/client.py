@@ -120,6 +120,28 @@ def refund_payment_intent(payment_intent_id: str) -> None:
     )
 
 
+def retrieve_payment_intent(payment_intent_id: str) -> stripe_sdk.PaymentIntent:
+    """Fetches a PaymentIntent — used to hand back the same client_secret on a
+    retried join rather than minting a duplicate intent for the same reservation."""
+    _client()
+    return stripe_sdk.PaymentIntent.retrieve(payment_intent_id)
+
+
+def cancel_payment_intent(payment_intent_id: str) -> None:
+    """
+    Cancels an abandoned PaymentIntent so it can no longer be confirmed later.
+    Used when a stale PENDING game reservation is expired — without this, a user
+    could complete payment on an intent well after their reserved capacity slot
+    was given away to someone else, oversubscribing the game. If the intent has
+    already succeeded (or is otherwise non-cancelable), Stripe raises — that means
+    the user actually did pay in the meantime, so the caller should leave the
+    participant's status alone and let the payment_intent.succeeded webhook
+    reconcile it rather than force-failing a real payment.
+    """
+    _client()
+    stripe_sdk.PaymentIntent.cancel(payment_intent_id)
+
+
 def construct_webhook_event(payload: bytes, sig_header: Optional[str]) -> stripe_sdk.Event:
     """Verifies and parses an incoming Stripe webhook request body."""
     _client()

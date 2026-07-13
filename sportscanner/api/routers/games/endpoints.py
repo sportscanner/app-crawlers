@@ -5,7 +5,7 @@ from fastapi import APIRouter, Header, status
 
 from sportscanner.core.kinde.auth import get_kinde_access_token, get_kinde_user_details
 
-from .schemas import GameCreate, GameListOut, GameOut, JoinGameOut
+from .schemas import CancelGameOut, GameCreate, GameDetailOut, GameListOut, GameOut, JoinGameOut
 from .service.gameService import GameService
 
 router = APIRouter()
@@ -15,6 +15,19 @@ def _get_user_id(Authorization: str) -> str:
     access_token = get_kinde_access_token(refresh_token=Authorization)
     user_details = get_kinde_user_details(access_token)
     return user_details["id"]
+
+
+def _get_user_id_optional(Authorization: Optional[str]) -> Optional[str]:
+    """Best-effort identity resolution for endpoints that are public but adapt
+    their response when the caller happens to be authenticated (e.g. showing
+    is_organizer). A missing or invalid token is treated as anonymous rather
+    than a 401 — the endpoint itself never requires auth."""
+    if not Authorization:
+        return None
+    try:
+        return _get_user_id(Authorization)
+    except Exception:
+        return None
 
 
 @router.post("/", response_model=GameOut, status_code=status.HTTP_201_CREATED)
@@ -42,10 +55,16 @@ async def list_my_games(
     return GameService().list_my_games(user_id)
 
 
-@router.get("/{game_id}", response_model=GameOut)
-async def get_game(game_id: uuid.UUID):
-    """Game detail with participants. Public — no auth required to view."""
-    return GameService().get_game(game_id)
+@router.get("/{game_id}", response_model=GameDetailOut)
+async def get_game(
+    game_id: uuid.UUID,
+    Authorization: Optional[str] = Header(default=None, title="Optional bearer token"),
+):
+    """Public game detail — auth is optional and only used to compute `is_organizer`
+    for the caller's own game. Deliberately excludes organizer_id and per-participant
+    user_id/amount_pence/raw email; see GameDetailOut."""
+    viewer_id = _get_user_id_optional(Authorization)
+    return GameService().get_game(game_id, viewer_id)
 
 
 @router.post("/{game_id}/join", response_model=JoinGameOut)
@@ -60,11 +79,13 @@ async def join_game(
     return GameService().join_game(game_id, user_id)
 
 
-@router.post("/{game_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/{game_id}/cancel", response_model=CancelGameOut)
 async def cancel_game(
     game_id: uuid.UUID,
     Authorization: str = Header(default=None, title="Bearer token to authenticate user"),
 ):
-    """Organizer-only: cancels the game and refunds every paid participant in full."""
+    """Organizer-only: cancels the game and refunds every paid participant in full.
+    The game is marked cancelled regardless of individual refund outcomes — check
+    `failed_participant_ids` for any that need manual follow-up in the Stripe dashboard."""
     user_id = _get_user_id(Authorization)
-    GameService().cancel_game(game_id, user_id)
+    return GameService().cancel_game(game_id, user_id)
