@@ -17,6 +17,7 @@ from sportscanner.storage.postgres.tables import (
     PadelMasterTable,
     PickleballMasterTable,
     SquashMasterTable,
+    TennisMasterTable,
 )
 
 _TABLES = {
@@ -24,6 +25,7 @@ _TABLES = {
     "squash": SquashMasterTable,
     "pickleball": PickleballMasterTable,
     "padel": PadelMasterTable,
+    "tennis": TennisMasterTable,
 }
 
 
@@ -40,7 +42,7 @@ def _geocode_postcode(postcode: str):
 def find_available_courts(
     sport: Annotated[
         str,
-        Field(description="Sport to search: 'badminton', 'squash', 'pickleball' or 'padel'"),
+        Field(description="Sport to search: 'badminton', 'squash', 'pickleball', 'padel' or 'tennis'"),
     ],
     postcode: Annotated[
         str, Field(description="UK postcode to search around, e.g. 'SE1 8UL'")

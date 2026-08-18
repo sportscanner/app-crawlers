@@ -1,6 +1,6 @@
 # Better / GLL (Greenwich Leisure Limited)
 
-35 venues, `https://www.better.org.uk`. Badminton, squash, pickleball.
+35+ venues, `https://www.better.org.uk`. Badminton, squash, pickleball, tennis.
 Code: `sportscanner/crawlers/parsers/better/`.
 
 ## API shape
@@ -103,6 +103,58 @@ here: `BetterApiResponseSchema` in `better/core/schema.py` was written against t
   not something fixable in our config. Re-check periodically; if it comes back
   it'll need no code change, since the standard badminton slug pair already
   covers it.
+
+## Tennis (added August 2026)
+
+Discovered via `GET /api/activities/venue/{slug}/categories/tennis` (the same
+discovery endpoint documented above), which requires the `origin`/`referer`
+headers already used elsewhere in this crawler. **Without those headers this
+endpoint 404s even for sports that do exist** — that's what made tennis
+coverage look like a dead end on first pass; adding them unlocked real
+results.
+
+The categories response includes both a UUID (`id`/`v2Id`) and a human
+`v2_slug` per activity — **the UUID is a red herring for the `/times` URL**:
+it 404s. The slug is what actually works, same convention as every other
+sport here. First implementation used the UUID directly and got 0 slots
+everywhere; fixed by switching to `tennis-court-outdoor/v2` (confirmed live,
+real priced slot data). Islington Tennis Centre additionally has
+`tennis-court-indoor/v2` — both slugs are queried for that venue via a
+`_VENUE_OVERRIDES[("tennis", "islington-tennis-centre")]` entry.
+
+**Verified-live tennis venues** (via the categories endpoint, not marketing
+copy — see caveat below): `britannia-leisure-centre`,
+`crystal-palace-leisure-centre`, `queensmead-sports-centre`,
+`islington-tennis-centre` (richest offering, indoor+outdoor, added as a
+net-new venue not previously tracked for any sport), `gunnersbury-park-sports-hub`.
+
+**Do not trust marketing copy as a tennis-availability signal.** Swiss
+Cottage, Kensington, and Clissold leisure centres all carry identical generic
+"Elevate your game thanks to a range of tennis lessons" boilerplate on their
+public pages, but **none has a real bookable tennis category via the API** —
+this is site-wide filler text, not a venue-specific fact. Clissold had a
+pre-existing `tennis` entry in `venues.json` predating this investigation;
+removed (August 2026) once the live categories check showed it has no real
+tennis category — the marketing copy had evidently been trusted as a signal
+at some earlier point. If Clissold ever does get a bookable tennis category,
+re-add it via the same discovery endpoint, not by re-trusting the marketing
+page.
+
+One known-stale venue: Better no longer operates the Mile End Park site (per
+public search results, transferred to "Be Well in Tower Hamlets" — see
+`tower-hamlets.md`). Do not add tennis there under the Better organisation.
+
+Reuses `BetterApiResponseSchema`/`BetterLeisureResponseParserStrategy`/
+`BetterStyleCrawler` unchanged — tennis's `/times` response has the same
+shape as every other Better activity, so no new schema was needed (unlike
+ClubSpark, which is a genuinely different API).
+
+### Status (added August 2026)
+
+5 venues confirmed via live API discovery, not yet run end-to-end against
+production. Full 35-venue roster has not been swept for tennis yet — only
+the venues explicitly probed in this pass are confirmed either way; treat
+absence from the list above as "not yet checked," not "confirmed no tennis."
 
 ## Design decisions worth preserving
 

@@ -202,6 +202,69 @@ venue = get_venue_by_composite_key(composite_key)
 4. **Provider Variations**: Some venues use `/v2` endpoints (e.g., Woolwich Waves)
 5. **Error Handling**: Parser error messages should use `slot.starts_at.format_24_hour` not `slot['Time']`
 
+## Adding a New Sport: API Contract Checklist
+
+This is a different, additional exercise from adding a venue under an
+**existing** sport (see the venue checklist below) — a new sport needs its
+own pass through the API layer, which has no relationship to the
+crawler/DB layer's `_SLOT_TABLES`/`create_db_and_tables` lists. Missing this
+is a silent failure mode: the crawler runs, the DB table fills with real
+data, the frontend renders a search page for the sport — and every request
+still 422s, because `sportscanner/api/` validates the `sport` path param
+against its own separate enum before any of that other work is ever
+reached. (This exact gap shipped once, for tennis, August 2026 — caught
+only when a user hit the live 422 after the crawler/DB/frontend work was
+already "done".)
+
+Grep for the sport list rather than trusting this list is exhaustive by the
+time you read it — but as of writing, adding a sport means touching all of:
+
+- `sportscanner/api/routers/core/schemas.py` — `SportscannerSupportedSports` enum.
+  This is the actual FastAPI `Path(...)` validator; a missing entry here is
+  what produces the `422 Input should be 'badminton', 'squash', ...`.
+- `sportscanner/api/routers/search/endpoints.py` — `find_query_table()`, one
+  `elif` per enum member mapping to a master table.
+- `sportscanner/api/routers/health/endpoints.py` — `_SPORT_TO_TABLE`. This
+  one doubles as a SQL-injection allow-list (the sport is interpolated
+  directly into a table name, which can't be a bound parameter) — missing
+  an entry here just 400s cleanly, but getting it wrong (e.g. pointing a
+  sport at the wrong table name) is a real injection surface, not just a
+  broken feature.
+- `sportscanner/api/routers/venues/utils.py` — the `Literal[...]` sport
+  lists (and their defaults) on `get_venues_from_database` and
+  `get_sports_venues_within_radius`.
+- `sportscanner/mcp/tools/search.py` — `_TABLES` dict for the MCP search
+  tool, plus its `Field(description=...)` string (cosmetic, but an agent or
+  LLM client reads that description to know what's valid).
+- `sportscanner/storage/postgres/tables.py` — new `{Sport}MasterTable`
+  class, and `sportscanner/storage/postgres/database.py` — `_SLOT_TABLES`
+  tuple and the `tables=[...]` list inside `create_db_and_tables()`. Not
+  part of the API contract itself, but if you're already doing this sweep,
+  don't stop one file short — `create_db_and_tables` silently omitting the
+  new table means a fresh DB setup never creates it.
+- `sportscanner/crawlers/pipeline.py` — new `{sport}_scraping_pipeline()`,
+  `--task` choice, `__main__` dispatch.
+- `app-frontend/lib/api-config.ts` and
+  `app-frontend/components/personalized-dashboard.tsx`'s `SPORT_TABS` (the
+  real frontend sport source of truth — see `app-frontend/AGENTS.md`), plus
+  every other hardcoded sport list the frontend has accumulated (there is
+  no single frontend enum): `grep -rn '"padel"' app-frontend` (swap in
+  whichever sport already exists) to find them all, current locations as of
+  writing include `venues-map.tsx`, `london-venue-heatmap.tsx`,
+  `app/onboarding/page.tsx`, and the marketing copy in `app/layout.tsx`,
+  `app/page.tsx`, `components/layout/footer.tsx`/`Header.tsx`.
+
+**Verification that actually catches this class of bug**: start the API
+server (`make dev-api-server`) and hit the real endpoint —
+`curl -X POST 'localhost:8000/search/{sport}?date=YYYY-MM-DD' -H
+'Content-Type: application/json' -d '{"postcode": "...", "timeRange": {...},
+"radius": 10, "sortBy": "distance", "analytics": {...}}'` (match the shape
+in `app-frontend/AGENTS.md`'s "Search Request Shape" — a bare `{}` body will
+500 on `filters.analytics.specifiedVenues` regardless of sport, which looks
+like a bug but isn't one). Running the crawler's `coroutines()` directly and
+confirming DB rows exist is necessary but **not sufficient** — it never
+touches the API layer at all.
+
 ## Adding a New Venue: End-to-End Checklist
 
 Distilled from the venues added July 2026 (UEL SportsDock, Places Leisure) and

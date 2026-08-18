@@ -14,7 +14,7 @@ detail that sits underneath it.
 
 | Provider | File | Sports | Venues | Status |
 |---|---|---|---|---|
-| Better / GLL | [better-gll.md](better-gll.md) | badminton, squash, pickleball | 35 | healthy (3 known venue-level gaps) |
+| Better / GLL | [better-gll.md](better-gll.md) | badminton, squash, pickleball, tennis | 35 | healthy (3 known venue-level gaps); tennis added Aug 2026, 5 of 35 venues confirmed so far, verified end-to-end (343 real slots landed in `tennis` table on first full pipeline run) |
 | Active Lambeth | [active-lambeth.md](active-lambeth.md) | badminton, squash | 4 | healthy |
 | Haringey Council | [haringey.md](haringey.md) | badminton | 2 | healthy |
 | Everyone Active | [everyone-active.md](everyone-active.md) | badminton | 12 | healthy (fixed — proxy with retry-on-403, free-tier pool is partly blocklisted) |
@@ -22,11 +22,12 @@ detail that sits underneath it.
 | CitySport (City St George's, University of London) | [citysport.md](citysport.md) | badminton | 1 | healthy (fixed via `curl_cffi` TLS impersonation) |
 | Southwark Leisure | [southwark-leisure.md](southwark-leisure.md) | badminton, pickleball | 2 | healthy |
 | Decathlon | [decathlon.md](decathlon.md) | pickleball | 1 | healthy |
-| Matchi | [matchi.md](matchi.md) | padel | 10 | healthy (2 venues genuinely unbookable) |
-| Playtomic | [playtomic.md](playtomic.md) | padel | 33 | healthy |
+| Matchi | [matchi.md](matchi.md) | padel, tennis | 10 padel + 2 tennis | healthy (2 padel venues genuinely unbookable); tennis added Aug 2026, not yet confirmed with populated slots |
+| Playtomic | [playtomic.md](playtomic.md) | padel, tennis | 33 padel + 1 tennis | healthy; tennis added Aug 2026, verified end-to-end (318 real slots landed in `tennis` table on first full pipeline run), only 1 venue so far |
 | South Croydon Sports Club | [south-croydon-sports-club.md](south-croydon-sports-club.md) | (none implemented) | 1 | **not implemented** |
 | UEL SportsDock | [uel-sportsdock.md](uel-sportsdock.md) | badminton | 1 | healthy (added July 2026) |
 | Places Leisure | [places-leisure.md](places-leisure.md) | badminton, pickleball | 8 | healthy (added July 2026) |
+| LTA ClubSpark | [clubspark.md](clubspark.md) | tennis | 6 (starting seed) | new (added Aug 2026); API confirmed live in research, but got Cloudflare 403 on re-verification from a different IP — needs a real scheduled run checked before calling this healthy |
 
 Better / GLL, Active Lambeth, and Haringey all run on the same underlying
 Gladstone booking engine (Better's is at `better-admin.org.uk`; the other two are

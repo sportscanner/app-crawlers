@@ -44,6 +44,17 @@ _DEFAULTS: Dict[str, List[ActivitySlugPair]] = {
         ("pickleball-40mins", "pickleball-40min/v2"),
         ("pickleball-60mins", "pickleball-60min/v2"),
     ],
+    # Discovered via GET /api/activities/venue/{slug}/categories/tennis (the
+    # same discovery endpoint used for pickleball above), which returns a
+    # `v2_slug` of "tennis-court-outdoor" alongside a UUID `id`/`v2Id` field.
+    # The UUID is NOT what goes in the /times URL — confirmed live: the UUID
+    # 404s, the slug 200s with real data. Same v2-slug convention as every
+    # other sport here; the plain (no-suffix) slug 422s "date should be
+    # within the valid days" rather than 404ing, so it's kept as the
+    # fallback even though it's not known to ever actually succeed.
+    "tennis": [
+        ("tennis-court-outdoor/v2", "tennis-court-outdoor"),
+    ],
 }
 
 # (sport, venue_slug) -> activity-slug pairs, for venues that don't follow the default
@@ -71,6 +82,14 @@ _VENUE_OVERRIDES: Dict[Tuple[str, str], List[ActivitySlugPair]] = {
     # court-booking activity at all.
     ("pickleball", "britannia-leisure-centre"): [
         ("pickleball-drop-in/v2", "pickleball-drop-in"),
+    ],
+    # Islington Tennis Centre is the richest Better/GLL tennis offering found
+    # (indoor + outdoor courts, confirmed via the same categories discovery
+    # call: "tennis-court-indoor" alongside the standard "tennis-court-outdoor")
+    # — query both slugs rather than just the shared outdoor default.
+    ("tennis", "islington-tennis-centre"): [
+        ("tennis-court-outdoor/v2", "tennis-court-outdoor"),
+        ("tennis-court-indoor/v2", "tennis-court-indoor"),
     ],
 }
 

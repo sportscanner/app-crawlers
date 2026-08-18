@@ -31,11 +31,16 @@ from sportscanner.crawlers.parsers.placesleisure.pickleball.scraper import corou
 from sportscanner.crawlers.parsers.matchi.padel.scraper import coroutines as MatchiPadelScraperCoroutines
 from sportscanner.crawlers.parsers.playtomic.padel.scraper import coroutines as PlaytomicPadelScraperCoroutines
 
+from sportscanner.crawlers.parsers.clubspark.tennis.scraper import coroutines as ClubSparkTennisScraperCoroutines
+from sportscanner.crawlers.parsers.better.tennis.scraper import coroutines as BetterLeisureTennisScraperCoroutines
+from sportscanner.crawlers.parsers.playtomic.tennis.scraper import coroutines as PlaytomicTennisScraperCoroutines
+from sportscanner.crawlers.parsers.matchi.tennis.scraper import coroutines as MatchiTennisScraperCoroutines
+
 
 from sportscanner.storage.postgres.database import (
 insert_records_to_table, truncate_by_composite_key_and_reload, delete_past_slots
 )
-from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, PadelMasterTable
+from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, PadelMasterTable, TennisMasterTable
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
 
@@ -182,13 +187,42 @@ def padel_scraping_pipeline():
         return False
 
 
+@timeit
+def tennis_scraping_pipeline():
+    logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    today = date.today()
+    dates = [today + timedelta(days=i) for i in range(10)]
+    logging.info(f"Finding slots for dates: {dates}")
+    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
+        SportscannerCrawlerBot(
+            ClubSparkTennisScraperCoroutines(dates),
+            BetterLeisureTennisScraperCoroutines(dates),
+            PlaytomicTennisScraperCoroutines(dates),
+            MatchiTennisScraperCoroutines(dates),
+        )
+    )
+    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
+    delete_past_slots(TennisMasterTable)
+    if all_slots:
+        logging.success(f"Total slots collected: {len(all_slots)}")
+        logging.info(f"Upserting all data to master table: {TennisMasterTable.__tablename__}")
+        insert_records_to_table(all_slots, TennisMasterTable)
+        return True
+    else:
+        logging.warning(
+            "No valid tennis slots were found. Database update skipped (might be an issue)"
+        )
+        return False
+
+
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
 
     parser = argparse.ArgumentParser(description="Run SportScanner scraping pipelines")
     parser.add_argument(
         "--task",
-        choices=["badminton", "squash", "pickleball", "padel", "all"],
+        choices=["badminton", "squash", "pickleball", "padel", "tennis", "all"],
         required=False,
         help="Which pipeline to run"
     )
@@ -206,9 +240,13 @@ if __name__ == "__main__":
     elif args.task == "padel":
         logging.info("Starting Padel scraping pipeline...")
         padel_scraping_pipeline()
+    elif args.task == "tennis":
+        logging.info("Starting Tennis scraping pipeline...")
+        tennis_scraping_pipeline()
     else:
         logging.info("Starting ALL scraping pipelines...")
         badminton_scraping_pipeline()
         squash_scraping_pipeline()
         pickleball_scraping_pipeline()
         padel_scraping_pipeline()
+        tennis_scraping_pipeline()

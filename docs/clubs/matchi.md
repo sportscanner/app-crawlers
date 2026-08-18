@@ -1,6 +1,6 @@
 # Matchi
 
-10 venues, `https://www.matchi.se`. Padel.
+10 padel venues + 2 tennis venues, `https://www.matchi.se`. Padel, tennis.
 Code: `sportscanner/crawlers/parsers/matchi/`.
 
 ## API shape
@@ -104,3 +104,54 @@ bookable, no code change is needed; they'll just start returning slots.
 
 Confirmed live: 8 of 10 venues return data (the 2 above are genuinely
 unbookable, not failures).
+
+## Tennis (added August 2026)
+
+`sport=1` is tennis (padel is `sport=5`). Confirmed valid two ways: the
+sport-picker markup on real Matchi tennis venue booking pages explicitly
+maps `value="1"` to the "Tennis" label, and behaviourally — `sport=1` and
+`sport=2` both return the normal "not available" HTML fragment (a
+recognised, processed sport ID with no slots), while `sport=99` (a control)
+breaks the response format entirely rather than degrading gracefully.
+
+`MatchiSlotFetcher` (`matchi/core/strategy.py`) now takes `sport_id`,
+`category`, `facility_ids`, and `default_price` as constructor parameters
+instead of hardcoding padel's values, so `MatchiTennisCrawler`
+(`matchi/tennis/scraper.py`) reuses the same fetch/parse machinery with
+`TENNIS_SPORT_ID`, `"Tennis"`, `TENNIS_SLUG_TO_FACILITY_ID` (a **separate**
+map from padel's `SLUG_TO_FACILITY_ID` — Matchi facility IDs are
+sport-specific per venue, not shared across sports at the same club).
+
+**No confirmed populated slot response yet.** Two candidate venues were
+tried live:
+
+- **Frindsbury Tennis and Padel Club** (`facility=2865`, outside London —
+  Rochester, Kent): `"Not available for booking."` — tennis isn't enabled
+  for online booking at this venue, even though the sport ID itself is
+  valid.
+- **Putney Lawn Tennis Club** (`facility=2052`): `"Only members may book
+  sessions."` — members-only, same shape as Cumberland LTC's padel listing
+  above.
+
+Both are wired in and will correctly return `[]` (not an error) via the same
+zero-slots handling used for Matchi's known-unbookable padel venues — this
+is expected, not a crawler bug. `default_price` is set to `"N/A"` rather
+than reusing padel's hardcoded `"£55.00"`, since no real tennis pricing has
+been observed live and that figure is a padel-specific guess, not something
+parsed from the response either way.
+
+**Coverage is the least proven of the four tennis providers built in this
+pass** (ClubSpark, Better/GLL, Playtomic, Matchi) — needs a guest-bookable
+Matchi tennis venue found before this can be confirmed end-to-end with real
+data.
+
+### Proxy note
+
+Matchi's 403-fallback (`get_with_proxy_fallback_on_403`) is inherited
+unchanged via the shared `MatchiSlotFetcher` — no new proxy code was needed
+for tennis. `httpxAsyncClientWithProxyRotation()` now honours `USE_PROXIES`
+globally (fixed earlier in the same session that added tennis), which
+currently defaults `False` (Webshare free tier exhausted), so both Matchi
+padel and Matchi tennis run fully unproxied by default. If a tennis venue
+is 403-blocked directly, it will simply return no slots until proxy service
+is restored — not a regression, an inherited, already-accepted constraint.

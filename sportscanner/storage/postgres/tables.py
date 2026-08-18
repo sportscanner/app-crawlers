@@ -120,6 +120,30 @@ class PadelMasterTable(SQLModel, table=True):
     __table_args__ = {"schema": "public"}
 
 
+class TennisMasterTable(SQLModel, table=True):
+    """Table contains records of slots fetched from sport centres
+    Original Model: UnifiedParserSchema -> Mapped to: SportScanner
+    """
+    uid: str = Field(primary_key=True)
+    category: str
+    starting_time: time
+    ending_time: time
+    date: date
+    price: str
+    spaces: int
+    last_refreshed: datetime
+    booking_url: str | None
+    # Precomputed date+starting_time, populated at write time (see insert_records_to_table).
+    # Lets "is this slot still bookable" be a plain indexed timestamp comparison instead of
+    # a per-row to_timestamp(concat(date, starting_time)) computed at query time, which
+    # can't use an index. Nullable for rows written before this column existed.
+    starts_at: Optional[datetime] = None
+
+    composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
+    __tablename__ = "tennis"
+    __table_args__ = {"schema": "public"}
+
+
 class RefreshMetadata(SQLModel, table=True):
     """Table containing Refresh data, and if refresh is in progress"""
 

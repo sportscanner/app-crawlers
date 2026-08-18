@@ -20,7 +20,7 @@ from typing import Optional, Sequence
 from sportscanner.api.routers.core.schemas import *
 
 def get_venues_from_database(
-        sports: Annotated[List[Literal["badminton", "pickleball", "squash", "padel"]], Field(description="Sport category to filter venues")] = ["badminton", "pickleball", "squash", "padel"],
+        sports: Annotated[List[Literal["badminton", "pickleball", "squash", "padel", "tennis"]], Field(description="Sport category to filter venues")] = ["badminton", "pickleball", "squash", "padel", "tennis"],
         limit: Annotated[int, Field(description="Limit the number of venues in the response")] = 10
     ) -> List[SportsVenue]:
     """This Tool fetches sports venues from the database offering a specific sport."""
@@ -50,7 +50,7 @@ def get_sports_venues_within_radius(
         longitude: Annotated[float, Field(description="Longitude of the center point")],
         latitude: Annotated[float, Field(description="Latitude of the center point")],
         distance: Annotated[float, Field(description="Radius distance in miles")],
-        sport_category: Annotated[List, Field(description="Optional sport category to filter venues on, array elements must be from these options: 'badminton', 'squash', 'pickleball'")] = [],
+        sport_category: Annotated[List, Field(description="Optional sport category to filter venues on, array elements must be from these options: 'badminton', 'squash', 'pickleball', 'padel', 'tennis'")] = [],
     ) -> List[SportsVenuesNearRadiusResonseModel]:
     """This Tool fetches venues within a defined radius from a given point and can filter by sport category."""
     venues: List[SportsVenue] = db.get_all_rows(
