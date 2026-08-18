@@ -23,6 +23,7 @@ _CATEGORY_TO_TABLE = {
     "squash": "squash",
     "pickleball": "pickleball",
     "padel": "padel",
+    "tennis": "tennis",
 }
 
 

@@ -102,7 +102,6 @@
         "sports": [
           "badminton",
           "squash",
-          "tennis",
           "pickleball"
         ]
       },
@@ -162,7 +161,8 @@
         "sports": [
           "badminton",
           "squash",
-          "pickleball"
+          "pickleball",
+          "tennis"
         ]
       },
       {
@@ -231,7 +231,8 @@
         },
         "sports": [
           "badminton",
-          "pickleball"
+          "pickleball",
+          "tennis"
         ]
       },
       {
@@ -394,7 +395,8 @@
           "latitude": 51.557382
         },
         "sports": [
-          "badminton"
+          "badminton",
+          "tennis"
         ]
       },
       {
@@ -490,6 +492,19 @@
         "sports": [
           "pickleball",
           "badminton"
+        ]
+      },
+      {
+        "venue_name": "Islington Tennis Centre",
+        "slug": "islington-tennis-centre",
+        "location": {
+          "postcode": "N7 6DQ",
+          "address": "Market Road, London, N7 6DQ",
+          "latitude": 51.5479,
+          "longitude": -0.1219
+        },
+        "sports": [
+          "tennis"
         ]
       }
     ]
@@ -1050,6 +1065,32 @@
         "sports": [
           "padel"
         ]
+      },
+      {
+        "venue_name": "Frindsbury Tennis and Padel Club",
+        "slug": "frindsburytennisandpadel",
+        "location": {
+          "postcode": "ME2 3AP",
+          "address": "Frindsbury, Rochester, Kent, ME2 3AP",
+          "latitude": 51.4022,
+          "longitude": 0.5108
+        },
+        "sports": [
+          "tennis"
+        ]
+      },
+      {
+        "venue_name": "Putney Lawn Tennis Club",
+        "slug": "putneylawntennisclub",
+        "location": {
+          "postcode": "SW15 6NQ",
+          "address": "Woodborough Road, Putney, London, SW15 6NQ",
+          "latitude": 51.4636,
+          "longitude": -0.2245
+        },
+        "sports": [
+          "tennis"
+        ]
       }
     ]
   },
@@ -1487,6 +1528,19 @@
         "sports": [
           "padel"
         ]
+      },
+      {
+        "venue_name": "Tennis England Club",
+        "slug": "open-jan-2025-tennis-england-club",
+        "location": {
+          "postcode": "SW15 5JQ",
+          "address": "National Tennis Centre, Priory Lane, Roehampton, London, SW15 5JQ",
+          "latitude": 51.4487,
+          "longitude": -0.2323
+        },
+        "sports": [
+          "tennis"
+        ]
       }
     ]
   },
@@ -1602,6 +1656,90 @@
         "sports": [
           "badminton",
           "pickleball"
+        ]
+      }
+    ]
+  },
+  {
+    "organisation": "LTA ClubSpark",
+    "organisation_website": "https://clubspark.lta.org.uk",
+    "venues": [
+      {
+        "venue_name": "Southwark Park Tennis Courts",
+        "slug": "SouthwarkPark",
+        "location": {
+          "postcode": "SE16 2UA",
+          "address": "Southwark Park, Gomm Road, London, SE16 2UA",
+          "latitude": 51.4954,
+          "longitude": -0.0489
+        },
+        "sports": [
+          "tennis"
+        ]
+      },
+      {
+        "venue_name": "Victoria Park Tennis Courts",
+        "slug": "VictoriaParkLONDON",
+        "location": {
+          "postcode": "E3 5TB",
+          "address": "Victoria Park, Grove Road, London, E3 5TB",
+          "latitude": 51.5362,
+          "longitude": -0.0388
+        },
+        "sports": [
+          "tennis"
+        ]
+      },
+      {
+        "venue_name": "Battersea Park Tennis Courts",
+        "slug": "BatterseaParkTennisCourts",
+        "location": {
+          "postcode": "SW11 4NJ",
+          "address": "Battersea Park, Battersea Park Road, London, SW11 4NJ",
+          "latitude": 51.4791,
+          "longitude": -0.1567
+        },
+        "sports": [
+          "tennis"
+        ]
+      },
+      {
+        "venue_name": "Queen's Park Tennis Courts",
+        "slug": "QueensParkTennisCourts",
+        "location": {
+          "postcode": "NW6 6SG",
+          "address": "Queen's Park, Kingswood Avenue, London, NW6 6SG",
+          "latitude": 51.5347,
+          "longitude": -0.2047
+        },
+        "sports": [
+          "tennis"
+        ]
+      },
+      {
+        "venue_name": "Tennis in Southwark",
+        "slug": "TennisInSouthwark",
+        "location": {
+          "postcode": "SE1 0JJ",
+          "address": "Southwark, London",
+          "latitude": 51.4996,
+          "longitude": -0.091
+        },
+        "sports": [
+          "tennis"
+        ]
+      },
+      {
+        "venue_name": "City of London Tennis",
+        "slug": "CityOfLondonTennis",
+        "location": {
+          "postcode": "EC2Y 8BB",
+          "address": "City of London, London",
+          "latitude": 51.5074,
+          "longitude": -0.0901
+        },
+        "sports": [
+          "tennis"
         ]
       }
     ]

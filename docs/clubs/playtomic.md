@@ -1,6 +1,6 @@
 # Playtomic
 
-33 venues, `https://playtomic.com`. Padel.
+33 padel venues + 1 tennis venue, `https://playtomic.com`. Padel, tennis.
 Code: `sportscanner/crawlers/parsers/playtomic/`.
 
 ## API shape
@@ -80,6 +80,33 @@ up, via the shared `get_with_proxy_fallback_on_403` helper in
 `crawlers/anonymize/proxies.py` (same helper Matchi now uses - both need
 "direct first, proxy only on 403" in the identical shape). Any non-403 error
 is raised immediately, not retried via proxy.
+
+## Tennis (added August 2026)
+
+Identical API and response shape to padel — `sport_id` is the only thing that
+changes (`sport_id=TENNIS` vs `sport_id=PADEL`). The response schema
+(`PlaytomicResource`/`PlaytomicSlot`, `playtomic/core/schema.py`) carries no
+sport field at all, so there was nothing to parse differently — only
+`PlaytomicAvailabilityFetcher`'s `sport_id`/`category` needed to become
+constructor parameters instead of the hardcoded module-level `_SPORT_ID`
+(renamed `PADEL_SPORT_ID`, with `TENNIS_SPORT_ID` added alongside).
+
+Confirmed live against a real dual-sport venue, **Tennis England Club**
+(`tenant_id=2a31c6ce-b212-4448-abd2-b05a6bbde784`, venues.json slug
+`open-jan-2025-tennis-england-club`): 9 tennis courts + 4 padel courts,
+distinct `resource_id`s and pricing per sport (~£16/hr tennis vs ~£40/hr
+padel at the same club/date) — confirms `sport_id` genuinely partitions the
+data rather than the API silently ignoring an unrecognised value.
+
+`PlaytomicTennisCrawler` (`playtomic/tennis/scraper.py`) reuses the shared
+`SLUG_TO_TENANT_ID` map (one map for both sports — `tenant_id` identifies the
+club, not the sport) and `PlaytomicAvailabilityFetcher`, just constructed
+with `sport_id=TENNIS_SPORT_ID, category="Tennis"`.
+
+**Only one tennis venue confirmed so far** — this list is a starting point,
+not exhaustive. Expand by searching Playtomic's own club directory for
+further London tennis-offering tenants, the same way the original 33 padel
+venues were compiled.
 
 ## Status (July 2026)
 

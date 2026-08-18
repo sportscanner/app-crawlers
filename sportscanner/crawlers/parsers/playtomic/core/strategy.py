@@ -47,7 +47,11 @@ from sportscanner.logger import logging
 PLAYTOMIC_ORGANISATION_WEBSITE = "https://playtomic.com"
 
 _AVAILABILITY_API = "https://playtomic.com/api/clubs/availability"
-_SPORT_ID = "PADEL"
+PADEL_SPORT_ID = "PADEL"
+# Confirmed live against a real dual-sport venue (Tennis England Club,
+# tenant_id 2a31c6ce-b212-4448-abd2-b05a6bbde784): returns real, distinctly
+# priced slots separate from that same venue's PADEL response.
+TENNIS_SPORT_ID = "TENNIS"
 
 # Where the API tenant_uid differs from the website URL slug, list the correct
 # website slug here.  None = no public booking page found for this venue.
@@ -120,6 +124,9 @@ SLUG_TO_TENANT_ID: Dict[str, str] = {
     "rocks-lane-@-dyrham-park-country-club":   "e24d075d-b5a5-4a0d-a303-2c7e92d9e598",
     "padel-tree-arkley":                       "3b16a151-703d-45cd-b164-0f8422b56f03",
     "purley-sports-club":                      "3bfdd0e1-b304-4779-8574-5270ac0d74fa",
+    # Tennis venue (confirmed live: 9 tennis courts + 4 padel courts, sport_id=TENNIS
+    # returns real, distinctly-priced slots from this same tenant_id).
+    "open-jan-2025-tennis-england-club":       "2a31c6ce-b212-4448-abd2-b05a6bbde784",
 }
 
 
@@ -156,6 +163,7 @@ def _resources_to_unified(
     resources: List[PlaytomicResource],
     venue: sportscanner.storage.postgres.tables.SportsVenue,
     fetch_date: date,
+    category: str = "Padel",
 ) -> List[UnifiedParserSchema]:
     """Aggregate availability across courts into one record per (start_time, duration)."""
     slot_map: Dict[tuple, List[str]] = defaultdict(list)
@@ -174,7 +182,7 @@ def _resources_to_unified(
 
         results.append(
             UnifiedParserSchema(
-                category="Padel",
+                category=category,
                 starting_time=start_t,
                 ending_time=_add_minutes(start_t, duration_min),
                 date=fetch_date,
@@ -217,6 +225,30 @@ class PlaytomicRequestStrategy(AbstractRequestStrategy):
         ]
 
 
+class PlaytomicTennisRequestStrategy(AbstractRequestStrategy):
+    """Stub — Playtomic crawler bypasses the standard per-venue request loop."""
+
+    @override
+    def generate_request_details(
+        self,
+        sports_venue: sportscanner.storage.postgres.tables.SportsVenue,
+        fetch_date: date,
+        token: Optional[str] = None,
+    ) -> List[RequestDetailsWithMetadata]:
+        return [
+            RequestDetailsWithMetadata(
+                url=_AVAILABILITY_API,
+                headers=_HEADERS,
+                payload=None,
+                metadata=AdditionalRequestMetadata(
+                    category="Tennis",
+                    date=fetch_date,
+                    sportsCentre=sports_venue,
+                ),
+            )
+        ]
+
+
 class PlaytomicResponseParserStrategy(AbstractResponseParserStrategy):
     """Pass-through — content is already List[UnifiedParserSchema]."""
 
@@ -228,10 +260,18 @@ class PlaytomicResponseParserStrategy(AbstractResponseParserStrategy):
 class PlaytomicAvailabilityFetcher:
     """Fetches per-(venue, date) availability using hardcoded tenant_ids.
 
-    Not a BaseCrawler strategy — PlaytomicPadelCrawler overrides ScraperCoroutines
-    and drives this helper directly (the availability API is queried by tenant_id
-    query-param, not the per-venue URL loop the standard crawlers use).
+    Not a BaseCrawler strategy — PlaytomicPadelCrawler/PlaytomicTennisCrawler
+    override ScraperCoroutines and drive this helper directly (the availability
+    API is queried by tenant_id query-param, not the per-venue URL loop the
+    standard crawlers use). `sport_id`/`category` are threaded through per
+    instance rather than hardcoded, so the same fetcher class serves both
+    sports on the identical API/response shape (Playtomic's response schema
+    carries no sport field either way — the value requested is the value you get).
     """
+
+    def __init__(self, sport_id: str = PADEL_SPORT_ID, category: str = "Padel"):
+        self.sport_id = sport_id
+        self.category = category
 
     async def fetch_venue_date(
         self,
@@ -260,7 +300,7 @@ class PlaytomicAvailabilityFetcher:
                     params={
                         "tenant_id": tenant_id,
                         "date": fetch_date.isoformat(),
-                        "sport_id": _SPORT_ID,
+                        "sport_id": self.sport_id,
                     },
                     headers={
                         **_HEADERS,
@@ -272,7 +312,7 @@ class PlaytomicAvailabilityFetcher:
             if resp is None:
                 return []
             resources = [PlaytomicResource(**r) for r in resp.json()]
-            slots = _resources_to_unified(resources, venue, fetch_date)
+            slots = _resources_to_unified(resources, venue, fetch_date, category=self.category)
             logging.debug(
                 f"Playtomic: {venue.venue_name} {fetch_date} → {len(slots)} slot groups"
             )

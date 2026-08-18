@@ -8,7 +8,7 @@ from rich import print
 from starlette import status
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.storage.postgres.tables import BadmintonMasterTable, SquashMasterTable, PickleballMasterTable, PadelMasterTable
+from sportscanner.storage.postgres.tables import BadmintonMasterTable, SquashMasterTable, PickleballMasterTable, PadelMasterTable, TennisMasterTable
 from sportscanner.api.routers.search.schemas import SearchCriteria, SortByOptions
 from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.api.routers.venues.utils import get_venues_near_postcode
@@ -29,6 +29,8 @@ def find_query_table(sport: SportscannerSupportedSports):
         return PickleballMasterTable
     elif sport == SportscannerSupportedSports.PADEL:
         return PadelMasterTable
+    elif sport == SportscannerSupportedSports.TENNIS:
+        return TennisMasterTable
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -50,6 +50,20 @@ from sportscanner.logger import logging
 
 MATCHI_ORGANISATION_WEBSITE = "https://www.matchi.se"
 PADEL_SPORT_ID = 5
+# Confirmed valid from live page source (sport-picker markup on real Matchi
+# tennis venues: Frindsbury Tennis and Padel Club, Putney Lawn Tennis Club)
+# and behaviourally (sport=1/2 both return the normal "not available" HTML
+# fragment; sport=99 breaks the response format entirely) -- but neither
+# venue tried had online tennis booking enabled/open to guests, so this has
+# not yet been observed returning populated slots. See docs/clubs/matchi.md.
+TENNIS_SPORT_ID = 1
+
+# Matchi facility IDs are sport-specific per venue (unlike the shared
+# SLUG_TO_FACILITY_ID used for padel), so tennis gets its own map.
+TENNIS_SLUG_TO_FACILITY_ID: Dict[str, int] = {
+    "frindsburytennisandpadel": 2865,
+    "putneylawntennisclub": 2052,
+}
 
 # Matchi's crawl bypasses BaseCrawler's per-provider semaphore (see
 # MatchiPadelCrawler docstring), so it never picked up a browser-like
@@ -195,6 +209,30 @@ class MatchiRequestStrategy(AbstractRequestStrategy):
         ]
 
 
+class MatchiTennisRequestStrategy(AbstractRequestStrategy):
+    """Stub — Matchi crawler bypasses the standard per-venue request loop."""
+
+    @override
+    def generate_request_details(
+        self,
+        sports_venue: sportscanner.storage.postgres.tables.SportsVenue,
+        fetch_date: date,
+        token: Optional[str] = None,
+    ) -> List[RequestDetailsWithMetadata]:
+        return [
+            RequestDetailsWithMetadata(
+                url=f"{MATCHI_ORGANISATION_WEBSITE}/book/listSlots",
+                headers={},
+                payload=None,
+                metadata=AdditionalRequestMetadata(
+                    category="Tennis",
+                    date=fetch_date,
+                    sportsCentre=sports_venue,
+                ),
+            )
+        ]
+
+
 class MatchiResponseParserStrategy(AbstractResponseParserStrategy):
     """Pass-through parser: content is already List[UnifiedParserSchema]."""
 
@@ -205,12 +243,26 @@ class MatchiResponseParserStrategy(AbstractResponseParserStrategy):
 
 class MatchiSlotFetcher:
     """
-    Not a BaseCrawler strategy — MatchiPadelCrawler overrides ScraperCoroutines
-    and calls crawl_date() directly (Matchi's endpoint returns all venues per
-    date, so the crawl iterates dates rather than the per-venue URL loop).
+    Not a BaseCrawler strategy — MatchiPadelCrawler/MatchiTennisCrawler override
+    ScraperCoroutines and call crawl_date() directly (Matchi's endpoint returns
+    all venues per date, so the crawl iterates dates rather than the per-venue
+    URL loop). `sport_id`/`category`/`facility_ids` are threaded through per
+    instance so the same fetcher serves both sports.
     """
 
-    # -- public API used by MatchiPadelCrawler --------------------------------
+    def __init__(
+        self,
+        sport_id: int = PADEL_SPORT_ID,
+        category: str = "Padel",
+        facility_ids: Optional[Dict[str, int]] = None,
+        default_price: str = "£55.00",
+    ):
+        self.sport_id = sport_id
+        self.category = category
+        self.facility_ids = facility_ids if facility_ids is not None else SLUG_TO_FACILITY_ID
+        self.default_price = default_price
+
+    # -- public API used by MatchiPadelCrawler/MatchiTennisCrawler ------------
 
     async def crawl_date(
         self,
@@ -221,15 +273,15 @@ class MatchiSlotFetcher:
     ) -> List[UnifiedParserSchema]:
         """Crawl availability for a single date across all known Matchi venues concurrently."""
         matched = [
-            (slug, SLUG_TO_FACILITY_ID[slug])
+            (slug, self.facility_ids[slug])
             for slug in venue_by_slug
-            if slug in SLUG_TO_FACILITY_ID
+            if slug in self.facility_ids
         ]
-        unmatched = [slug for slug in venue_by_slug if slug not in SLUG_TO_FACILITY_ID]
+        unmatched = [slug for slug in venue_by_slug if slug not in self.facility_ids]
         if unmatched:
             logging.warning(
-                f"Matchi: {len(unmatched)} slug(s) have no facility ID — "
-                f"add them to SLUG_TO_FACILITY_ID: {unmatched}"
+                f"Matchi: {len(unmatched)} slug(s) have no facility ID for sport_id={self.sport_id} — "
+                f"add them to the relevant facility-id map: {unmatched}"
             )
 
         slot_lists = await asyncio.gather(
@@ -289,7 +341,7 @@ class MatchiSlotFetcher:
                         "wl": "",
                         "facility": facility_id,
                         "date": fetch_date.isoformat(),
-                        "sport": PADEL_SPORT_ID,
+                        "sport": self.sport_id,
                     },
                     headers=_HEADERS,
                     timeout=30,
@@ -319,16 +371,16 @@ class MatchiSlotFetcher:
             return None
 
         return UnifiedParserSchema(
-            category="Padel",
+            category=self.category,
             starting_time=_ms_to_booking_time(ms.start_timestamp_ms),
             ending_time=_ms_to_booking_time(ms.end_timestamp_ms),
             date=search_date,
-            price="£55.00",
+            price=self.default_price,
             spaces=len(ms.slot_ids),
             composite_key=venue.composite_key,
             last_refreshed=datetime.now(),
             booking_url=(
                 f"{MATCHI_ORGANISATION_WEBSITE}/facilities/"
-                f"{ms.facility_slug}?date={search_date.isoformat()}&sport={PADEL_SPORT_ID}"
+                f"{ms.facility_slug}?date={search_date.isoformat()}&sport={self.sport_id}"
             ),
         )

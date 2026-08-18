@@ -270,6 +270,7 @@ def create_db_and_tables(engine):
             SquashMasterTable.__table__,
             PickleballMasterTable.__table__,
             PadelMasterTable.__table__,
+            TennisMasterTable.__table__,
             User.__table__,
             UserPreferences.__table__,
             ApiToken.__table__,
@@ -290,7 +291,7 @@ def create_db_and_tables(engine):
     ensure_performance_indexes(engine)
 
 
-_SLOT_TABLES = ("badminton", "squash", "pickleball", "padel")
+_SLOT_TABLES = ("badminton", "squash", "pickleball", "padel", "tennis")
 
 
 def ensure_starts_at_column(engine):
@@ -346,6 +347,7 @@ def initialize_db_and_tables(engine):
     truncate_table(engine, table=SquashMasterTable)
     truncate_table(engine, table=PickleballMasterTable)
     truncate_table(engine, table=PadelMasterTable)
+    truncate_table(engine, table=TennisMasterTable)
     truncate_table(engine, table=SportsVenue)
     load_sports_centre_mappings(engine)
 

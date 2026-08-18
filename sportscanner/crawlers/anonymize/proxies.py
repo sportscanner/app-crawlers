@@ -14,6 +14,15 @@ def httpxAsyncClientWithProxyRotation() -> httpx.AsyncClient:
     # TypeError on the removed `proxies` kwarg) until it was actually exercised for
     # the first time by a provider-level `_http_client()` override, since
     # `USE_PROXIES` has always defaulted to False and this path was otherwise dead.
+    #
+    # `USE_PROXIES` is the single global kill switch: Everyone Active, UEL
+    # SportsDock, and the Matchi/Playtomic 403-fallback all route through this
+    # function rather than checking the setting themselves, so gating it here
+    # (instead of at each call site) is what makes `USE_PROXIES=False` actually
+    # stop every proxied request, not just the ones going through the shared
+    # BaseCrawler client.
+    if not settings.USE_PROXIES:
+        return httpxAsyncClientWithoutProxyRotation()
     return httpx.AsyncClient(
         limits=httpx.Limits(
             max_connections=settings.HTTPX_CLIENT_MAX_CONNECTIONS,

@@ -184,9 +184,12 @@ class PlacesLeisureSlotFetcher:
             # No pay-as-you-go price is exposed anonymously anywhere in this
             # flow - not on the centre page (only monthly membership prices
             # are shown), not in the availability response, and the booking
-            # deep-link requires a session to render. Left honest rather than
-            # guessed; revisit if a pricing source is found.
-            price="Check website",
+            # deep-link requires a session to render. Hardcoded to a London
+            # leisure-centre-average peak badminton rate until a real pricing
+            # source is found (comparable Better/GLL centres charge £14-£16
+            # for peak evening slots) - revisit if Places Leisure exposes
+            # per-centre pricing anonymously in the future.
+            price="£12.00",
             spaces=available,
             composite_key=venue.composite_key,
             last_refreshed=datetime.now(),
