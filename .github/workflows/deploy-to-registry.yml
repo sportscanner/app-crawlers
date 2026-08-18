@@ -20,18 +20,23 @@ jobs:
           make setup
       - name: Unit testing via Pytest (temporarily disabled)
         run: make test || exit 0
+
   push-to-registry:
     needs: unit-test
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Login to GitHub Container Registry
-        run: docker login ghcr.io -u yasir-khalid -p ${{ secrets.GHCR }}
+        run: docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
       - name: Build & Push the image
         run: |
           make build-docker-image
           make push-image-to-repository
+
   deploy-to-cloud:
     needs: push-to-registry
     runs-on: ubuntu-latest
