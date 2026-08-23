@@ -358,8 +358,10 @@ order — later steps assume earlier ones are done.
   `docs/clubs/everyone-active.md` and `docs/clubs/citysport.md` for how this
   class of bug was diagnosed each time.
 - If GitHub Actions fails where local succeeds, don't guess — check for a
-  clean HTTP error (403 → try `get_with_proxy_fallback_on_403()` in
-  `crawlers/anonymize/proxies.py`, already used by Matchi/Playtomic) versus a
+  clean HTTP error (403 → `get_with_proxy_fallback_on_403()` in
+  `crawlers/anonymize/proxies.py` now retries via a free curl_cffi Chrome
+  TLS-fingerprint stage before touching the paid rotating proxy; used by
+  Matchi/Playtomic/ClubSpark) versus a
   silent hang/timeout (→ the venue needs to route through the proxy directly
   from the first attempt, like Everyone Active and UEL SportsDock do — a 403
   fallback doesn't trigger on a timeout, there's no clean error to catch).
