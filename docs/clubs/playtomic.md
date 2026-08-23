@@ -18,7 +18,7 @@ Booking URLs need a separate slug: the API's `tenant_id`/slug (stored as `venue.
 
 ## WAF and Proxy Fallback
 
-Playtomic availability API uses CloudFront WAF rate limiting and TLS fingerprint validation. Requests carry browser headers (`_HEADERS` in `playtomic/core/strategy.py`). On HTTP 403 or 429 status codes, `fetch_venue_date()` retries against fresh rotating-proxy connections via `get_with_proxy_fallback_on_403()` in `crawlers/anonymize/proxies.py`.
+Playtomic availability API uses CloudFront WAF rate limiting and TLS fingerprint validation. Requests carry browser headers (`_HEADERS` in `playtomic/core/strategy.py`). On HTTP 403 or 429 status codes, `fetch_venue_date()` retries through `get_with_proxy_fallback_on_403()` in `crawlers/anonymize/proxies.py`, which now walks a three-stage chain: direct httpx, then a free curl_cffi retry with a Chrome TLS fingerprint (`chrome124`), then rotating-proxy attempts as a last resort. The TLS-impersonation stage is what usually rescues GitHub Actions runs (Python's ssl handshake is an automatic WAF fail from datacenter IPs), so paid proxy tier usage for Playtomic should be near zero.
 
 ## Tennis
 
