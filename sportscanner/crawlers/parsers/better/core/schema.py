@@ -1,5 +1,6 @@
 """Contains dataclasses for the API call schema"""
 
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -9,16 +10,17 @@ class TimeFormat(BaseModel):
 
 
 class Price(BaseModel):
-    formatted_amount: str
+    formatted_amount: Optional[str] = None
 
 
 class BetterApiResponseSchema(BaseModel):
     starts_at: TimeFormat
     ends_at: TimeFormat
     duration: str
-    price: Price
+    price: Optional[Price] = None
     category_slug: str
     date: str
     venue_slug: str
     spaces: int
     name: str
+

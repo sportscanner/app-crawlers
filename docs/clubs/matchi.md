@@ -1,157 +1,152 @@
 # Matchi
 
-10 padel venues + 2 tennis venues, `https://www.matchi.se`. Padel, tennis.
+22 padel venues + 3 tennis venues, `https://www.matchi.se`. Padel, tennis.
 Code: `sportscanner/crawlers/parsers/matchi/`.
 
 ## API shape
 
 Base: `GET https://www.matchi.se/book/listSlots?wl=&facility={facilityId}&date=YYYY-MM-DD&sport=5`
-(`sport=5` is padel). Returns HTML (not JSON) — a fragment with `button.btn-slot`
-elements per bookable slot, parsed with BeautifulSoup in
-`_parse_listslots_html()`.
+(`sport=5` is padel, `sport=1` is tennis). Returns HTML (not JSON): a fragment with `button.btn-slot`
+elements per bookable slot, parsed with BeautifulSoup in `_parse_listslots_html()`.
 
 Facility IDs are stable numeric DB identifiers hardcoded in
-`SLUG_TO_FACILITY_ID` (`matchi/core/strategy.py`). To find one: visit
-`matchi.se/facilities/{slug}` and read `facilityId=<n>` out of the inline JS.
+`SLUG_TO_FACILITY_ID` and `TENNIS_SLUG_TO_FACILITY_ID` (`matchi/core/strategy.py`).
 
 **This provider does not use `BaseCrawler`'s per-venue request loop at all.**
-Matchi's endpoint iterates by date across *all* venues in one shape, not by
+Matchi's endpoint iterates by date across all venues in one shape, not by
 per-venue URL, so `MatchiPadelCrawler` overrides `ScraperCoroutines` directly and
-`MatchiSlotFetcher.crawl_date()` fans out over facilities itself. Same pattern as
-Playtomic (below) — see that file for why this matters.
+`MatchiSlotFetcher.crawl_date()` fans out over facilities itself.
 
 ### Timestamps: Stockholm local time, not UTC, not London time
 
 `/book/listSlots` timestamps are true Unix milliseconds UTC, but Matchi's backend
-*encodes UK venue slot times as if they were Stockholm wall-clock time* (CEST in
+encodes UK venue slot times as if they were Stockholm wall-clock time (CEST in
 summer, CET in winter) rather than the venue's actual London time. Stockholm is
 always exactly UTC+1 ahead of London, year-round (no DST edge case between them,
 since UK and Sweden change clocks on the same dates), so extracting the
-Stockholm-local hour/minute directly gives the correct London booking time — this
+Stockholm-local hour/minute directly gives the correct London booking time. This
 is intentional, not a bug, and matches what the Matchi website itself displays.
-Converting UTC → Europe/London directly would introduce a spurious 1-hour offset.
+Converting UTC to Europe/London directly would introduce a spurious 1-hour offset.
 See `_ms_to_booking_time()` and the module docstring in `matchi/core/strategy.py`
-for the full reasoning; don't "fix" this without re-reading it first.
+for the full reasoning.
 
 An older `/book/findFacilities` endpoint (removed, see git history) embedded
 genuinely Stockholm-local timestamps for a different reason and caused a real
-1-hour lag bug — that's what prompted the switch to `/book/listSlots` in the
-first place.
+1-hour lag bug: that prompted the switch to `/book/listSlots`.
 
-## Fixed July 2026: site-wide 403s from unbounded concurrency + no headers
+## Fixed July 2026: site-wide 403s from unbounded concurrency and no headers
 
 Because Matchi bypasses `BaseCrawler`'s semaphore-bounded fetch loop, it used to
-fire **all dates × all facilities concurrently with zero pacing** — up to ~100
-simultaneous requests in one burst — and with **no headers at all** (not even a
+fire all dates and facilities concurrently with zero pacing (up to ~100
+simultaneous requests in one burst) and with no headers at all (not even a
 `User-Agent`; httpx's bare default). Matchi's WAF was blocking every single
 request outright as a result: every facility, every date, HTTP 403, for every
-scheduled run. All Matchi rows in the `padel` table shared one stale
-`last_refreshed` timestamp from whichever run last happened to get through.
+scheduled run.
 
 Fixed by:
-1. Adding the same browser-like headers Playtomic already used (a real mobile
-   Safari `User-Agent`, `accept`, `accept-language`).
+1. Adding browser-like headers (mobile Safari `User-Agent`, `accept`, `accept-language`).
 2. Wrapping each facility fetch in an `asyncio.Semaphore` sized to the existing
    `CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER` setting, threaded down from
    `MatchiPadelCrawler._crawl_async` through `crawl_date()` to
    `_fetch_facility_slots()`.
 
-If Matchi starts 403ing again, check whether a code change re-introduced
-unbounded concurrency here before assuming the WAF rules changed.
-
 ## Fixed July 2026: 2 specific facilities still 403 in a minority of runs
 
-After the fix above, two facilities — `westhertssportsclub` and
-`towerhillterrace` — kept getting HTTP 403 on **every date within a run**, but
-only in ~4 of 10 consecutive scheduled runs, never partially. Root cause:
-Matchi and Playtomic (see `docs/clubs/playtomic.md`) run in the same "Padel
-Crawler Pipeline" job, so they share one GitHub Actions runner IP for the
-whole run (fresh per job). Whether that run's IP happens to already be
-blocklisted by Matchi's WAF for these two specific facilities is luck of the
-draw - confirmed by the all-or-nothing-per-run pattern across 10 consecutive
-runs' logs, not visible from isolated testing (which uses a different IP each
-time).
+After the fix above, two facilities (`westhertssportsclub` and `towerhillterrace`)
+kept getting HTTP 403 on every date within a run in ~4 of 10 consecutive scheduled
+runs. Matchi and Playtomic run in the same crawler pipeline job and share one
+GitHub Actions runner IP per run. Whether that run's IP happens to already be
+blocklisted by Matchi's WAF for these two facilities is IP-dependent.
 
-Fixed the same way as Everyone Active's site-wide block
-(`docs/clubs/everyone-active.md`), but as a **fallback**, not the default: on
-HTTP 403 from the direct connection, `_fetch_facility_slots` retries against a
-fresh `httpxAsyncClientWithProxyRotation()` connection (a fresh connection is a
-fresh shot at a different proxy exit IP) up to 4 times before giving up. The
-retry helper (`get_with_proxy_fallback_on_403` in `crawlers/anonymize/proxies.py`)
-is shared with Playtomic's identical fix - both need "try direct first (fast,
-works for the vast majority), escalate to proxy only on 403" in the exact same
-shape. Any non-403 error (a genuine 5xx, a connection failure) is raised
-immediately and not retried via proxy - retrying wouldn't help an actual
-outage, only a blocklisted-IP situation.
+Fixed via proxy fallback: on HTTP 403 from the direct connection,
+`_fetch_facility_slots` retries against a fresh
+`httpxAsyncClientWithProxyRotation()` connection up to 4 times before giving up.
+The retry helper (`get_with_proxy_fallback_on_403` in `crawlers/anonymize/proxies.py`)
+is shared with Playtomic. Any non-403 error is raised immediately.
 
 ## Known-unbookable venues (not crawler bugs)
 
-Two facilities return **zero rows every run, deliberately** — confirmed by
+Two facilities return zero rows every run, deliberately, confirmed by
 fetching `/book/listSlots` directly and reading the HTML body:
 
 - **Cumberland Lawn Tennis Club** (`cltc`, facility 2466): body reads
-  `"Only members may book sessions."` — genuinely members-only, not publicly
-  bookable.
+  `"Only members may book sessions."` (members-only, not publicly bookable).
 - **St Paul's Cathedral Churchyard** (`stpaulscathedralchurchyard`, facility
   2995): body reads `"Not available for booking."`
 
-Neither returns an HTTP error — both are 200s with a message div instead of
+Neither returns an HTTP error: both are 200s with a message div instead of
 slot buttons, so `_parse_listslots_html()` correctly finds zero `btn-slot`
-elements and returns an empty list. If either of these venues ever becomes
-bookable, no code change is needed; they'll just start returning slots.
+elements and returns an empty list.
 
-## Status (July 2026)
+## Venue expansion (August 2026)
 
-Confirmed live: 8 of 10 venues return data (the 2 above are genuinely
-unbookable, not failures).
+Discovery method: `POST https://www.matchi.se/facilities/findFacilities` with payload
+`{"lat": "51.5074", "lng": "-0.1278", "asJson": "true"}` returns the complete JSON
+registry of facilities (`facilities` and `restOfFacilities`), containing facility IDs,
+slugs, names, exact coordinates, postcodes, and addresses.
 
-## Tennis (added August 2026)
+### Added London and Commuter Venues
 
-`sport=1` is tennis (padel is `sport=5`). Confirmed valid two ways: the
-sport-picker markup on real Matchi tennis venue booking pages explicitly
-maps `value="1"` to the "Tennis" label, and behaviourally — `sport=1` and
-`sport=2` both return the normal "not available" HTML fragment (a
-recognised, processed sport ID with no slots), while `sport=99` (a control)
-breaks the response format entirely rather than degrading gracefully.
+All verified anonymously viewable via `/book/listSlots` with live bookable slot buttons:
 
-`MatchiSlotFetcher` (`matchi/core/strategy.py`) now takes `sport_id`,
-`category`, `facility_ids`, and `default_price` as constructor parameters
-instead of hardcoding padel's values, so `MatchiTennisCrawler`
-(`matchi/tennis/scraper.py`) reuses the same fetch/parse machinery with
-`TENNIS_SPORT_ID`, `"Tennis"`, `TENNIS_SLUG_TO_FACILITY_ID` (a **separate**
-map from padel's `SLUG_TO_FACILITY_ID` — Matchi facility IDs are
-sport-specific per venue, not shared across sports at the same club).
+1. **PDL Padel United - North London - Bushey** (`padelunitedbushey`, facility 2188,
+   Bushey Grove Leisure Centre, Aldenham Rd, WD23 2TD): Padel (sport 5), 3 indoor courts.
+2. **Game4Padel | Bloom Heathrow London** (`game4padelheathrow`, facility 2370,
+   Feltham, TW14 8HA): Padel (sport 5), 2 covered courts.
+3. **Game4Padel | Broxbourne Sports Club** (`game4padelbroxbourne`, facility 1718,
+   Mill Lane Close, Broxbourne, EN10 7BA): Padel (sport 5), 2 outdoor courts.
+4. **Game4Padel | Gosling** (`game4padelgosling`, facility 2369,
+   Stanborough Rd, Welwyn Garden City, AL8 6XE): Padel (sport 5), 2 courts.
+5. **Game4Padel | Chesham 1879** (`game4padelchesham`, facility 2438,
+   Cameron Road, Chesham, HP5 2JU): Padel (sport 5), 2 courts.
+6. **Brentwood Padel Club** (`brentwoodpadeclub`, facility 2706,
+   Childerditch Lane, Warley, Brentwood, CM13 3FD): Padel (sport 5), 3 outdoor courts.
+7. **Epping and Ongar Padel** (`eppingandongarpadel`, facility 3182,
+   Mount Farm, Theydon Mount, Epping, CM16 7PX): Padel (sport 5), 4 courts.
+8. **Forest Smash Padel** (`forestsmashpadel`, facility 3173,
+   Forest Hall, Hatfield Broad Oak, Bishops Stortford, CM22 7BT): Padel (sport 5), 2 courts.
+9. **Down Hall Hotel Spa & Estate** (`downhallhotel`, facility 1313,
+   Matching Road, Hatfield Heath, Bishops Stortford, CM22 7AS): Padel (sport 5) AND
+   Tennis (sport 1), 1 padel court + 1 tennis court. First live confirmed Matchi tennis venue.
+10. **BSLTC (Bishop's Stortford Lawn Tennis Club)** (`bsltc`, facility 2584,
+    Cricketfield Lane, Bishop's Stortford, CM23 2TD): Padel (sport 5), 1 court.
+11. **Country Padel Co** (`countrypadelco`, facility 3043,
+    Dowsetts Farm, Colliers End, Ware, SG11 1EF): Padel (sport 5), 3 courts.
+12. **Frindsbury Tennis and Padel Club** (`frindsburytennisandpadelclub`, facility 2865,
+    Frog Island, Upnor Road, Frindsbury, Rochester, ME2 4HE): Padel (sport 5), 3 courts.
 
-**No confirmed populated slot response yet.** Two candidate venues were
-tried live:
+### Other Venue Investigation Outcomes
 
-- **Frindsbury Tennis and Padel Club** (`facility=2865`, outside London —
-  Rochester, Kent): `"Not available for booking."` — tennis isn't enabled
-  for online booking at this venue, even though the sport ID itself is
-  valid.
-- **Putney Lawn Tennis Club** (`facility=2052`): `"Only members may book
-  sessions."` — members-only, same shape as Cumberland LTC's padel listing
-  above.
+- **PDL Padel United Erith (Bexley)**: Not on Matchi. Booking is hosted on Playtomic
+  (`https://playtomic.com/clubs/padel-united-erith`).
+- **PadelStars**: Not on Matchi. Uses MatchPoint app / platform (`padelstars.co.uk`).
+- **Already integrated (London)**: Coldharbour (`game4padelgll`, 2636), Tower Hill
+  (`towerhillterrace`, 2996), Hay's Galleria (`londonbridgecity`, 3041), The Padel Yard
+  Vauxhall (`g4pvauxhallpadelyard`, 3011), Crystal Palace (`game4padelcrystalpalace`, 2368),
+  West Herts (`westhertssportsclub`, 3178), The Padel Yard Wandsworth (`g4pthepadelyard`, 2322),
+  Parkside Southall (`game4padelparkside`, 2573).
 
-Both are wired in and will correctly return `[]` (not an error) via the same
-zero-slots handling used for Matchi's known-unbookable padel venues — this
-is expected, not a crawler bug. `default_price` is set to `"N/A"` rather
-than reusing padel's hardcoded `"£55.00"`, since no real tennis pricing has
-been observed live and that figure is a padel-specific guess, not something
-parsed from the response either way.
+Venue entries for all 12 additions are written to `reports/venue-fragments/matchi.json`.
 
-**Coverage is the least proven of the four tennis providers built in this
-pass** (ClubSpark, Better/GLL, Playtomic, Matchi) — needs a guest-bookable
-Matchi tennis venue found before this can be confirmed end-to-end with real
-data.
+## Tennis (updated August 2026)
 
-### Proxy note
+`sport=1` is tennis (`sport=5` is padel).
 
-Matchi's 403-fallback (`get_with_proxy_fallback_on_403`) is inherited
-unchanged via the shared `MatchiSlotFetcher` — no new proxy code was needed
-for tennis. `httpxAsyncClientWithProxyRotation()` now honours `USE_PROXIES`
-globally (fixed earlier in the same session that added tennis), which
-currently defaults `False` (Webshare free tier exhausted), so both Matchi
-padel and Matchi tennis run fully unproxied by default. If a tennis venue
-is 403-blocked directly, it will simply return no slots until proxy service
-is restored — not a regression, an inherited, already-accepted constraint.
+`MatchiSlotFetcher` (`matchi/core/strategy.py`) accepts `sport_id`, `category`,
+`facility_ids`, and `default_price` as constructor parameters, so `MatchiTennisCrawler`
+(`matchi/tennis/scraper.py`) reuses the same fetch and parse machinery with
+`TENNIS_SPORT_ID`, `"Tennis"`, and `TENNIS_SLUG_TO_FACILITY_ID`.
+
+**Live populated slot response confirmed**:
+- **Down Hall Hotel Spa & Estate** (`downhallhotel`, facility 1313): Publicly bookable
+  with 14 slots per day (98 slots over 7 days).
+
+Other tennis facilities:
+- **Putney Lawn Tennis Club** (`putneylawntennisclub`, facility 2052): Members-only,
+  cleanly returns zero slots.
+- **Frindsbury Tennis and Padel Club** (`frindsburytennisandpadelclub`, facility 2865):
+  one Matchi facility covering both sports (6 padel + 6 tennis courts, Frog Island ME2 4HE).
+  Padel slots confirmed live; tennis is not available for online booking (zero slot buttons
+  across checked dates), so the tennis mapping is kept but may stay empty. The legacy slug
+  `frindsburytennisandpadel` now 302-redirects to the facilities index and was removed from
+  venues.json to avoid a duplicate venue row.

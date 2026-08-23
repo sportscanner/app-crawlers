@@ -1,25 +1,20 @@
 # LTA ClubSpark
 
-6 venues (starting seed — expected to grow), `https://clubspark.lta.org.uk`. Tennis.
+49 verified London park tennis venues in `reports/venue-fragments/clubspark.json`, `https://clubspark.lta.org.uk`. Tennis.
 Code: `sportscanner/crawlers/parsers/clubspark/`.
 
 ## API shape
 
 Base: `GET https://clubspark.lta.org.uk/v0/VenueBooking/{VenueSlug}/GetVenueSessions?resourceID=&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&roleId=`
 
-Unauthenticated — no auth headers, cookies, or tokens required for read access,
-confirmed live. A companion endpoint,
-`GET /v0/VenueBooking/{VenueSlug}/GetSettings`, returns venue metadata (roles,
-resource categories, timezone) and is the right way to verify a candidate slug
-before adding it to `venues.json` — guessed slugs (e.g. from a park's common
-name) 404 silently rather than falling back to anything useful. Confirmed
-404s during discovery: `ClissoldPark`, `HollandParkLTC`, `LondonFieldsLTC`.
+Unauthenticated: no auth headers, cookies, or tokens required for public read access. **A `Referer` header pointing at the venue booking page (`https://clubspark.lta.org.uk/{VenueSlug}/Booking/BookByDate`) is mandatory**:
+the identical request without it gets a Cloudflare `403`, with it gets `200` (confirmed live). The crawler sends this header on every request via `referer_for_slug()` in `core/strategy.py`.
 
-The discovery method: the venue's booking HTML page is a thin client-rendered
-shell with no embedded JSON — the actual API URL template lives in a shared
-minified JS bundle (`comp-core.js`) served identically to every venue. Once
-decoded once, the pattern applies to any ClubSpark venue by slug substitution;
-no per-venue reverse-engineering is needed.
+A companion endpoint, `GET /v0/VenueBooking/{VenueSlug}/GetSettings`, returns venue metadata (roles, resource categories, timezone, authentication flags) and is used to verify a candidate slug: guessed slugs return HTTP `500` or `404` on `GetSettings`, and login-gated venues return `MustAuthenticate: true`.
+
+Rate limiting: aggressive back-to-back probing trips Cloudflare `429` / `403` challenges for the source IP. The crawler routes through `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py`, which retries against rotating proxy connections if a direct connection is challenged.
+
+Discovery method: the venue booking HTML page is a thin client-rendered shell with no embedded JSON. The API URL template lives in a shared JS bundle served identically to every venue. The pattern applies to any ClubSpark venue by slug substitution.
 
 ### Response shape
 
@@ -39,63 +34,84 @@ no per-venue reverse-engineering is needed.
 }
 ```
 
-`StartTime`/`EndTime` are minutes-from-midnight (converted to `time` in
-`ClubSparkTennisResponseParserStrategy.parse`). `Category` distinguishes real
-availability from noise: `1000` = genuinely bookable, `8000` = closed,
-`2000` = occupied by a coaching/programmed session. Only `1000` rows are
-emitted as slots — everything else is deliberately dropped, not a parsing gap.
+`StartTime` and `EndTime` are minutes from midnight (converted to `time` in `ClubSparkTennisResponseParserStrategy.parse`). `Category` distinguishes real availability from noise: `1000` = genuinely bookable, `8000` = closed, `2000` = coaching/programmed session. Only `1000` rows are emitted as slots.
 
-## Why this bypasses `BaseCrawler`'s default fetch loop
+## Why this bypasses BaseCrawler default fetch loop
 
-`GetVenueSessions` takes a `startDate`/`endDate` **range** and returns every
-day in between in one call — unlike the venue × single-date shape
-`BaseCrawler`'s default loop assumes. `ClubSparkTennisCrawler` overrides
-`ScraperCoroutines` (same precedent as Matchi/CitySport/Playtomic, each for
-their own API-shape reasons — see their respective docs) to issue **one
-request per venue** covering `min(dates)..max(dates)`, rather than one
-request per venue per date. This is meaningfully cheaper than the standard
-loop would be here, not just a shape workaround.
+`GetVenueSessions` takes a `startDate`/`endDate` range and returns every day in between in one call, unlike the venue x single-date shape `BaseCrawler` default loop assumes. `ClubSparkTennisCrawler` overrides `ScraperCoroutines` to issue one request per venue covering `min(dates)..max(dates)`, rather than one request per venue per date.
 
 ## Cloudflare bot management
 
-Responses set a `__cf_bm` cookie. Moderate/occasional polling (the standard
-per-provider concurrency cap, a realistic desktop Chrome `User-Agent`) worked
-cleanly during research; a naive high-volume crawler risks Cloudflare
-challenges. No proxy is needed — this endpoint works fine unproxied.
+Responses set a `__cf_bm` cookie. The crawler uses `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py` to transparently fall back to fresh rotating proxy connections whenever a direct IP is challenged with 403 or 429.
 
-## Venue list (starting seed, verified live)
+## Verified London Park Tennis Venues (49 venues)
 
-| Slug | Notes |
-|---|---|
-| `SouthwarkPark` | Southwark Park, Bermondsey |
-| `VictoriaParkLONDON` | Victoria Park, Hackney/Tower Hamlets border |
-| `BatterseaParkTennisCourts` | Battersea Park |
-| `QueensParkTennisCourts` | Queen's Park, Brent/Westminster |
-| `TennisInSouthwark` | Likely a borough-wide multi-site booking scheme rather than a single physical park — the `Resources` returned may span more than one court location under one venue entry. Address in `venues.json` is deliberately generic; needs a follow-up pass to disaggregate by actual site if that matters for the map view. |
-| `CityOfLondonTennis` | Likely tied to a City of London Corporation-managed open space (Corporation runs several London green spaces including Queen's Park). Exact physical site not independently confirmed — address in `venues.json` flagged for verification. |
+The full organisation fragment is saved to `reports/venue-fragments/clubspark.json` with 49 verified London park tennis venues:
 
-This list is a **starting point, not exhaustive** — expand by checking
-borough tennis-booking pages (Hackney, Islington, Wandsworth, Lambeth, Tower
-Hamlets, Camden, Westminster, Merton, Richmond, Greenwich, etc.) for their
-linked ClubSpark slug, verifying each via `GetSettings` before adding.
+| Borough | Slug | Venue Name | Courts | Notes |
+|---|---|---|---|---|
+| Hammersmith & Fulham | `RavenscourtPark` | Ravenscourt Park Tennis Courts | 7 | Public anonymous API |
+| Hammersmith & Fulham | `SouthParkFulham` | South Park Tennis Courts (Fulham) | 7 | Public anonymous API |
+| Hammersmith & Fulham | `HurlinghamPark` | Hurlingham Park Tennis Courts | 3 | Public anonymous API |
+| Haringey / Islington | `FinsburyPark` | Finsbury Park Tennis Courts | 8 | Public anonymous API |
+| Haringey | `PavilionTennis` | Pavilion Sports (Albert Road Rec) Tennis Courts | 6 | Canonical public slug for Albert Road Rec |
+| Haringey | `ChestnutsPark` | Chestnuts Park Tennis Courts | 2 | Public anonymous API |
+| Haringey | `BruceCastlePark` | Bruce Castle Park Tennis Courts | 7 | Public anonymous API |
+| Haringey | `ChapmansGreen` | Chapmans Green Tennis Courts | 2 | Public anonymous API |
+| Southwark | `SouthwarkPark` | Southwark Park Tennis Courts | 4 | Public anonymous API |
+| Southwark | `BurgessParkSouthwark` | Burgess Park Tennis Courts | 7 | Canonical public slug; bare `BurgessPark` is login-gated |
+| Southwark | `DulwichPark` | Dulwich Park Tennis Courts | 4 | Public anonymous API |
+| Southwark | `BelairPark` | Belair Park Tennis Courts | 4 | Belair Park / Gerald FitzGerald courts in West Dulwich |
+| Southwark | `BrunswickPark` | Brunswick Park Tennis Courts | 2 | Public anonymous API |
+| Hackney | `ClissoldParkHackney` | Clissold Park Tennis Courts | 9 | Canonical public slug for Clissold Park |
+| Hackney | `LondonFieldsPark` | London Fields Tennis Courts | 2 | Canonical public slug for London Fields |
+| Hackney | `AskeGardens` | Aske Gardens Tennis Courts | 1 | Public anonymous API |
+| Lambeth | `ClaphamCommon` | Clapham Common Tennis Courts | 11 | Public anonymous API |
+| Lambeth | `KenningtonPark` | Kennington Park Tennis Courts | 9 | Public anonymous API |
+| Lambeth | `BrockwellPark` | Brockwell Park Tennis Courts | 6 | Public anonymous API |
+| Lambeth | `RuskinPark` | Ruskin Park Tennis Courts | 4 | Public anonymous API |
+| Lambeth | `VauxhallPark` | Vauxhall Park Tennis Courts | 2 | Public anonymous API |
+| Lambeth | `LarkhallPark` | Larkhall Park Tennis Courts | 2 | Public anonymous API |
+| Lewisham | `LadywellFields` | Ladywell Fields Tennis Courts | 5 | Public anonymous API |
+| Lewisham | `TelegraphHill` | Telegraph Hill Tennis Courts | 2 | Public anonymous API |
+| Lewisham | `ManorHouseGds` | Manor House Gardens Tennis Courts | 2 | Canonical public slug for Manor House Gardens |
+| Lewisham | `MayowPark` | Mayow Park Tennis Courts | 2 | Public anonymous API |
+| Merton | `WimbledonPark` | Wimbledon Park Tennis Courts | 20 | Largest venue in the set |
+| Merton | `MordenPark` | Morden Park Tennis Courts | 4 | Public anonymous API |
+| Merton | `KingGeorgesPlayingFields` | King George's Playing Fields Tennis Courts | 3 | Public anonymous API |
+| Wandsworth | `BatterseaParkTennisCourts` | Battersea Park Tennis Courts | 16 | Public anonymous API |
+| Brent | `QueensParkTennisCourts` | Queen's Park Tennis Courts | 6 | Public anonymous API |
+| Brent | `GladstoneParkTennis` | Gladstone Park Tennis Courts | 11 | Canonical public slug; bare `GladstonePark` is login-gated |
+| Brent | `ChelmsfordSquare` | Chelmsford Square Tennis Courts | 4 | Public anonymous API |
+| Barnet | `HendonPark` | Hendon Park Tennis Courts | 6 | Public anonymous API |
+| Barnet | `LytteltonPlayingFields` | Lyttelton Playing Fields Tennis Courts | 3 | Public anonymous API |
+| Richmond upon Thames | `OldDeerPark` | Old Deer Park Tennis Courts | 5 | Public anonymous API |
+| Richmond upon Thames | `PalewellCommon` | Palewell Common Tennis Courts | 4 | Public anonymous API |
+| Richmond upon Thames | `SheenCommon` | Sheen Common Tennis Courts | 4 | Public anonymous API |
+| Richmond upon Thames | `CambridgeGardens` | Cambridge Gardens Tennis Courts | 4 | Public anonymous API |
+| Greenwich | `KidbrookeGreen` | Kidbrooke Green Park Tennis Courts | 2 | Public anonymous API |
+| Greenwich | `PlumsteadCommon` | Plumstead Common Tennis Courts | 3 | Public anonymous API |
+| Hounslow | `LamptonPark` | Lampton Park Tennis Courts | 8 | Public anonymous API |
+| Barking & Dagenham | `BarkingPark` | Barking Park Tennis Courts | 6 | Public anonymous API |
+| Barking & Dagenham | `StChadsPark` | St Chad's Park Tennis Courts | 4 | Public anonymous API |
+| Redbridge | `ValentinesPark` | Valentines Park Tennis Courts | 8 | Public anonymous API |
+| Redbridge | `GoodmayesPark` | Goodmayes Park Tennis Courts | 4 | Public anonymous API |
+| Redbridge | `RayPark` | Ray Park Tennis Courts | 2 | Public anonymous API |
+| Enfield | `BroomfieldPark` | Broomfield Park Tennis Courts | 9 | Public anonymous API |
+| Enfield | `GrovelandsPark` | Grovelands Park Tennis Courts | 2 | Public anonymous API |
 
-## Status (added August 2026)
+## Dropped and Login-Gated Venues
 
-Confirmed live during initial research: all 6 seed slugs returned `200` with
-real session data from `GetVenueSessions`. **Re-run during end-to-end
-verification from a different network got a Cloudflare `403` challenge page
-("Just a moment...") on every request instead** — same endpoint, same
-headers, same slugs, only the source IP differed. This is IP-reputation-
-dependent Cloudflare bot management, the same class of issue already
-documented for Matchi/Playtomic/Everyone Active elsewhere in this repo (each
-run's IP either passes or gets challenged, not a property of the request
-itself). Pipeline wiring, request/response parsing, and DB integration are
-all confirmed correct via the other three tennis providers (Better/GLL,
-Playtomic, Matchi all returned real parsed data end-to-end in the same
-verification pass) — ClubSpark specifically needs its next real scheduled
-run (from whatever IP that deploys from) checked before this can be called
-fully confirmed. If it's consistently challenged in production too, the fix
-is the same one already used for Everyone Active/Matchi/Playtomic: retry via
-`get_with_proxy_fallback_on_403` on a 403 rather than treating it as
-"no slots" — not yet wired in for ClubSpark since it wasn't known to be
-needed until this verification pass.
+The following candidates were investigated and excluded per the public availability scope rule:
+
+- `GreenwichPark` (Greenwich Park Tennis Courts): viewing redirects to `auth.clubspark.uk` login.
+- `TannerStreetPark` (Tanner Street Park, Southwark): `MustAuthenticate: true` on settings endpoint.
+- `SpringfieldPark` (Springfield Park, Hackney): `MustAuthenticate: true` on settings endpoint.
+- `HammersmithPark`, `ShoreditchPark`: viewing redirects to `auth.clubspark.uk` login.
+- `HackneyTennis` and `TennisInSouthwark`: borough scheme shells with 0 court resources.
+- `CityOfLondonTennis`: shell with 0 court resources.
+- `CherryTreeWood` (Barnet): serves 404 / NotFound.
+
+## Verification Results
+
+End-to-end test execution of `ClubSparkTennisCrawler._crawl_async` across all 49 venues for a 3-day window yielded 2,272 parsed `UnifiedParserSchema` slots with realistic prices ranging from free community slots (£0.00) to standard £4.00-£15.00 rates. All postcodes and coordinates have been validated with Postcodes.io.

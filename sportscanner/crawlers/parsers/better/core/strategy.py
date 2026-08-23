@@ -109,7 +109,11 @@ class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
                             slot.ends_at.format_24_hour, "%H:%M"
                         ).time(),
                         date=raw_response.requestMetadata.metadata.date,
-                        price=slot.price.formatted_amount,
+                        price=(
+                            slot.price.formatted_amount
+                            if (slot.price and slot.price.formatted_amount)
+                            else "£0.00"
+                        ),
                         spaces=slot.spaces,
                         composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
                         last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,

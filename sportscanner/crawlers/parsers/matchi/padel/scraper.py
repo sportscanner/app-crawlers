@@ -52,9 +52,7 @@ class MatchiPadelCrawler(BaseCrawler):
         sports_venues: List[SportsVenue],
         dates: List[date],
     ) -> List[UnifiedParserSchema]:
-        venue_by_slug: Dict[str, SportsVenue] = {
-            v.slug: v for v in sports_venues
-        }
+        venue_by_slug: Dict[str, SportsVenue] = {v.slug: v for v in sports_venues}
         logging.info(
             f"Matchi: crawling {len(dates)} dates against "
             f"{len(venue_by_slug)} registered padel venues"
@@ -63,7 +61,9 @@ class MatchiPadelCrawler(BaseCrawler):
         # crawls date-major instead of venue-major), so it needs its own cap:
         # firing all dates x facilities concurrently (previously unbounded) blasted
         # Matchi's WAF with ~100 simultaneous requests and got every one 403'd.
-        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        semaphore = asyncio.Semaphore(
+            settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER
+        )
         async with httpxAsyncClient() as client:
             tasks = [
                 self._fetcher.crawl_date(client, d, venue_by_slug, semaphore)
@@ -88,12 +88,14 @@ class MatchiPadelCrawler(BaseCrawler):
         return self._crawl_async(sports_venues, dates)
 
 
-def coroutines(search_dates: List[date]) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
-    """Entry point for pipeline.py — returns a coroutine suitable for SportscannerCrawlerBot."""
+def coroutines(
+    search_dates: List[date],
+) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+    """Entry point for pipeline.py: returns a coroutine suitable for SportscannerCrawlerBot."""
     crawler = MatchiPadelCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="padel")
     if not venues:
-        logging.warning("Matchi: no padel venues found in DB — skipping")
+        logging.warning("Matchi: no padel venues found in DB, skipping")
 
         async def _empty():
             return []
@@ -108,7 +110,9 @@ if __name__ == "__main__":
     crawler = MatchiPadelCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="padel")
     if not venues:
-        print("[yellow]No padel venues in DB.  Add entries to venues.json first.[/yellow]")
+        print(
+            "[yellow]No padel venues in DB.  Add entries to venues.json first.[/yellow]"
+        )
     else:
         results = asyncio.run(crawler._crawl_async(venues, _dates))
         print(f"Results ({len(results)} slots):")

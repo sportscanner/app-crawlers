@@ -73,14 +73,14 @@ class MatchiTennisCrawler(BaseCrawler):
         sports_venues: List[SportsVenue],
         dates: List[date],
     ) -> List[UnifiedParserSchema]:
-        venue_by_slug: Dict[str, SportsVenue] = {
-            v.slug: v for v in sports_venues
-        }
+        venue_by_slug: Dict[str, SportsVenue] = {v.slug: v for v in sports_venues}
         logging.info(
             f"Matchi: crawling {len(dates)} dates against "
             f"{len(venue_by_slug)} registered tennis venues"
         )
-        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        semaphore = asyncio.Semaphore(
+            settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER
+        )
         async with httpxAsyncClient() as client:
             tasks = [
                 self._fetcher.crawl_date(client, d, venue_by_slug, semaphore)
@@ -105,12 +105,14 @@ class MatchiTennisCrawler(BaseCrawler):
         return self._crawl_async(sports_venues, dates)
 
 
-def coroutines(search_dates: List[date]) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
-    """Entry point for pipeline.py — returns a coroutine suitable for SportscannerCrawlerBot."""
+def coroutines(
+    search_dates: List[date],
+) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+    """Entry point for pipeline.py: returns a coroutine suitable for SportscannerCrawlerBot."""
     crawler = MatchiTennisCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="tennis")
     if not venues:
-        logging.warning("Matchi: no tennis venues found in DB — skipping")
+        logging.warning("Matchi: no tennis venues found in DB, skipping")
 
         async def _empty():
             return []
@@ -125,7 +127,9 @@ if __name__ == "__main__":
     crawler = MatchiTennisCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="tennis")
     if not venues:
-        print("[yellow]No tennis venues in DB.  Add entries to venues.json first.[/yellow]")
+        print(
+            "[yellow]No tennis venues in DB.  Add entries to venues.json first.[/yellow]"
+        )
     else:
         results = asyncio.run(crawler._crawl_async(venues, _dates))
         print(f"Results ({len(results)} slots):")

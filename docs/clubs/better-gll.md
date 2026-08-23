@@ -1,6 +1,6 @@
 # Better / GLL (Greenwich Leisure Limited)
 
-35+ venues, `https://www.better.org.uk`. Badminton, squash, pickleball, tennis.
+52 London venues, `https://www.better.org.uk`. Badminton (43 venues), squash (14 venues), pickleball (40 venues), tennis (15 venues).
 Code: `sportscanner/crawlers/parsers/better/`.
 
 ## API shape
@@ -15,50 +15,50 @@ the general fallback mechanism). Adding a venue quirk is a one-line entry in
 `_VENUE_OVERRIDES`, not an `if` branch in the request builder.
 
 Headers: `origin: https://bookings.better.org.uk`, a matching `referer`, and a
-desktop Chrome `user-agent`. No auth token needed — this is a public API.
+desktop Chrome `user-agent`. No auth token needed: this is a public API.
 
-## The v1 → v2 migration
+## The v1 to v2 migration
 
-Better is mid-rollout of a `/v2` times endpoint, done **per venue and per
-activity**, not globally. A venue can be on v2 for badminton and still on v1 for
-squash. This is why every sport's default is a `(primary, fallback)` pair rather
-than a single slug — whichever version the venue hasn't migrated to yet answers
+Better is mid-rollout of a `/v2` times endpoint, done per venue and per
+activity, not globally. A venue can be on v2 for badminton and still on v1 for
+squash. This is why every sport default is a `(primary, fallback)` pair rather
+than a single slug: whichever version the venue has not migrated to yet answers
 with an HTTP error (422 or 404), and the loop falls back to the other.
 
 **Badminton and squash**: only the version suffix changes, the slug name stays
-fixed (`badminton-40min` → `badminton-40min/v2`; squash's name also changes,
-`squash-court-40min` (v1) → `squash-40min` (v2)).
+fixed (`badminton-40min` to `badminton-40min/v2`; squash name also changes,
+`squash-court-40min` (v1) to `squash-40min` (v2)).
 
 **Pickleball is the one where the slug spelling itself changes between versions**,
 not just the suffix:
 
-- v1 (legacy): plural, no version suffix — `pickleball-40mins`, `pickleball-60mins`
-- v2 (migrated): singular, with suffix — `pickleball-40min/v2`, `pickleball-60min/v2`
+- v1 (legacy): plural, no version suffix: `pickleball-40mins`, `pickleball-60mins`
+- v2 (migrated): singular, with suffix: `pickleball-40min/v2`, `pickleball-60min/v2`
 
 Confirmed v1-only (legacy) venues, as of July 2026: `score-leisure-centre`,
 `barking-sporthouse-and-gym`, `waltham-forest-feel-good-centre`,
 `walthamstow-leisure-centre`, `leytonstone-leisure-centre`. v2 answers these with a
 404/500.
 
-The rest of the pickleball roster (confirmed 17 of 22 configured venues,
+The rest of the pickleball roster (over 35 London venues,
 including `lee-valley-velopark`, `woolwich-waves-leisure-centre`,
-`the-plumstead-centre`) have already migrated and are v2-only. v1 does **not**
-404 cleanly for them — it answers with Better's generic
+`the-plumstead-centre`) have already migrated and are v2-only. v1 does not
+404 cleanly for them: it answers with Better generic
 `"The date should be within the valid days you are able to view."` 422, which
-reads exactly like "this venue doesn't offer this activity" rather than "wrong
-slug". That ambiguity is what let this sit broken for a while: the fallback
-existed, but its slug was still plural (`pickleball-40mins/v2`), which doesn't
+reads like "this venue does not offer this activity" rather than "wrong
+slug". That ambiguity is what let this sit broken earlier: the fallback
+existed, but its slug was still plural (`pickleball-40mins/v2`), which does not
 exist either way and 500s. Fixed by making the fallback singular
-(`pickleball-40min/v2`) — see `_DEFAULTS["pickleball"]` in `activities.py`.
+(`pickleball-40min/v2`): see `_DEFAULTS["pickleball"]` in `activities.py`.
 
-**Lesson**: a 4xx from this API is not reliable evidence that an activity/duration
-genuinely isn't offered. Check the venue's actual category listing (below) before
+Lesson: a 4xx from this API is not reliable evidence that an activity/duration
+genuinely is not offered. Check the venue actual category listing (below) before
 concluding that.
 
-## Discovering a venue's real activity slugs
+## Discovering a venue real activity slugs
 
 `GET /api/activities/venue/{slug}/categories/{sport}` lists what a venue actually
-has under that sport category, including children that don't follow the standard
+has under that sport category, including children that do not follow the standard
 duration-based naming:
 
 ```
@@ -67,100 +67,95 @@ curl 'https://better-admin.org.uk/api/activities/venue/shene-sports-and-fitness-
 
 returns a tree with `slug`, `v2_slug`, `v1_slug` (null if the activity is v2-only),
 and `v2_type` (`"resources"` for normal court-booking activities, `"ticketed"` for
-fixed-session/drop-in activities — these two types likely have different response
-shapes; see the Britannia/Shene section below). Use this before guessing
-40min/60min variants by hand — it's how the two venue overrides below were found.
+fixed-session/drop-in activities). Use this before guessing 40min/60min variants by hand.
+
+`GET /api/activities/venues` returns all UK venues managed by Better with official slugs,
+postcodes, coordinates, and metadata.
 
 ## Venue overrides (`_VENUE_OVERRIDES`)
 
-- **`shene-sports-and-fitness-centre` / badminton**: doesn't split into 40/60min —
-  exposes a single `badminton-court` activity (v2 only, v1 404s) of mixed
-  durations.
-- **`shene-sports-and-fitness-centre` / pickleball**: exposes `pickleball-court`
-  (a normal `"resources"`-type court-booking activity) *and* `pickleball-drop-in`
-  (a `"ticketed"` activity — a different session type). Configured to use
-  `pickleball-court/v2` as primary.
-- **`britannia-leisure-centre` / pickleball**: has *only* `pickleball-drop-in`, no
-  separate court-booking activity at all.
+- **Richmond upon Thames venues** (`shene-sports-and-fitness-centre`, `hampton-sports-and-fitness-centre`,
+  `teddington-sports-centre`, `whitton-sports-and-fitness-centre`):
+  - Badminton: do not split into 40/60min, expose a single `badminton-court/v2` activity.
+  - Pickleball: expose `pickleball-court/v2` (a normal court-booking activity) alongside drop-in sessions.
+  - Squash (`teddington-sports-centre`): runs 45-minute squash sessions (`squash-45min/v2`).
+- **`britannia-leisure-centre` / pickleball**: exposes `pickleball-60min/v2` court booking
+  as well as `pickleball-drop-in/v2`.
+- **Tennis multi-court venues**:
+  - `islington-tennis-centre`: indoor and outdoor courts (`tennis-court-outdoor/v2`, `tennis-court-indoor/v2`).
+  - `lee-valley-hockey-and-tennis-centre`: indoor and outdoor courts (`tennis-court-outdoor/v2`, `tennis-court-indoor/v2`).
+  - `sutton-sports-village`: clay, dome, and outdoor courts (`tennis-court-clay/v2`, `tennis-court-dome/v2`, `tennis-court-outdoor/v2`).
 
-The `pickleball-drop-in` (`"ticketed"`) response shape hasn't actually been
-validated against real data — both venues had zero scheduled sessions in the
-window checked (July 2026), so the endpoint returns `{"data": []}` either way. If
-`pickleball-drop-in` ever comes back non-empty and parses wrong (or throws), start
-here: `BetterApiResponseSchema` in `better/core/schema.py` was written against the
-`"resources"` shape, and a ticketed session may not look the same.
+## Squash coverage (14 London venues)
 
-## Known venue-level gaps (not crawler bugs)
+Squash availability verified live across London Better centres:
+- Britannia Leisure Centre
+- Canons Leisure Centre
+- Clissold Leisure Centre
+- Crystal Palace National Sports Centre
+- Finsbury Leisure Centre
+- Hammersmith Fitness and Squash Centre
+- Ironmonger Row Baths
+- Kensington Leisure Centre
+- Oasis Sports Centre
+- Sobell Leisure Centre
+- Swiss Cottage Leisure Centre
+- Teddington Sports Centre (45-minute court bookings)
+- Walthamstow Leisure Centre
+- Woolwich Waves (formerly Waterfront Leisure Centre)
 
-- **Finsbury Leisure Centre**: was configured for pickleball in `venues.json` but
-  Better's own category listing for it (`/categories`) doesn't include pickleball
-  at all — the venue genuinely doesn't offer it. Removed from `venues.json` and
-  patched directly in prod `sportsvenue.sports` (July 2026). If it starts
-  appearing in Better's category list later, re-add it.
-- **Kings Hall Leisure Centre** (badminton): `GET /categories` for this venue
-  returns `{"data": []}` — Better isn't exposing *any* bookable category for it
-  right now, badminton or otherwise. Likely closed/suspended on Better's side,
-  not something fixable in our config. Re-check periodically; if it comes back
-  it'll need no code change, since the standard badminton slug pair already
-  covers it.
+## Tennis coverage (15 London venues)
 
-## Tennis (added August 2026)
+Discovered via `GET /api/activities/venue/{slug}/categories/tennis` (requires `origin`/`referer` headers):
+- `barnet-burnt-oak-leisure-centre` (outdoor)
+- `britannia-leisure-centre` (outdoor)
+- `charlton-lido` (outdoor)
+- `crystal-palace-leisure-centre` (outdoor)
+- `gunnersbury-park-sports-hub` (outdoor)
+- `hackney-parks` (outdoor courts across Hackney parks)
+- `hampton-sports-and-fitness-centre` (outdoor)
+- `islington-tennis-centre` (indoor + outdoor)
+- `lee-valley-hockey-and-tennis-centre` (indoor + outdoor)
+- `new-barnet-leisure-centre` (outdoor)
+- `queensmead-sports-centre` (outdoor)
+- `sutton-sports-village` (clay, dome, outdoor)
+- `teddington-sports-centre` (outdoor)
+- `waltham-forest-feel-good-centre` (outdoor)
+- `whitton-sports-and-fitness-centre` (outdoor)
 
-Discovered via `GET /api/activities/venue/{slug}/categories/tennis` (the same
-discovery endpoint documented above), which requires the `origin`/`referer`
-headers already used elsewhere in this crawler. **Without those headers this
-endpoint 404s even for sports that do exist** — that's what made tennis
-coverage look like a dead end on first pass; adding them unlocked real
-results.
+Note: Swiss Cottage, Kensington, and Clissold leisure centres carry generic marketing copy
+for tennis lessons on their public web pages, but none has a bookable tennis category via the API.
 
-The categories response includes both a UUID (`id`/`v2Id`) and a human
-`v2_slug` per activity — **the UUID is a red herring for the `/times` URL**:
-it 404s. The slug is what actually works, same convention as every other
-sport here. First implementation used the UUID directly and got 0 slots
-everywhere; fixed by switching to `tennis-court-outdoor/v2` (confirmed live,
-real priced slot data). Islington Tennis Centre additionally has
-`tennis-court-indoor/v2` — both slugs are queried for that venue via a
-`_VENUE_OVERRIDES[("tennis", "islington-tennis-centre")]` entry.
+## London venue expansion (August 2026)
 
-**Verified-live tennis venues** (via the categories endpoint, not marketing
-copy — see caveat below): `britannia-leisure-centre`,
-`crystal-palace-leisure-centre`, `queensmead-sports-centre`,
-`islington-tennis-centre` (richest offering, indoor+outdoor, added as a
-net-new venue not previously tracked for any sport), `gunnersbury-park-sports-hub`.
+Full sweep across all 256 Better/GLL UK venues filtered to Greater London boroughs:
+- 52 total London Better venues tracked (36 existing in `venues.json` updated with expanded sports, 16 net-new London venues added).
+- Sports breakdown: 43 badminton venues, 14 squash venues, 40 pickleball venues, 15 tennis venues.
+- 16 net-new London venues:
+  - `botwell-green-leisure-centre` (Hillingdon): badminton, pickleball
+  - `charlton-lido` (Greenwich): tennis
+  - `edmonton-leisure-centre` (Enfield): badminton, pickleball
+  - `hackney-parks` (Hackney): tennis
+  - `hampton-sports-and-fitness-centre` (Richmond): badminton, pickleball, tennis
+  - `hillingdon-sports-leisure-centre` (Hillingdon): badminton, pickleball
+  - `lee-valley-hockey-and-tennis-centre` (Waltham Forest / Newham): tennis
+  - `monks-hill-sports-centre` (Croydon): badminton, pickleball
+  - `new-barnet-leisure-centre` (Barnet): tennis
+  - `peter-may-sports-centre` (Waltham Forest): badminton, pickleball
+  - `platinum-jubilee-leisure-centre` (Hillingdon): badminton, pickleball
+  - `southbury-leisure-centre` (Enfield): badminton, pickleball
+  - `sutton-sports-village` (Sutton): badminton, pickleball, tennis
+  - `teddington-sports-centre` (Richmond): badminton, squash, pickleball, tennis
+  - `waddon-leisure-centre` (Croydon): badminton, pickleball
+  - `whitton-sports-and-fitness-centre` (Richmond): badminton, pickleball, tennis
 
-**Do not trust marketing copy as a tennis-availability signal.** Swiss
-Cottage, Kensington, and Clissold leisure centres all carry identical generic
-"Elevate your game thanks to a range of tennis lessons" boilerplate on their
-public pages, but **none has a real bookable tennis category via the API** —
-this is site-wide filler text, not a venue-specific fact. Clissold had a
-pre-existing `tennis` entry in `venues.json` predating this investigation;
-removed (August 2026) once the live categories check showed it has no real
-tennis category — the marketing copy had evidently been trusted as a signal
-at some earlier point. If Clissold ever does get a bookable tennis category,
-re-add it via the same discovery endpoint, not by re-trusting the marketing
-page.
-
-One known-stale venue: Better no longer operates the Mile End Park site (per
-public search results, transferred to "Be Well in Tower Hamlets" — see
-`tower-hamlets.md`). Do not add tennis there under the Better organisation.
-
-Reuses `BetterApiResponseSchema`/`BetterLeisureResponseParserStrategy`/
-`BetterStyleCrawler` unchanged — tennis's `/times` response has the same
-shape as every other Better activity, so no new schema was needed (unlike
-ClubSpark, which is a genuinely different API).
-
-### Status (added August 2026)
-
-5 venues confirmed via live API discovery, not yet run end-to-end against
-production. Full 35-venue roster has not been swept for tennis yet — only
-the venues explicitly probed in this pass are confirmed either way; treat
-absence from the list above as "not yet checked," not "confirmed no tennis."
+All venue additions and updates are output in `reports/venue-fragments/better.json`.
 
 ## Design decisions worth preserving
 
 - The `(sport, venue_slug) -> overrides` dict structure in `activities.py` exists
   specifically so a venue quirk is a one-line data entry, not a branch in the
   request builder. Keep new quirks there.
-- Don't trust a 4xx from this API as "activity not offered" without checking
-  `/categories` first — Better's error message is identical whether the slug is
-  wrong or the activity genuinely isn't offered.
+- Do not trust a 4xx from this API as "activity not offered" without checking
+  `/categories` first: Better error message is identical whether the slug is
+  wrong or the activity genuinely is not offered.

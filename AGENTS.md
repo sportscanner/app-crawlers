@@ -272,6 +272,12 @@ every fix made to existing providers that same month. Work through these in
 order — later steps assume earlier ones are done.
 
 ### 1. Research the booking platform before writing any code
+- **Public-only scraping is a hard scope rule.** SportScanner only integrates
+  providers whose slot availability can be viewed anonymously, without any
+  account or login. If a venue or platform gates availability behind a sign-in
+  (even a free one), stop and flag it as out of scope — do not create accounts,
+  do not scrape authenticated endpoints, and do not try to route around it.
+  This applies to every step below: research, verification, and implementation.
 - Find the venue's actual booking flow (not just its info page) and identify
   the underlying vendor. Check known platforms first before assuming it's
   bespoke: **Better/GLL** (`better-admin.org.uk`), **Gladstone** (either
