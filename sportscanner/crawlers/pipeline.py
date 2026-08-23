@@ -10,37 +10,115 @@ from rich import print
 from sportscanner.crawlers.helpers import SportscannerCrawlerBot
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 
-from sportscanner.crawlers.parsers.better.badminton.scraper import coroutines as BetterLeisureBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.activelambeth.badminton.scraper import coroutines as ActiveLambethBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.citysports.badminton.scraper import coroutines as CitySportsBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.everyoneactive.badminton.scraper import coroutines as EveryoneActiveBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import coroutines as TowerHamletsBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import coroutines as SouthwarkLeisureBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.haringey.badminton.scraper import coroutines as HaringeyCouncilBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.uelsportsdock.badminton.scraper import coroutines as UELSportsDockBadmintonScraperCoroutines
-from sportscanner.crawlers.parsers.placesleisure.badminton.scraper import coroutines as PlacesLeisureBadmintonScraperCoroutines
+from sportscanner.crawlers.parsers.better.badminton.scraper import (
+    coroutines as BetterLeisureBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.activelambeth.badminton.scraper import (
+    coroutines as ActiveLambethBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.citysports.badminton.scraper import (
+    coroutines as CitySportsBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.everyoneactive.badminton.scraper import (
+    coroutines as EveryoneActiveBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.towerhamlets.badminton.scraper import (
+    coroutines as TowerHamletsBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.southwarkleisure.badminton.scraper import (
+    coroutines as SouthwarkLeisureBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.haringey.badminton.scraper import (
+    coroutines as HaringeyCouncilBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.uelsportsdock.badminton.scraper import (
+    coroutines as UELSportsDockBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.placesleisure.badminton.scraper import (
+    coroutines as PlacesLeisureBadmintonScraperCoroutines,
+)
 
-from sportscanner.crawlers.parsers.better.squash.scraper import coroutines as BetterLeisureSquashScraperCoroutines
-from sportscanner.crawlers.parsers.activelambeth.squash.scraper import coroutines as ActiveLambethSquashScraperCoroutines
+from sportscanner.crawlers.parsers.better.squash.scraper import (
+    coroutines as BetterLeisureSquashScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.activelambeth.squash.scraper import (
+    coroutines as ActiveLambethSquashScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.everyoneactive.squash.scraper import (
+    coroutines as EveryoneActiveSquashScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.visionrcl.squash.scraper import (
+    coroutines as VisionRclSquashScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.mytimeactive.squash.scraper import (
+    coroutines as MytimeActiveSquashScraperCoroutines,
+)
 
-from sportscanner.crawlers.parsers.better.pickleball.scraper import coroutines as BetterLeisurePickleballScraperCoroutines
-from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import coroutines as SouthwarkLeisurePickleballScraperCoroutines
-from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import coroutines as DecathlonPickleballScraperCoroutines
-from sportscanner.crawlers.parsers.placesleisure.pickleball.scraper import coroutines as PlacesLeisurePickleballScraperCoroutines
+from sportscanner.crawlers.parsers.better.pickleball.scraper import (
+    coroutines as BetterLeisurePickleballScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.southwarkleisure.pickleball.scraper import (
+    coroutines as SouthwarkLeisurePickleballScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import (
+    coroutines as DecathlonPickleballScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.placesleisure.pickleball.scraper import (
+    coroutines as PlacesLeisurePickleballScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.playtomic.pickleball.scraper import (
+    coroutines as PlaytomicPickleballScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.courtreserve.pickleball.scraper import (
+    coroutines as CourtReservePickleballScraperCoroutines,
+)
 
-from sportscanner.crawlers.parsers.matchi.padel.scraper import coroutines as MatchiPadelScraperCoroutines
-from sportscanner.crawlers.parsers.playtomic.padel.scraper import coroutines as PlaytomicPadelScraperCoroutines
+from sportscanner.crawlers.parsers.matchi.padel.scraper import (
+    coroutines as MatchiPadelScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.playtomic.padel.scraper import (
+    coroutines as PlaytomicPadelScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.padelmates.padel.scraper import (
+    coroutines as PadelMatesPadelScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.stratfordpadel.padel.scraper import (
+    coroutines as StratfordPadelScraperCoroutines,
+)
 
-from sportscanner.crawlers.parsers.clubspark.tennis.scraper import coroutines as ClubSparkTennisScraperCoroutines
-from sportscanner.crawlers.parsers.better.tennis.scraper import coroutines as BetterLeisureTennisScraperCoroutines
-from sportscanner.crawlers.parsers.playtomic.tennis.scraper import coroutines as PlaytomicTennisScraperCoroutines
-from sportscanner.crawlers.parsers.matchi.tennis.scraper import coroutines as MatchiTennisScraperCoroutines
+from sportscanner.crawlers.parsers.clubspark.tennis.scraper import (
+    coroutines as ClubSparkTennisScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.better.tennis.scraper import (
+    coroutines as BetterLeisureTennisScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.playtomic.tennis.scraper import (
+    coroutines as PlaytomicTennisScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.matchi.tennis.scraper import (
+    coroutines as MatchiTennisScraperCoroutines,
+)
+
+from sportscanner.crawlers.parsers.visionrcl.badminton.scraper import (
+    coroutines as VisionRclBadmintonScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.mytimeactive.badminton.scraper import (
+    coroutines as MytimeActiveBadmintonScraperCoroutines,
+)
 
 
 from sportscanner.storage.postgres.database import (
-insert_records_to_table, truncate_by_composite_key_and_reload, delete_past_slots
+    insert_records_to_table,
+    truncate_by_composite_key_and_reload,
+    delete_past_slots,
 )
-from sportscanner.storage.postgres.tables import BadmintonMasterTable, PickleballMasterTable, SquashMasterTable, PadelMasterTable, TennisMasterTable
+from sportscanner.storage.postgres.tables import (
+    BadmintonMasterTable,
+    PickleballMasterTable,
+    SquashMasterTable,
+    PadelMasterTable,
+    TennisMasterTable,
+)
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
 
@@ -71,29 +149,43 @@ def badminton_scraping_pipeline():
             SouthwarkLeisureBadmintonScraperCoroutines(dates),
             HaringeyCouncilBadmintonScraperCoroutines(dates),
             UELSportsDockBadmintonScraperCoroutines(dates),
-            PlacesLeisureBadmintonScraperCoroutines(dates)
+            PlacesLeisureBadmintonScraperCoroutines(dates),
+            VisionRclBadmintonScraperCoroutines(dates),
+            MytimeActiveBadmintonScraperCoroutines(dates),
         )
     )
     responses_for_reload: List[UnifiedParserSchema] = asyncio.run(
-        SportscannerCrawlerBot(
-            TowerHamletsBadmintonScraperCoroutines(dates)
-        )
+        SportscannerCrawlerBot(TowerHamletsBadmintonScraperCoroutines(dates))
     )
-    
+
     # Flatten nested list structure and remove empty or failed responses
-    flattened_responses_for_upsertion: List[UnifiedParserSchema] = flatten_responses(responses_for_upsertion)
-    flattened_responses_for_reload: List[UnifiedParserSchema] = flatten_responses(responses_for_reload)
+    flattened_responses_for_upsertion: List[UnifiedParserSchema] = flatten_responses(
+        responses_for_upsertion
+    )
+    flattened_responses_for_reload: List[UnifiedParserSchema] = flatten_responses(
+        responses_for_reload
+    )
 
     # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
     delete_past_slots(BadmintonMasterTable)
 
     if flattened_responses_for_upsertion or flattened_responses_for_reload:
-        logging.success(f"Total slots collected for Upsert: {len(flattened_responses_for_upsertion)}")
-        logging.success(f"Total slots collected for Reload: {len(flattened_responses_for_reload)}")
-        logging.info(f"Upserting all data to master table: {BadmintonMasterTable.__tablename__}")
+        logging.success(
+            f"Total slots collected for Upsert: {len(flattened_responses_for_upsertion)}"
+        )
+        logging.success(
+            f"Total slots collected for Reload: {len(flattened_responses_for_reload)}"
+        )
+        logging.info(
+            f"Upserting all data to master table: {BadmintonMasterTable.__tablename__}"
+        )
         insert_records_to_table(flattened_responses_for_upsertion, BadmintonMasterTable)
-        logging.info(f"Reloading all data to master table: {BadmintonMasterTable.__tablename__}")
-        truncate_by_composite_key_and_reload(flattened_responses_for_reload, BadmintonMasterTable)
+        logging.info(
+            f"Reloading all data to master table: {BadmintonMasterTable.__tablename__}"
+        )
+        truncate_by_composite_key_and_reload(
+            flattened_responses_for_reload, BadmintonMasterTable
+        )
         return True
     else:
         logging.warning(
@@ -112,6 +204,9 @@ def squash_scraping_pipeline():
         SportscannerCrawlerBot(
             BetterLeisureSquashScraperCoroutines(dates),
             ActiveLambethSquashScraperCoroutines(dates),
+            EveryoneActiveSquashScraperCoroutines(dates),
+            VisionRclSquashScraperCoroutines(dates),
+            MytimeActiveSquashScraperCoroutines(dates),
         )
     )
     # Flatten nested list structure and remove empty or failed responses
@@ -120,7 +215,9 @@ def squash_scraping_pipeline():
     delete_past_slots(SquashMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        logging.info(f"Upserting all data to master table: {SquashMasterTable.__tablename__}")
+        logging.info(
+            f"Upserting all data to master table: {SquashMasterTable.__tablename__}"
+        )
         insert_records_to_table(all_slots, SquashMasterTable)
         return True
     else:
@@ -141,7 +238,9 @@ def pickleball_scraping_pipeline():
             BetterLeisurePickleballScraperCoroutines(dates),
             SouthwarkLeisurePickleballScraperCoroutines(dates),
             DecathlonPickleballScraperCoroutines(dates),
-            PlacesLeisurePickleballScraperCoroutines(dates)
+            PlacesLeisurePickleballScraperCoroutines(dates),
+            PlaytomicPickleballScraperCoroutines(dates),
+            CourtReservePickleballScraperCoroutines(dates),
         )
     )
     # Flatten nested list structure and remove empty or failed responses
@@ -150,7 +249,9 @@ def pickleball_scraping_pipeline():
     delete_past_slots(PickleballMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        logging.info(f"Upserting all data to master table: {PickleballMasterTable.__tablename__}")
+        logging.info(
+            f"Upserting all data to master table: {PickleballMasterTable.__tablename__}"
+        )
         insert_records_to_table(all_slots, PickleballMasterTable)
         return True
     else:
@@ -170,6 +271,8 @@ def padel_scraping_pipeline():
         SportscannerCrawlerBot(
             MatchiPadelScraperCoroutines(dates),
             PlaytomicPadelScraperCoroutines(dates),
+            PadelMatesPadelScraperCoroutines(dates),
+            StratfordPadelScraperCoroutines(dates),
         )
     )
     all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
@@ -177,7 +280,9 @@ def padel_scraping_pipeline():
     delete_past_slots(PadelMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        logging.info(f"Upserting all data to master table: {PadelMasterTable.__tablename__}")
+        logging.info(
+            f"Upserting all data to master table: {PadelMasterTable.__tablename__}"
+        )
         insert_records_to_table(all_slots, PadelMasterTable)
         return True
     else:
@@ -206,7 +311,9 @@ def tennis_scraping_pipeline():
     delete_past_slots(TennisMasterTable)
     if all_slots:
         logging.success(f"Total slots collected: {len(all_slots)}")
-        logging.info(f"Upserting all data to master table: {TennisMasterTable.__tablename__}")
+        logging.info(
+            f"Upserting all data to master table: {TennisMasterTable.__tablename__}"
+        )
         insert_records_to_table(all_slots, TennisMasterTable)
         return True
     else:
@@ -224,7 +331,7 @@ if __name__ == "__main__":
         "--task",
         choices=["badminton", "squash", "pickleball", "padel", "tennis", "all"],
         required=False,
-        help="Which pipeline to run"
+        help="Which pipeline to run",
     )
     args = parser.parse_args()
 

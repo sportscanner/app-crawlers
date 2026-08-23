@@ -19,7 +19,9 @@ from datetime import date, datetime, timedelta
 from typing import Any, Coroutine, List, Optional
 
 from sportscanner.crawlers.helpers import override
-from sportscanner.crawlers.parsers.clubspark.core.schema import ClubSparkVenueSessionsResponse
+from sportscanner.crawlers.parsers.clubspark.core.schema import (
+    ClubSparkVenueSessionsResponse,
+)
 from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
     AbstractResponseParserStrategy,
@@ -43,6 +45,15 @@ HEADERS = {
         "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
 }
+
+
+def referer_for_slug(slug: str) -> str:
+    # GetVenueSessions 403s (Cloudflare bot management) unless the request
+    # carries a Referer from the venue's own booking page -- confirmed live
+    # August 2026: identical request without Referer gets 403, with it gets
+    # 200. This was almost certainly the real cause of the intermittent
+    # whole-run 403s previously attributed purely to IP reputation.
+    return f"{CLUBSPARK_ORGANISATION_WEBSITE}/{slug}/Booking/BookByDate"
 
 
 class ClubSparkTennisRequestStrategy(AbstractRequestStrategy):
@@ -94,9 +105,17 @@ class ClubSparkTennisResponseParserStrategy(AbstractResponseParserStrategy):
                 for session in day.Sessions:
                     if session.Category != BOOKABLE_CATEGORY:
                         continue
-                    starting_time = (datetime.min + timedelta(minutes=session.StartTime)).time()
-                    ending_time = (datetime.min + timedelta(minutes=session.EndTime)).time()
-                    price = f"£{session.CourtCost:.2f}" if session.CourtCost is not None else "N/A"
+                    starting_time = (
+                        datetime.min + timedelta(minutes=session.StartTime)
+                    ).time()
+                    ending_time = (
+                        datetime.min + timedelta(minutes=session.EndTime)
+                    ).time()
+                    price = (
+                        f"£{session.CourtCost:.2f}"
+                        if session.CourtCost is not None
+                        else "N/A"
+                    )
                     results.append(
                         UnifiedParserSchema(
                             category="Tennis",

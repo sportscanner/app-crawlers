@@ -47,7 +47,9 @@ from rich import print
 
 class PlaytomicTennisCrawler(BaseCrawler):
     def __init__(self):
-        self._fetcher = PlaytomicAvailabilityFetcher(sport_id=TENNIS_SPORT_ID, category="Tennis")
+        self._fetcher = PlaytomicAvailabilityFetcher(
+            sport_id=TENNIS_SPORT_ID, category="Tennis"
+        )
         super().__init__(
             request_strategy=PlaytomicTennisRequestStrategy(),
             response_parser_strategy=PlaytomicResponseParserStrategy(),
@@ -80,8 +82,12 @@ class PlaytomicTennisCrawler(BaseCrawler):
             logging.warning("Playtomic: no venues with known tenant_ids — aborting")
             return []
 
-        logging.info(f"Playtomic: fetching tennis availability for {len(matched)} venues × {len(dates)} dates")
-        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        logging.info(
+            f"Playtomic: fetching tennis availability for {len(matched)} venues × {len(dates)} dates"
+        )
+        semaphore = asyncio.Semaphore(
+            settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER
+        )
         async with httpxAsyncClient() as client:
             tasks = [
                 self._fetcher.fetch_venue_date(client, venue, tenant_id, d, semaphore)
@@ -108,7 +114,9 @@ class PlaytomicTennisCrawler(BaseCrawler):
         return self._crawl_async(sports_venues, dates)
 
 
-def coroutines(search_dates: List[date]) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+def coroutines(
+    search_dates: List[date],
+) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
     """Entry point for pipeline.py — returns a coroutine suitable for SportscannerCrawlerBot."""
     crawler = PlaytomicTennisCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="tennis")
@@ -128,7 +136,9 @@ if __name__ == "__main__":
     crawler = PlaytomicTennisCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="tennis")
     if not venues:
-        print("[yellow]No tennis venues in DB.  Add entries to venues.json first.[/yellow]")
+        print(
+            "[yellow]No tennis venues in DB.  Add entries to venues.json first.[/yellow]"
+        )
     else:
         results = asyncio.run(crawler._crawl_async(venues, _dates))
         print(f"Results ({len(results)} slots):")

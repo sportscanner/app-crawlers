@@ -2,7 +2,7 @@
 Matchi strategy implementations.
 
 The crawler fetches GET /book/listSlots?facility={id}&date={date}&sport=5 for each
-known venue.  This is the mobile-view AJAX endpoint — it returns HTML with the same
+known venue.  This is the mobile-view AJAX endpoint: it returns HTML with the same
 btn-slot / collapse-panel structure but for a single facility only.  Timestamps are
 true Unix UTC milliseconds, converted to London local time via ZoneInfo.
 
@@ -50,19 +50,16 @@ from sportscanner.logger import logging
 
 MATCHI_ORGANISATION_WEBSITE = "https://www.matchi.se"
 PADEL_SPORT_ID = 5
-# Confirmed valid from live page source (sport-picker markup on real Matchi
-# tennis venues: Frindsbury Tennis and Padel Club, Putney Lawn Tennis Club)
-# and behaviourally (sport=1/2 both return the normal "not available" HTML
-# fragment; sport=99 breaks the response format entirely) -- but neither
-# venue tried had online tennis booking enabled/open to guests, so this has
-# not yet been observed returning populated slots. See docs/clubs/matchi.md.
+# Confirmed valid from live page source and confirmed live with populated slots
+# at Down Hall Hotel Spa & Estate (facility 1313).
 TENNIS_SPORT_ID = 1
 
 # Matchi facility IDs are sport-specific per venue (unlike the shared
 # SLUG_TO_FACILITY_ID used for padel), so tennis gets its own map.
 TENNIS_SLUG_TO_FACILITY_ID: Dict[str, int] = {
-    "frindsburytennisandpadel": 2865,
+    "frindsburytennisandpadelclub": 2865,
     "putneylawntennisclub": 2052,
+    "downhallhotel": 1313,
 }
 
 # Matchi's crawl bypasses BaseCrawler's per-provider semaphore (see
@@ -80,23 +77,35 @@ _HEADERS = {
 }
 
 # Matchi's backend encodes UK venue slot times in Stockholm local time (CEST/CET).
-# Stockholm is always UTC+1 ahead of London — extracting the Stockholm hour/minute
+# Stockholm is always UTC+1 ahead of London: extracting the Stockholm hour/minute
 # directly gives the time as Matchi intends it (and as shown on the Matchi website).
 _STOCKHOLM_TZ = ZoneInfo("Europe/Stockholm")
 
 # Stable slug → numeric facility ID mapping.
 # To find a facilityId: visit matchi.se/facilities/{slug} and search the inline JS for facilityId=<n>.
 SLUG_TO_FACILITY_ID: Dict[str, int] = {
-    "game4padelgll":              2636,
-    "towerhillterrace":           2996,
-    "londonbridgecity":           3041,
+    "game4padelgll": 2636,
+    "towerhillterrace": 2996,
+    "londonbridgecity": 3041,
     "stpaulscathedralchurchyard": 2995,
-    "g4pvauxhallpadelyard":       3011,
-    "game4padelcrystalpalace":    2368,
-    "westhertssportsclub":        3178,
-    "cltc":                       2466,
-    "g4pthepadelyard":            2322,
-    "game4padelparkside":         2573,
+    "g4pvauxhallpadelyard": 3011,
+    "game4padelcrystalpalace": 2368,
+    "westhertssportsclub": 3178,
+    "cltc": 2466,
+    "g4pthepadelyard": 2322,
+    "game4padelparkside": 2573,
+    "padelunitedbushey": 2188,
+    "game4padelheathrow": 2370,
+    "game4padelbroxbourne": 1718,
+    "game4padelgosling": 2369,
+    "game4padelchesham": 2438,
+    "brentwoodpadeclub": 2706,
+    "eppingandongarpadel": 3182,
+    "forestsmashpadel": 3173,
+    "downhallhotel": 1313,
+    "bsltc": 2584,
+    "countrypadelco": 3043,
+    "frindsburytennisandpadelclub": 2865,
 }
 
 
@@ -104,16 +113,19 @@ SLUG_TO_FACILITY_ID: Dict[str, int] = {
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _ms_to_booking_time(timestamp_ms: int):
     """Extract the booking time from a Matchi UTC millisecond timestamp.
 
     Matchi stores UK venue slot times in Stockholm local time (CEST in summer,
     CET in winter).  The Stockholm wall-clock reading matches the time displayed
-    on the Matchi website — using it directly avoids a spurious 1-hour offset
-    that would occur by converting UTC → London (BST), since Stockholm is always
+    on the Matchi website: using it directly avoids a spurious 1-hour offset
+    that would occur by converting UTC -> London (BST), since Stockholm is always
     UTC+1 ahead of London year-round.
     """
-    dt_stockholm = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).astimezone(_STOCKHOLM_TZ)
+    dt_stockholm = datetime.fromtimestamp(
+        timestamp_ms / 1000, tz=timezone.utc
+    ).astimezone(_STOCKHOLM_TZ)
     return dt_stockholm.time().replace(second=0, microsecond=0)
 
 
@@ -185,8 +197,9 @@ def _parse_listslots_html(html_content: str, facility_slug: str) -> List[MatchiS
 # Strategy classes
 # ---------------------------------------------------------------------------
 
+
 class MatchiRequestStrategy(AbstractRequestStrategy):
-    """Stub — Matchi crawler bypasses the standard per-venue request loop."""
+    """Stub: Matchi crawler bypasses the standard per-venue request loop."""
 
     @override
     def generate_request_details(
@@ -210,7 +223,7 @@ class MatchiRequestStrategy(AbstractRequestStrategy):
 
 
 class MatchiTennisRequestStrategy(AbstractRequestStrategy):
-    """Stub — Matchi crawler bypasses the standard per-venue request loop."""
+    """Stub: Matchi crawler bypasses the standard per-venue request loop."""
 
     @override
     def generate_request_details(
@@ -243,7 +256,7 @@ class MatchiResponseParserStrategy(AbstractResponseParserStrategy):
 
 class MatchiSlotFetcher:
     """
-    Not a BaseCrawler strategy — MatchiPadelCrawler/MatchiTennisCrawler override
+    Not a BaseCrawler strategy: MatchiPadelCrawler/MatchiTennisCrawler override
     ScraperCoroutines and call crawl_date() directly (Matchi's endpoint returns
     all venues per date, so the crawl iterates dates rather than the per-venue
     URL loop). `sport_id`/`category`/`facility_ids` are threaded through per
@@ -259,7 +272,9 @@ class MatchiSlotFetcher:
     ):
         self.sport_id = sport_id
         self.category = category
-        self.facility_ids = facility_ids if facility_ids is not None else SLUG_TO_FACILITY_ID
+        self.facility_ids = (
+            facility_ids if facility_ids is not None else SLUG_TO_FACILITY_ID
+        )
         self.default_price = default_price
 
     # -- public API used by MatchiPadelCrawler/MatchiTennisCrawler ------------
@@ -280,7 +295,7 @@ class MatchiSlotFetcher:
         unmatched = [slug for slug in venue_by_slug if slug not in self.facility_ids]
         if unmatched:
             logging.warning(
-                f"Matchi: {len(unmatched)} slug(s) have no facility ID for sport_id={self.sport_id} — "
+                f"Matchi: {len(unmatched)} slug(s) have no facility ID for sport_id={self.sport_id}: "
                 f"add them to the relevant facility-id map: {unmatched}"
             )
 
@@ -350,7 +365,9 @@ class MatchiSlotFetcher:
             if resp is None:
                 return []
         except httpx.HTTPStatusError as exc:
-            logging.error(f"Matchi {slug} HTTP {exc.response.status_code} for {fetch_date}")
+            logging.error(
+                f"Matchi {slug} HTTP {exc.response.status_code} for {fetch_date}"
+            )
             return []
         except Exception as exc:
             logging.error(f"Matchi {slug} failed for {fetch_date}: {exc}")

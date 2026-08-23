@@ -29,15 +29,22 @@ from typing import Any, Coroutine, List
 import httpx
 from rich import print
 
-from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
+from sportscanner.crawlers.anonymize.proxies import (
+    get_with_proxy_fallback_on_403,
+    httpxAsyncClient,
+)
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.clubspark.core.strategy import (
     CLUBSPARK_ORGANISATION_WEBSITE,
     ClubSparkTennisRequestStrategy,
     ClubSparkTennisResponseParserStrategy,
+    referer_for_slug,
 )
 from sportscanner.crawlers.parsers.core.interfaces import BaseCrawler
-from sportscanner.crawlers.parsers.core.schemas import RawResponseData, UnifiedParserSchema
+from sportscanner.crawlers.parsers.core.schemas import (
+    RawResponseData,
+    UnifiedParserSchema,
+)
 from sportscanner.crawlers.parsers.utils import validate_api_response
 from sportscanner.logger import logging
 from sportscanner.storage.postgres.tables import SportsVenue
@@ -68,20 +75,29 @@ class ClubSparkTennisCrawler(BaseCrawler):
         for request_details in request_details_list:
             try:
                 async with semaphore:
-                    response = await client.get(
-                        request_details.url,
+                    response = await get_with_proxy_fallback_on_403(
+                        client=client,
+                        url=request_details.url,
                         params={
                             "resourceID": "",
                             "startDate": start_date.isoformat(),
                             "endDate": end_date.isoformat(),
                             "roleId": "",
                         },
-                        headers=request_details.headers,
+                        headers={
+                            **request_details.headers,
+                            "referer": referer_for_slug(sports_venue.slug),
+                        },
                         timeout=30,
+                        log_label=f"ClubSpark({sports_venue.slug})",
                     )
+                if response is None:
+                    continue
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
-                validated_response = validate_api_response(response, content_type, request_details.url)
+                validated_response = validate_api_response(
+                    response, content_type, request_details.url
+                )
                 if not validated_response:
                     continue
                 raw_data_obj = RawResponseData(
@@ -97,7 +113,9 @@ class ClubSparkTennisCrawler(BaseCrawler):
                     f"-- venue may not offer tennis in this window"
                 )
             except Exception as e:
-                logging.error(f"ClubSpark fetch failed for {sports_venue.slug}: {type(e).__name__}: {e!r}")
+                logging.error(
+                    f"ClubSpark fetch failed for {sports_venue.slug}: {type(e).__name__}: {e!r}"
+                )
         return results
 
     @override
@@ -115,7 +133,9 @@ class ClubSparkTennisCrawler(BaseCrawler):
             f"ClubSpark: crawling {len(sports_venues)} venue(s) for {start_date}..{end_date} "
             f"(one request per venue covering the whole range)"
         )
-        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        semaphore = asyncio.Semaphore(
+            settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER
+        )
         async with httpxAsyncClient() as client:
             tasks = [
                 self._fetch_venue(client, venue, start_date, end_date, semaphore)
@@ -132,7 +152,9 @@ class ClubSparkTennisCrawler(BaseCrawler):
         return all_slots
 
 
-def coroutines(search_dates: List[date]) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+def coroutines(
+    search_dates: List[date],
+) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
     """Entry point for pipeline.py -- returns a coroutine suitable for SportscannerCrawlerBot."""
     crawler = ClubSparkTennisCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="tennis")
@@ -152,7 +174,9 @@ if __name__ == "__main__":
     crawler = ClubSparkTennisCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="tennis")
     if not venues:
-        print("[yellow]No tennis venues in DB for ClubSpark. Add entries to venues.json first.[/yellow]")
+        print(
+            "[yellow]No tennis venues in DB for ClubSpark. Add entries to venues.json first.[/yellow]"
+        )
     else:
         results = asyncio.run(crawler._crawl_async(venues, _dates))
         print(f"Results ({len(results)} slots):")

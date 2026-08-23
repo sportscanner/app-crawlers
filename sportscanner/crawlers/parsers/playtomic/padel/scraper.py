@@ -74,7 +74,9 @@ class PlaytomicPadelCrawler(BaseCrawler):
             logging.warning("Playtomic: no venues with known tenant_ids — aborting")
             return []
 
-        logging.info(f"Playtomic: fetching availability for {len(matched)} venues × {len(dates)} dates")
+        logging.info(
+            f"Playtomic: fetching availability for {len(matched)} venues × {len(dates)} dates"
+        )
         # Playtomic bypasses BaseCrawler's own semaphore-bounded fetch loop (it
         # overrides ScraperCoroutines directly, same as Matchi), so it needs its
         # own cap: venues x dates can be 300+ requests fired in one unbounded
@@ -83,7 +85,9 @@ class PlaytomicPadelCrawler(BaseCrawler):
         # Collective, S3 Padel Brent Cross) even though each responds cleanly to
         # an isolated request - the WAF was rate-limiting the burst, not blocking
         # those venues specifically.
-        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        semaphore = asyncio.Semaphore(
+            settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER
+        )
         async with httpxAsyncClient() as client:
             tasks = [
                 self._fetcher.fetch_venue_date(client, venue, tenant_id, d, semaphore)
@@ -110,7 +114,9 @@ class PlaytomicPadelCrawler(BaseCrawler):
         return self._crawl_async(sports_venues, dates)
 
 
-def coroutines(search_dates: List[date]) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+def coroutines(
+    search_dates: List[date],
+) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
     """Entry point for pipeline.py — returns a coroutine suitable for SportscannerCrawlerBot."""
     crawler = PlaytomicPadelCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="padel")
@@ -130,7 +136,9 @@ if __name__ == "__main__":
     crawler = PlaytomicPadelCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="padel")
     if not venues:
-        print("[yellow]No padel venues in DB.  Add entries to venues.json first.[/yellow]")
+        print(
+            "[yellow]No padel venues in DB.  Add entries to venues.json first.[/yellow]"
+        )
     else:
         results = asyncio.run(crawler._crawl_async(venues, _dates))
         print(f"Results ({len(results)} slots):")
