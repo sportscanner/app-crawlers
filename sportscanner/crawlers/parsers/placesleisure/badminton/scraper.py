@@ -5,8 +5,16 @@ import asyncio
 
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.helpers import override
-from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, AbstractResponseParserStrategy, BaseCrawler
-from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, RawResponseData, UnifiedParserSchema
+from sportscanner.crawlers.parsers.core.interfaces import (
+    AbstractRequestStrategy,
+    AbstractResponseParserStrategy,
+    BaseCrawler,
+)
+from sportscanner.crawlers.parsers.core.schemas import (
+    RequestDetailsWithMetadata,
+    RawResponseData,
+    UnifiedParserSchema,
+)
 from sportscanner.crawlers.parsers.placesleisure.core.strategy import (
     PLACES_LEISURE_ORGANISATION_WEBSITE,
     PlacesLeisureSlotFetcher,
@@ -24,7 +32,9 @@ class _StubRequestStrategy(AbstractRequestStrategy):
     per-date shape). Only exists to satisfy BaseCrawler's constructor."""
 
     @override
-    def generate_request_details(self, sports_venue, fetch_date, token=None) -> List[RequestDetailsWithMetadata]:
+    def generate_request_details(
+        self, sports_venue, fetch_date, token=None
+    ) -> List[RequestDetailsWithMetadata]:
         return []
 
 
@@ -45,18 +55,24 @@ class PlacesLeisureBadmintonCrawler(BaseCrawler):
             response_parser_strategy=_StubResponseParserStrategy(),
             organisation_website=PLACES_LEISURE_ORGANISATION_WEBSITE,
         )
-        self._fetcher = PlacesLeisureSlotFetcher(activity_group="BADMINTON", category="Badminton")
+        self._fetcher = PlacesLeisureSlotFetcher(
+            activity_group="BADMINTON", category="Badminton"
+        )
 
     @override
     def ScraperCoroutines(
-            self, sports_venues: List[SportsVenue], dates: List[date]
+        self, sports_venues: List[SportsVenue], dates: List[date]
     ) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
         return self._crawl_async(sports_venues, dates)
 
     async def _crawl_async(
-            self, sports_venues: List[SportsVenue], dates: List[date]
+        self, sports_venues: List[SportsVenue], dates: List[date]
     ) -> List[UnifiedParserSchema]:
-        matched = [(v, SLUG_TO_SITE_ID[v.slug]) for v in sports_venues if v.slug in SLUG_TO_SITE_ID]
+        matched = [
+            (v, SLUG_TO_SITE_ID[v.slug])
+            for v in sports_venues
+            if v.slug in SLUG_TO_SITE_ID
+        ]
         unmatched = [v.slug for v in sports_venues if v.slug not in SLUG_TO_SITE_ID]
         if unmatched:
             logging.warning(
@@ -67,7 +83,9 @@ class PlacesLeisureBadmintonCrawler(BaseCrawler):
             return []
 
         logging.info(f"Places Leisure: crawling {len(matched)} venue(s) for badminton")
-        semaphore = asyncio.Semaphore(settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER)
+        semaphore = asyncio.Semaphore(
+            settings.CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER
+        )
         async with httpxAsyncClient() as client:
             tasks = [
                 self._fetcher.crawl_venue(client, venue, site_id, dates, semaphore)
@@ -84,7 +102,9 @@ class PlacesLeisureBadmintonCrawler(BaseCrawler):
         return all_slots
 
 
-def coroutines(search_dates: List[date]) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
+def coroutines(
+    search_dates: List[date],
+) -> Coroutine[Any, Any, List[UnifiedParserSchema]]:
     """Entry point for pipeline.py - returns a coroutine suitable for SportscannerCrawlerBot."""
     crawler = PlacesLeisureBadmintonCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="badminton")
@@ -107,7 +127,9 @@ if __name__ == "__main__":
     crawler = PlacesLeisureBadmintonCrawler()
     venues = crawler.get_venues_by_sport_offering(sport="badminton")
     if not venues:
-        print("[yellow]No Places Leisure badminton venues in DB. Add entries to venues.json first.[/yellow]")
+        print(
+            "[yellow]No Places Leisure badminton venues in DB. Add entries to venues.json first.[/yellow]"
+        )
     else:
         results = asyncio.run(crawler._crawl_async(venues, _dates))
         print(f"Results ({len(results)} slots):")

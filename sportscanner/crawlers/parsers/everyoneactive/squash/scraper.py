@@ -15,6 +15,8 @@ import itertools
 import httpx
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClientWithProxyRotation
+from curl_cffi.requests import AsyncSession as CurlAsyncSession
+from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 
 from sportscanner.logger import logging
 
@@ -120,6 +122,47 @@ class EveryoneActiveCrawler(BaseCrawler):
     async def _fetch_with_retry(
         self, request_details: RequestDetailsWithMetadata
     ) -> List[UnifiedParserSchema]:
+        # Stage 1 (free): browser TLS fingerprint via curl_cffi. The AWS WAF in
+        # front of caching.everyoneactive.com may score the handshake as well as
+        # the IP, so this costs nothing and can rescue runner-IP runs without
+        # touching the paid proxy pool at all.
+        try:
+            async with CurlAsyncSession(impersonate="chrome124") as impersonated:
+                response = await impersonated.get(
+                    request_details.url, headers=request_details.headers, timeout=15
+                )
+            if response.status_code not in (403, 429):
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "")
+                validated_response = validate_api_response(
+                    response, content_type, request_details.url
+                )
+                if not validated_response:
+                    return []
+                raw_data_obj = RawResponseData(
+                    content=validated_response,
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    requestMetadata=request_details,
+                )
+                return self.response_parser_strategy.parse(raw_data_obj)
+        except CurlHTTPError as e:
+            status = e.response.status_code if e.response is not None else None
+            if status not in (403, 429):
+                logging.error(
+                    f"EveryoneActive: impersonated fetch failed with HTTP {status} "
+                    f"for {request_details.url}"
+                )
+                return []
+        except Exception as e:
+            logging.error(
+                f"EveryoneActive impersonated fetch failed for {request_details.url}: "
+                f"{type(e).__name__}: {e!r}"
+            )
+
+        # Stage 2: rotating proxy attempts (only burns paid tier when USE_PROXIES
+        # is true - httpxAsyncClientWithProxyRotation falls back to direct
+        # connections when the setting is off).
         last_status: Optional[int] = None
         for attempt in range(1, self._MAX_PROXY_ATTEMPTS + 1):
             try:

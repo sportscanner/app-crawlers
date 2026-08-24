@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import httpx
+from curl_cffi.requests import Session as CurlSession
 from pydantic import ValidationError
 
 from sportscanner.crawlers.helpers import override
@@ -48,22 +49,29 @@ _LONDON = ZoneInfo("Europe/London")
 
 
 def get_anonymous_jwt() -> Optional[str]:
-    """Fetches an anonymous session JWT from Gladstone Go samlauthentication endpoint."""
+    """Fetches an anonymous session JWT from Gladstone Go samlauthentication endpoint.
+
+    Uses curl_cffi with a browser TLS fingerprint: the endpoint 403s plain
+    httpx/ssl handshakes from datacenter IPs such as GitHub Actions runners
+    (confirmed in the 2026-08-23 badminton/squash workflow logs, 0/12 and 0/6
+    requests returned data) while succeeding locally from residential IPs.
+    Same WAF class as CitySport, same fix.
+    """
     try:
-        with httpx.Client(
+        with CurlSession(
             headers={
                 "user-agent": USER_AGENT,
                 "accept": "application/json",
                 "x-use-sso": "1",
             },
-            follow_redirects=True,
+            impersonate="chrome124",
             timeout=15.0,
-        ) as client:
-            res = client.get(
+        ) as session:
+            res = session.get(
                 f"{GLADSTONEGO_PORTAL_BASE}/api/samlauthentication/anonymous"
             )
             res.raise_for_status()
-            jwt = client.cookies.get("Jwt")
+            jwt = session.cookies.get("Jwt")
             if jwt:
                 return jwt
             logging.error(
