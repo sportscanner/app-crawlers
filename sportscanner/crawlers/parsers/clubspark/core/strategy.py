@@ -56,6 +56,33 @@ def referer_for_slug(slug: str) -> str:
     return f"{CLUBSPARK_ORGANISATION_WEBSITE}/{slug}/Booking/BookByDate"
 
 
+# Venues whose "/Booking/BookByDate" page server-side redirects (302) to LTA
+# Play login (".../{slug}/Booking/LTAPlayLogin") instead of showing the
+# availability calendar anonymously. Confirmed venue by venue, August 2026,
+# across all 49 London venues in venues.json via curl_cffi chrome impersonation
+# (plain curl sees the same 302, so this is ClubSpark's own routing, not a
+# Cloudflare artifact). Their underlying GetVenueSessions JSON API still serves
+# real availability anonymously, so these venues stay in scope - only the deep
+# customer-facing link is gated. For these, booking_url points at the venue's
+# public home page instead, which loads fine without an account and links out
+# to booking.
+_LOGIN_GATED_BOOKING_PAGE_SLUGS = {
+    "RavenscourtPark",
+    "SouthParkFulham",
+    "HurlinghamPark",
+    "LytteltonPlayingFields",
+    "BrockwellPark",
+    "TelegraphHill",
+}
+
+
+def booking_url_for_slug(slug: str) -> str:
+    """Customer-facing link for a venue's availability."""
+    if slug in _LOGIN_GATED_BOOKING_PAGE_SLUGS:
+        return f"{CLUBSPARK_ORGANISATION_WEBSITE}/{slug}"
+    return f"{CLUBSPARK_ORGANISATION_WEBSITE}/{slug}/Booking/BookByDate"
+
+
 class ClubSparkTennisRequestStrategy(AbstractRequestStrategy):
     """Stub — ClubSparkTennisCrawler overrides ScraperCoroutines and issues one
     request per venue covering the whole requested date range (GetVenueSessions
@@ -78,7 +105,7 @@ class ClubSparkTennisRequestStrategy(AbstractRequestStrategy):
                 metadata=AdditionalRequestMetadata(
                     category="Tennis",
                     date=fetch_date,
-                    booking_url=f"{CLUBSPARK_ORGANISATION_WEBSITE}/{sports_venue.slug}/Booking/BookByDate",
+                    booking_url=booking_url_for_slug(sports_venue.slug),
                     sportsCentre=sports_venue,
                 ),
             )

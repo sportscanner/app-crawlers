@@ -46,6 +46,15 @@ class VisionRclRequestStrategy(AbstractRequestStrategy):
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
             }
             payload: Dict = {}
+            # The customer-facing booking site's router takes exactly one path
+            # segment for the activity; "/v2" is purely an internal API-version
+            # suffix (this tenant's own `.../times` response always reports its
+            # canonical `category_slug` without it, e.g. "badminton", not
+            # "badminton/v2"). Embedding the raw `/v2`-suffixed slug here inserts
+            # an extra path segment and produces a dead booking_url - same class
+            # of bug fixed for Better/GLL via `public_activity_slug()` in
+            # `better/core/activities.py`.
+            public_activity_slug = activity_slug.split("/v2")[0]
             request_generator_list.append(
                 RequestDetailsWithMetadata(
                     url=url,
@@ -57,7 +66,7 @@ class VisionRclRequestStrategy(AbstractRequestStrategy):
                         category=self.category,
                         date=fetch_date,
                         price=None,
-                        booking_url=f"{TENANT_BOOKING_HOST}/location/{sports_venue.slug}/{activity_slug}/{formatted_date}/by-time/",
+                        booking_url=f"{TENANT_BOOKING_HOST}/location/{sports_venue.slug}/{public_activity_slug}/{formatted_date}/by-time/",
                         sportsCentre=sports_venue,
                     ),
                 )

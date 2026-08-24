@@ -161,25 +161,35 @@ class BaseCrawler(ABC):
             return []
 
         urls_to_try = [request_details.url] + (request_details.fallback_urls or [])
+        # Parallel to `urls_to_try` by index: which booking_url to stamp onto the
+        # metadata if that particular url/fallback_url is the one that succeeds.
+        # Index 0 (the primary) keeps whatever metadata.booking_url was already
+        # set to; only indices with an explicit entry in fallback_booking_urls
+        # override it. This is a no-op for providers that never set
+        # fallback_booking_urls (nothing besides Better/GLL does today).
+        booking_urls_to_try = [None] + list(request_details.fallback_booking_urls or [])
         last_http_error: Optional[httpx.HTTPStatusError] = None
         # True if ANY attempted variant returned a 4xx, not just the last one tried.
-        # Pickleball's fallback order is v1 (primary) then v2 (fallback), and v2 is a
-        # known-broken endpoint that always 500s - so a request where v1 correctly
-        # 422s "this venue doesn't offer this duration" (expected, no data) always
-        # ends the loop on v2's 500 (the last error tried). Classifying by "last error
-        # only" would treat every such request as an infra failure, even though we
-        # already got a definitive, coherent "no data" answer from v1. A 4xx anywhere
-        # in the chain means some server understood the request and had an answer;
-        # only count this as a provider-health failure if every attempt was a genuine
-        # server error or connection failure.
+        # A request whose primary variant correctly 422s "this venue doesn't offer
+        # this duration" (expected, no data) can still end the loop on a later
+        # fallback's error. Classifying by "last error only" would treat every such
+        # request as an infra failure, even though we already got a definitive,
+        # coherent "no data" answer from the primary. A 4xx anywhere in the chain
+        # means some server understood the request and had an answer; only count
+        # this as a provider-health failure if every attempt was a genuine server
+        # error or connection failure.
         saw_client_error = False
-        for attempt_url in urls_to_try:
+        for attempt_index, attempt_url in enumerate(urls_to_try):
             try:
                 response = await client.get(attempt_url, headers=request_details.headers)
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(response, content_type, attempt_url)
                 content = self._extract_content(validated_response)
+                if attempt_index < len(booking_urls_to_try):
+                    override_booking_url = booking_urls_to_try[attempt_index]
+                    if override_booking_url is not None and request_details.metadata is not None:
+                        request_details.metadata.booking_url = override_booking_url
                 if self._is_empty_content(content):
                     if breaker is not None:
                         breaker.record(failed=False)
@@ -216,7 +226,8 @@ class BaseCrawler(ABC):
         #           Not a provider health signal - doesn't count against the circuit breaker,
         #           even if a later fallback attempt happened to 500.
         #   all 5xx / no 4xx anywhere -> upstream server error worth noticing (e.g.
-        #           Better's broken pickleball v2). Does count against the circuit breaker.
+        #           Better's pickleball v2 during its mid-migration window). Does count
+        #           against the circuit breaker.
         status = last_http_error.response.status_code if last_http_error is not None else None
         if breaker is not None:
             breaker.record(failed=not saw_client_error)

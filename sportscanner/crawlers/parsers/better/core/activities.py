@@ -27,11 +27,14 @@ _DEFAULTS: Dict[str, List[ActivitySlugPair]] = {
     ],
     # Pickleball slug spelling changes between v1 and v2: legacy v1
     # is plural ("pickleball-40mins", no version suffix); v2 dropped the "s"
-    # ("pickleball-40min/v2"). Plural/v1 as primary + singular/v2 as fallback
-    # covers legacy and migrated venues.
+    # ("pickleball-40min/v2"). As of August 2026 every tracked London venue has
+    # migrated to v2 (the previously "v1-only" five included), so singular/v2
+    # is primary and plural/v1 stays as fallback for any straggler venue that
+    # has not migrated. Note the customer-facing bookings.better.org.uk URL
+    # never carries the "/v2" segment either way - see public_activity_slug().
     "pickleball": [
-        ("pickleball-40mins", "pickleball-40min/v2"),
-        ("pickleball-60mins", "pickleball-60min/v2"),
+        ("pickleball-40min/v2", "pickleball-40mins"),
+        ("pickleball-60min/v2", "pickleball-60mins"),
     ],
     # Tennis outdoor courts default to v2 slug.
     "tennis": [
@@ -96,4 +99,19 @@ _VENUE_OVERRIDES: Dict[Tuple[str, str], List[ActivitySlugPair]] = {
 def activity_slug_pairs(sport: str, venue_slug: str) -> List[ActivitySlugPair]:
     """(primary, fallback) activity-slug pairs to request for this sport/venue."""
     return _VENUE_OVERRIDES.get((sport, venue_slug), _DEFAULTS[sport])
+
+
+def public_activity_slug(activity_slug: str) -> str:
+    """Strip the API-only "/v2" version suffix for building customer-facing
+    bookings.better.org.uk URLs.
+
+    The public booking site's URL scheme never includes a version segment,
+    regardless of whether the activity resolves through v1 or v2 internally:
+    confirmed via the `slug` field on `.../categories/{sport}`, which is
+    always the bare activity name (e.g. "pickleball-60min", not
+    "pickleball-60min/v2") even for venues that are v2-only. Embedding the
+    raw activity-slug (with "/v2") into a booking_url instead produces a
+    dead customer-facing link with a spurious extra path segment.
+    """
+    return activity_slug.split("/v2")[0]
 

@@ -35,25 +35,49 @@ not just the suffix:
 - v1 (legacy): plural, no version suffix: `pickleball-40mins`, `pickleball-60mins`
 - v2 (migrated): singular, with suffix: `pickleball-40min/v2`, `pickleball-60min/v2`
 
-Confirmed v1-only (legacy) venues, as of July 2026: `score-leisure-centre`,
-`barking-sporthouse-and-gym`, `waltham-forest-feel-good-centre`,
-`walthamstow-leisure-centre`, `leytonstone-leisure-centre`. v2 answers these with a
-404/500.
+As of August 2026 the v1 to v2 pickleball migration is complete across all
+tracked London venues: every venue that was previously listed as "v1-only"
+(`score-leisure-centre`, `barking-sporthouse-and-gym`,
+`waltham-forest-feel-good-centre`, `walthamstow-leisure-centre`,
+`leytonstone-leisure-centre`) now 422s on the plural v1 slug and answers the
+singular v2 slug with live data. `_DEFAULTS["pickleball"]` therefore uses
+singular/v2 as primary and keeps plural/v1 only as a fallback for any straggler
+venue. (Earlier, when roughly half the roster was still on v1, the order was
+reversed; the pair mechanism exists precisely so flipping the order is a
+config change, not code.)
 
-The rest of the pickleball roster (over 35 London venues,
-including `lee-valley-velopark`, `woolwich-waves-leisure-centre`,
-`the-plumstead-centre`) have already migrated and are v2-only. v1 does not
-404 cleanly for them: it answers with Better generic
-`"The date should be within the valid days you are able to view."` 422, which
-reads like "this venue does not offer this activity" rather than "wrong
-slug". That ambiguity is what let this sit broken earlier: the fallback
-existed, but its slug was still plural (`pickleball-40mins/v2`), which does not
-exist either way and 500s. Fixed by making the fallback singular
-(`pickleball-40min/v2`): see `_DEFAULTS["pickleball"]` in `activities.py`.
+The migration history also produced this project's clearest lesson about
+error semantics on this API: a 4xx from it is not reliable evidence that an
+activity/duration genuinely is not offered. During the rollout, v1 answered
+with the generic `"The date should be within the valid days you are able to
+view."` 422 for migrated venues, which reads like "this venue does not offer
+this activity" rather than "wrong slug". Check the venue actual category
+listing (below) before concluding anything from a 4xx alone.
 
-Lesson: a 4xx from this API is not reliable evidence that an activity/duration
-genuinely is not offered. Check the venue actual category listing (below) before
-concluding that.
+## Customer-facing booking URLs
+
+`bookings.better.org.uk` links are built from activity slugs, and two things
+about those links differ from the API request slugs:
+
+1. **No `/v2` segment, ever.** The public booking site's URL scheme never
+   includes the version suffix. The canonical public spelling is whatever the
+   categories endpoint reports as `slug` (e.g. `pickleball-60min`), even for
+   venues whose data resolves through v2 internally.
+   `public_activity_slug()` in `better/core/activities.py` strips the suffix;
+   embedding a raw `/v2` slug produces a dead link with a spurious extra path
+   segment.
+
+2. **Primary and fallback spellings can differ.** A venue whose primary
+   variant 422s gets its data from the fallback variant, whose public slug may
+   be spelled differently (the pickleball plural/singular split being the
+   example). Each Better scraper therefore also sets `fallback_booking_urls`
+   on its requests, and `BaseCrawler._fetch_and_transform` swaps the stamped
+   `booking_url` for the matching entry whenever a fallback variant is the one
+   that actually returned the data. Without this, a v2-only venue would emit
+   rows linking to the dead plural spelling, which is exactly what users saw
+   before the August 2026 fix (e.g.
+   `.../lee-valley-velopark/pickleball-60mins/...` instead of
+   `.../lee-valley-velopark/pickleball-60min/...`).
 
 ## Discovering a venue real activity slugs
 

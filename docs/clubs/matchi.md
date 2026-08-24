@@ -143,7 +143,11 @@ Venue entries for all 12 additions are written to `reports/venue-fragments/match
 
 Other tennis facilities:
 - **Putney Lawn Tennis Club** (`putneylawntennisclub`, facility 2052): Members-only,
-  cleanly returns zero slots.
+  cleanly returns zero slots. Its public `/facilities/putneylawntennisclub` page on
+  Matchi's own site is also gone (302 to the generic `/facilities/index` listing,
+  confirmed August 2026) while the facility ID itself still resolves, so the slug is
+  listed in `_STALE_BOOKING_PAGE_SLUGS` in `matchi/core/strategy.py` and its
+  `booking_url` is suppressed (`None`) rather than linking users to a dead page.
 - **Frindsbury Tennis and Padel Club** (`frindsburytennisandpadelclub`, facility 2865):
   one Matchi facility covering both sports (6 padel + 6 tennis courts, Frog Island ME2 4HE).
   Padel slots confirmed live; tennis is not available for online booking (zero slot buttons

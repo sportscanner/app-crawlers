@@ -401,16 +401,22 @@ order — later steps assume earlier ones are done.
   slug name also changes on v2 (`squash-court-40min` → `squash-40min`).
 - **Pickleball's slug spelling changes between v1 and v2**, not just the version suffix:
   v1 is plural, no version (`pickleball-40mins`); v2 dropped the "s" (`pickleball-40min/v2`).
-  Confirmed v1-only (legacy) venues: `score-leisure-centre`, `barking-sporthouse-and-gym`,
-  `waltham-forest-feel-good-centre`, `walthamstow-leisure-centre`, `leytonstone-leisure-centre`.
-  The other ~17 of 22 pickleball venues (including `lee-valley-velopark`,
-  `woolwich-waves-leisure-centre`, `the-plumstead-centre`) are v2-only — v1 answers with
-  Better's generic "date should be within the valid days you are able to view" 422 (not a
-  clean 404) since the plural activity no longer exists for them, so `activity_slug_pairs`
-  uses plural/v1 as primary and singular/v2 as fallback to cover both groups in one config.
-  Getting the fallback's pluralization wrong here previously left ~17 venues with silently
-  zero pickleball rows despite genuinely having availability — check both spellings before
-  assuming a venue has none.
+  As of August 2026 the migration is complete: every tracked London venue, including the
+  five previously "v1-only" ones (`score-leisure-centre`, `barking-sporthouse-and-gym`,
+  `waltham-forest-feel-good-centre`, `walthamstow-leisure-centre`,
+  `leytonstone-leisure-centre`), is now v2-only — v1 answers with Better's generic "date
+  should be within the valid days you are able to view" 422 (not a clean 404), so
+  `activity_slug_pairs` uses singular/v2 as primary and keeps plural/v1 as fallback for any
+  straggler venue. During the mid-migration window, getting the fallback's pluralization
+  wrong left ~17 venues with silently zero pickleball rows despite genuinely having
+  availability — check both spellings before assuming a venue has none.
+- **Customer-facing booking URLs never carry `/v2`.** `public_activity_slug()` in
+  `better/core/activities.py` strips the API-only suffix before a slug goes into a
+  `bookings.better.org.uk` link. Because the primary and fallback variants can be spelled
+  differently (pickleball plural/singular), each scraper also sets `fallback_booking_urls`
+  and `BaseCrawler._fetch_and_transform` swaps `metadata.booking_url` to whichever variant
+  actually returned the data — otherwise a fallback-resolved venue emits rows linking to a
+  dead URL (the `lee-valley-velopark/pickleball-60mins` bug, fixed August 2026).
 - **Per-venue overrides**: e.g. `shene-sports-and-fitness-centre` (single `badminton-court`
   activity).
 - **API Response Format**: slots under a top-level `data` key; sometimes dict with numeric keys, sometimes list

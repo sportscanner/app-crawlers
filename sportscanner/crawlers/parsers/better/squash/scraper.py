@@ -10,7 +10,7 @@ from sportscanner.logger import logging
 import sportscanner.storage.postgres.database as db
 from sportscanner.crawlers.parsers.better.core.strategy import BetterLeisureResponseParserStrategy, \
     BetterStyleCrawler
-from sportscanner.crawlers.parsers.better.core.activities import activity_slug_pairs
+from sportscanner.crawlers.parsers.better.core.activities import activity_slug_pairs, public_activity_slug
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.utils import formatted_date_list, \
     filter_for_allowable_search_dates_for_venue
@@ -57,11 +57,18 @@ class BetterLeisureSquashRequestStrategy(AbstractRequestStrategy):
                         price=None,
                         booking_url="https://bookings.better.org.uk/location/{}/{}/{}/by-time/".format(
                             sports_venue.slug,
-                            activityId,
+                            public_activity_slug(activityId),
                             formatted_date,
                         ),
                         sportsCentre=sports_venue
-                    )
+                    ),
+                    fallback_booking_urls=[
+                        "https://bookings.better.org.uk/location/{}/{}/{}/by-time/".format(
+                            sports_venue.slug,
+                            public_activity_slug(fallback_activityId),
+                            formatted_date,
+                        )
+                    ],
                 )
             )
         return request_generator_list
