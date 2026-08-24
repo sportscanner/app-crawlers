@@ -85,34 +85,24 @@ class EveryoneActiveBadmintonRequestStrategy(AbstractRequestStrategy):
 
 class EveryoneActiveCrawler(BaseCrawler):
     """caching.everyoneactive.com blocks GitHub Actions runner IPs specifically
-    (works fine locally). Routing through the rotating proxy configured in
-    `crawlers/anonymize/proxies.py` gets past that, but the proxy account is a
-    free Webshare plan with "No Automatic Proxy List Refreshes" - a small,
-    static pool of exit IPs, some fraction of which are *already* blocklisted
-    by this site's WAF and always will be (they never rotate out). Confirmed
-    empirically: repeating the exact same request against the real endpoint
-    gets an HTTP 403 (blocklisted pool IP) roughly 55-65% of the time and a
-    clean 200 the rest, both in isolated testing and in production
-    (47/120 = 39% succeeded on first try with no retry logic).
+    (works fine locally). Historically this was routed through a paid rotating
+    proxy; that integration was removed in August 2026 when its bandwidth cap
+    became unsustainable. The fetch chain is now: free curl_cffi browser-TLS
+    impersonation first, then plain direct retries.
 
-    A 403 through this proxy does NOT mean "this venue doesn't offer this
-    activity" the way a 4xx means for every other provider - it means "you
-    drew a blocked IP this time, try again with a different connection." That
-    is a genuinely different signal specific to this provider's constrained
-    proxy situation, so it's handled here rather than folded into
-    `BaseCrawler`'s shared 4xx-is-expected handling, which is correct for
-    every other provider and would be wrong to change.
+    A 403 does NOT mean "this venue doesn't offer this activity" the way a 4xx
+    means for every other provider - it means "this egress IP is blocked, try
+    again". That is a genuinely different signal specific to this provider, so
+    it's handled here rather than folded into `BaseCrawler`'s shared
+    4xx-is-expected handling, which is correct for every other provider and
+    would be wrong to change.
 
     Bypasses `BaseCrawler`'s shared fetch loop entirely (like Matchi,
-    Playtomic, CitySport) and opens a brand-new proxied client per retry
-    attempt - each fresh connection is a fresh shot at the proxy's rotation,
-    same as confirmed by hand with repeated standalone requests. Retrying
-    against a *shared, reused* connection would not help, since Webshare's
-    rotation happens at connection/tunnel setup, not per-request within one
-    kept-alive connection. See `docs/clubs/everyone-active.md`.
+    Playtomic, CitySport) and opens a brand-new client per retry attempt.
+    See `docs/clubs/everyone-active.md`.
     """
 
-    _MAX_PROXY_ATTEMPTS = 5
+    _MAX_RETRY_ATTEMPTS = 5
 
     def __init__(self):
         super().__init__(
@@ -161,11 +151,10 @@ class EveryoneActiveCrawler(BaseCrawler):
                 f"EveryoneActive impersonated fetch failed for {request_details.url}: {type(e).__name__}: {e!r}"
             )
 
-        # Stage 2: rotating proxy attempts (only burns paid tier when USE_PROXIES
-        # is true - httpxAsyncClientWithProxyRotation falls back to direct
-        # connections when the setting is off).
+        # Stage 2: direct httpx retries with fresh connections (the AWS WAF
+        # occasionally lets a fresh connection through after a 403).
         last_status: Optional[int] = None
-        for attempt in range(1, self._MAX_PROXY_ATTEMPTS + 1):
+        for attempt in range(1, self._MAX_RETRY_ATTEMPTS + 1):
             try:
                 async with httpxAsyncClientWithProxyRotation() as client:
                     response = await client.get(
@@ -179,7 +168,7 @@ class EveryoneActiveCrawler(BaseCrawler):
                 if not validated_response:
                     return (
                         []
-                    )  # a clean pool IP genuinely reporting no slots - not worth retrying
+                    )  # a clean connection genuinely reporting no slots - not worth retrying
                 raw_data_obj = RawResponseData(
                     content=validated_response,
                     status_code=response.status_code,
@@ -190,8 +179,8 @@ class EveryoneActiveCrawler(BaseCrawler):
             except httpx.HTTPStatusError as e:
                 last_status = e.response.status_code
                 logging.debug(
-                    f"EveryoneActive: {last_status} (likely a blocklisted proxy IP) for "
-                    f"{request_details.url}, attempt {attempt}/{self._MAX_PROXY_ATTEMPTS}"
+                    f"EveryoneActive: {last_status} for "
+                    f"{request_details.url}, attempt {attempt}/{self._MAX_RETRY_ATTEMPTS}"
                 )
                 continue
             except Exception as e:
@@ -200,8 +189,8 @@ class EveryoneActiveCrawler(BaseCrawler):
                 )
                 return []
         logging.warning(
-            f"EveryoneActive: exhausted {self._MAX_PROXY_ATTEMPTS} attempts (last status {last_status}) "
-            f"for {request_details.url} - proxy pool may be mostly/fully blocklisted right now"
+            f"EveryoneActive: exhausted {self._MAX_RETRY_ATTEMPTS} direct retries (last status {last_status}) "
+            f"for {request_details.url} - this run's IP is likely blocklisted by the AWS WAF"
         )
         return []
 
@@ -232,7 +221,7 @@ class EveryoneActiveCrawler(BaseCrawler):
         parameter_sets = list(itertools.product(sports_venues, dates))
         logging.info(
             f"EveryoneActive: crawling {len(sports_venues)} venue(s) across {len(dates)} dates "
-            f"via rotating proxy (up to {self._MAX_PROXY_ATTEMPTS} attempts/request). "
+            f"with TLS-impersonation-first fetch chain (up to {self._MAX_RETRY_ATTEMPTS} attempts/request). "
             f"Total parameter sets: {len(parameter_sets)}"
         )
         semaphore = asyncio.Semaphore(

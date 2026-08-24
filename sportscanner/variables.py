@@ -18,8 +18,6 @@ class Settings(BaseSettings):
     HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS: int
     HTTPX_CLIENT_TIMEOUT: float
     CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER: int = 20
-    USE_PROXIES: bool = False
-    ROTATING_PROXY_ENDPOINT: str
     API_BASE_URL: Optional[str] = "http://localhost:8000/"
     CLOUD_FIRESTORE_CREDENTIALS_PATH: Optional[str]
     CLOUD_FIRESTORE_PROJECT_ID: Optional[str]
