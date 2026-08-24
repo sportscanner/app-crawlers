@@ -62,6 +62,16 @@ TENNIS_SLUG_TO_FACILITY_ID: Dict[str, int] = {
     "downhallhotel": 1313,
 }
 
+# Facility slugs whose public "/facilities/{slug}" profile page on Matchi's own
+# site has gone stale (302-redirects to the generic "/facilities/index" listing
+# instead of the venue's page), even though the facility ID above still returns
+# live slot data via /book/listSlots - i.e. the crawler's own data-fetch is fine,
+# only the customer-facing link is dead. No live replacement page was found, so
+# booking_url is suppressed (None) rather than sending a user to a confusing
+# generic "browse all venues" page under this venue's name.
+# Confirmed August 2026: putneylawntennisclub (facility 2052).
+_STALE_BOOKING_PAGE_SLUGS = {"putneylawntennisclub"}
+
 # Matchi's crawl bypasses BaseCrawler's per-provider semaphore (see
 # MatchiPadelCrawler docstring), so it never picked up a browser-like
 # User-Agent the way Playtomic's request strategy does. Requests were going
@@ -397,7 +407,11 @@ class MatchiSlotFetcher:
             composite_key=venue.composite_key,
             last_refreshed=datetime.now(),
             booking_url=(
-                f"{MATCHI_ORGANISATION_WEBSITE}/facilities/"
-                f"{ms.facility_slug}?date={search_date.isoformat()}&sport={self.sport_id}"
+                None
+                if ms.facility_slug in _STALE_BOOKING_PAGE_SLUGS
+                else (
+                    f"{MATCHI_ORGANISATION_WEBSITE}/facilities/"
+                    f"{ms.facility_slug}?date={search_date.isoformat()}&sport={self.sport_id}"
+                )
             ),
         )

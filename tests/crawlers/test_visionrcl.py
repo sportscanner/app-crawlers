@@ -62,7 +62,12 @@ def test_badminton_request_strategy():
     assert "wanstead-leisure-centre" in req.headers["referer"]
     assert req.metadata.category == "Badminton"
     assert req.metadata.date == date(2026, 8, 24)
-    assert req.metadata.booking_url == "https://vision.bookings.flow.onl/location/wanstead-leisure-centre/badminton/v2/2026-08-24/by-time/"
+    # booking_url must NOT carry the "/v2" API-version suffix: the customer-facing
+    # booking site takes exactly one path segment for the activity, and this
+    # tenant's own `.../times` responses report their canonical `category_slug`
+    # without "/v2" (e.g. "badminton"), so embedding "badminton/v2" here inserts
+    # an extra path segment and produces a dead link.
+    assert req.metadata.booking_url == "https://vision.bookings.flow.onl/location/wanstead-leisure-centre/badminton/2026-08-24/by-time/"
 
 
 def test_squash_request_strategy():
@@ -77,8 +82,10 @@ def test_squash_request_strategy():
 
     assert len(reqs) == 2
     slugs = [r.metadata.booking_url for r in reqs]
-    assert any("squash-60/v2" in url for url in slugs)
-    assert any("squash-45/v2" in url for url in slugs)
+    # booking_url must not carry the "/v2" suffix (see comment in
+    # test_badminton_request_strategy) - only the bare category slug.
+    assert any("squash-60" in url and "/v2" not in url for url in slugs)
+    assert any("squash-45" in url and "/v2" not in url for url in slugs)
 
 
 def test_response_parsing():
