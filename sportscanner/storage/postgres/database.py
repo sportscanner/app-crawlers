@@ -206,6 +206,7 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
             last_refreshed=slots.last_refreshed,
             booking_url=slots.booking_url,
             starts_at=datetime.combine(slots.date, slots.starting_time),
+            capacity=slots.capacity,
         ))
 
     if not all_data:

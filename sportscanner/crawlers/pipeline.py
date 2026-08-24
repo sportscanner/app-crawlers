@@ -229,11 +229,11 @@ def badminton_scraping_pipeline():
     )
 
     # Flatten nested list structure and remove empty or failed responses
-    flattened_responses_for_upsertion: List[UnifiedParserSchema] = flatten_responses(
-        responses_for_upsertion
+    flattened_responses_for_upsertion: List[UnifiedParserSchema] = fill_estimated_prices(
+        flatten_responses(responses_for_upsertion)
     )
-    flattened_responses_for_reload: List[UnifiedParserSchema] = flatten_responses(
-        responses_for_reload
+    flattened_responses_for_reload: List[UnifiedParserSchema] = fill_estimated_prices(
+        flatten_responses(responses_for_reload)
     )
 
     # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.

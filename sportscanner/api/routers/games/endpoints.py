@@ -42,6 +42,7 @@ async def games(
             query_table.ending_time,
             query_table.price,
             query_table.spaces,
+            query_table.capacity,
             query_table.booking_url,
             SportsVenue.organisation,
             SportsVenue.venue_name,
@@ -75,6 +76,7 @@ async def games(
             "endingTime": row.ending_time.strftime("%H:%M"),
             "price": row.price,
             "spotsRemaining": row.spaces,
+            "spotsTotal": row.capacity,
             "bookingUrl": row.booking_url,
         }
         for row in rows

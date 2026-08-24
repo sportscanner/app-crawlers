@@ -42,3 +42,7 @@ class UnifiedParserSchema(BaseModel):
     composite_key: str
     last_refreshed: datetime
     booking_url: Optional[str]
+    # Total bookable capacity of the session, when the provider exposes it
+    # (e.g. CourtReserve's MaxMembersOnEvent). None for whole-court providers
+    # where "capacity" doesn't apply.
+    capacity: Optional[int] = None

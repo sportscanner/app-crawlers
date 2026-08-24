@@ -42,6 +42,10 @@ class BadmintonMasterTable(SQLModel, table=True):
     # a per-row to_timestamp(concat(date, starting_time)) computed at query time, which
     # can't use an index. Nullable for rows written before this column existed.
     starts_at: Optional[datetime] = None
+    # Total bookable capacity of the session, when the provider exposes it
+    # (e.g. CourtReserve's MaxMembersOnEvent). Nullable: whole-court providers
+    # and rows written before this column existed have no capacity.
+    capacity: Optional[int] = None
 
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "badminton"
@@ -66,6 +70,10 @@ class SquashMasterTable(SQLModel, table=True):
     # a per-row to_timestamp(concat(date, starting_time)) computed at query time, which
     # can't use an index. Nullable for rows written before this column existed.
     starts_at: Optional[datetime] = None
+    # Total bookable capacity of the session, when the provider exposes it
+    # (e.g. CourtReserve's MaxMembersOnEvent). Nullable: whole-court providers
+    # and rows written before this column existed have no capacity.
+    capacity: Optional[int] = None
 
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "squash"
@@ -90,6 +98,10 @@ class PickleballMasterTable(SQLModel, table=True):
     # a per-row to_timestamp(concat(date, starting_time)) computed at query time, which
     # can't use an index. Nullable for rows written before this column existed.
     starts_at: Optional[datetime] = None
+    # Total bookable capacity of the session, when the provider exposes it
+    # (e.g. CourtReserve's MaxMembersOnEvent). Nullable: whole-court providers
+    # and rows written before this column existed have no capacity.
+    capacity: Optional[int] = None
 
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "pickleball"
@@ -114,6 +126,10 @@ class PadelMasterTable(SQLModel, table=True):
     # a per-row to_timestamp(concat(date, starting_time)) computed at query time, which
     # can't use an index. Nullable for rows written before this column existed.
     starts_at: Optional[datetime] = None
+    # Total bookable capacity of the session, when the provider exposes it
+    # (e.g. CourtReserve's MaxMembersOnEvent). Nullable: whole-court providers
+    # and rows written before this column existed have no capacity.
+    capacity: Optional[int] = None
 
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "padel"
@@ -138,6 +154,10 @@ class TennisMasterTable(SQLModel, table=True):
     # a per-row to_timestamp(concat(date, starting_time)) computed at query time, which
     # can't use an index. Nullable for rows written before this column existed.
     starts_at: Optional[datetime] = None
+    # Total bookable capacity of the session, when the provider exposes it
+    # (e.g. CourtReserve's MaxMembersOnEvent). Nullable: whole-court providers
+    # and rows written before this column existed have no capacity.
+    capacity: Optional[int] = None
 
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "tennis"

@@ -172,6 +172,7 @@ def parse_calendar_events(
                 date=start_local.date(),
                 price="N/A",
                 spaces=spaces_from_event(event),
+                capacity=event.MaxMembersOnEvent,
                 composite_key=venue.composite_key,
                 last_refreshed=datetime.now(),
                 booking_url=COURTRESERVE_BOOKING_URL_TEMPLATE.format(
