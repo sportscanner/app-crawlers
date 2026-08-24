@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import itertools
 from datetime import date, timedelta
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 from sportscanner.logger import logging
 from rich import print
@@ -134,6 +134,76 @@ def flatten_responses(responses_from_all_sources) -> List[UnifiedParserSchema]:
     return _validation_check
 
 
+# Some providers (Everyone Active squash, CourtReserve games, Stratford Padel,
+# Mytime Active) do not expose pricing in their availability payloads at all,
+# so their slots used to ship with a blank or "N/A" price. The frontend then
+# shows nothing where the price chip should be. This filler derives an
+# estimate from the prices that ARE known: per venue (composite_key) first,
+# falling back to a per-sport median, and stamps estimates with a "~" prefix
+# so the UI can distinguish them from confirmed prices.
+_DEFAULT_ESTIMATED_PRICE_PER_SPORT = {
+    "Badminton": 13.00,
+    "Squash": 12.00,
+    "Pickleball": 8.00,
+    "Padel": 20.00,
+    "Tennis": 12.00,
+}
+
+
+def _parse_price(value: Optional[str]) -> Optional[float]:
+    if not value:
+        return None
+    cleaned = value.replace("£", "").replace("~", "").strip()
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def fill_estimated_prices(
+    slots: List[UnifiedParserSchema],
+) -> List[UnifiedParserSchema]:
+    """Fills blank / "N/A" prices with an estimated figure derived from known
+    prices for the same venue (composite_key), falling back to the same sport's
+    median, then a per-sport default. Estimates are prefixed with "~"."""
+    known_by_venue: dict = {}
+    known_by_sport: dict = {}
+    for slot in slots:
+        price = _parse_price(slot.price)
+        if price is None:
+            continue
+        known_by_venue.setdefault(slot.composite_key, []).append(price)
+        known_by_sport.setdefault(slot.category, []).append(price)
+
+    def _median(values: List[float]) -> float:
+        ordered = sorted(values)
+        mid = len(ordered) // 2
+        if len(ordered) % 2:
+            return ordered[mid]
+        return (ordered[mid - 1] + ordered[mid]) / 2
+
+    median_by_venue = {k: _median(v) for k, v in known_by_venue.items()}
+    median_by_sport = {k: _median(v) for k, v in known_by_sport.items()}
+
+    filled = 0
+    for slot in slots:
+        if _parse_price(slot.price) is not None:
+            continue
+        if slot.composite_key in median_by_venue:
+            estimate = median_by_venue[slot.composite_key]
+        elif slot.category in median_by_sport:
+            estimate = median_by_sport[slot.category]
+        else:
+            estimate = _DEFAULT_ESTIMATED_PRICE_PER_SPORT.get(slot.category, 10.00)
+        slot.price = f"~£{estimate:.2f}"
+        filled += 1
+    if filled:
+        logging.info(
+            f"Estimated prices filled for {filled} slot(s) with no pricing data"
+        )
+    return slots
+
+
 @timeit
 def badminton_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
@@ -210,7 +280,9 @@ def squash_scraping_pipeline():
         )
     )
     # Flatten nested list structure and remove empty or failed responses
-    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
+        flatten_responses(responses_from_all_sources)
+    )
     # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
     delete_past_slots(SquashMasterTable)
     if all_slots:
@@ -244,7 +316,9 @@ def pickleball_scraping_pipeline():
         )
     )
     # Flatten nested list structure and remove empty or failed responses
-    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
+        flatten_responses(responses_from_all_sources)
+    )
     # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
     delete_past_slots(PickleballMasterTable)
     if all_slots:
@@ -275,7 +349,9 @@ def padel_scraping_pipeline():
             StratfordPadelScraperCoroutines(dates),
         )
     )
-    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
+        flatten_responses(responses_from_all_sources)
+    )
     # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
     delete_past_slots(PadelMasterTable)
     if all_slots:
@@ -306,7 +382,9 @@ def tennis_scraping_pipeline():
             MatchiTennisScraperCoroutines(dates),
         )
     )
-    all_slots: List[UnifiedParserSchema] = flatten_responses(responses_from_all_sources)
+    all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
+        flatten_responses(responses_from_all_sources)
+    )
     # Housekeeping: drop past-date rows so the table doesn't grow unbounded over time.
     delete_past_slots(TennisMasterTable)
     if all_slots:

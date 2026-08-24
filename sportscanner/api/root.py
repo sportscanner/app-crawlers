@@ -14,15 +14,19 @@ from sportscanner.api.routers.search.endpoints import (
 
 from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
+from sportscanner.api.routers.games.endpoints import router as GamesRouter
 from sportscanner.api.routers.health.endpoints import router as HealthRouter
-from sportscanner.api.routers.notifications.endpoints import router as NotificationsRouter
+from sportscanner.api.routers.notifications.endpoints import (
+    router as NotificationsRouter,
+)
 from sportscanner.api.routers.tokens.endpoints import router as TokensRouter
-from sportscanner.api.routers.mcp_connections.endpoints import router as McpConnectionsRouter
+from sportscanner.api.routers.mcp_connections.endpoints import (
+    router as McpConnectionsRouter,
+)
 
 from sportscanner.logger import logging
 
 import httpx
-
 
 # ── MCP server (optional dependency: fastmcp) ────────────────────────────────
 # The MCP layer is mounted into this same FastAPI app so the REST API and the
@@ -97,21 +101,33 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-app.include_router(
-    router=SearchRouter, prefix="/search", tags=["Search"]
-)
+app.include_router(router=SearchRouter, prefix="/search", tags=["Search"])
 
 app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])
+
+app.include_router(router=GamesRouter, prefix="/games", tags=["Games"])
 
 app.include_router(
     router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"]
 )
 
-app.include_router(router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False)
+app.include_router(
+    router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False
+)
 
-app.include_router(router=TokensRouter, prefix="/user/tokens", tags=["Developer"], include_in_schema=False)
+app.include_router(
+    router=TokensRouter,
+    prefix="/user/tokens",
+    tags=["Developer"],
+    include_in_schema=False,
+)
 
-app.include_router(router=McpConnectionsRouter, prefix="/user/mcp-connections", tags=["Developer"], include_in_schema=False)
+app.include_router(
+    router=McpConnectionsRouter,
+    prefix="/user/mcp-connections",
+    tags=["Developer"],
+    include_in_schema=False,
+)
 
 app.include_router(router=HealthRouter, prefix="/health", tags=["Health"])
 
@@ -120,6 +136,7 @@ app.include_router(
     prefix="/notifications",
     tags=["Notifications"],
 )
+
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -134,6 +151,7 @@ async def root():
             "/docs": "Documentation for API endpoints",
         },
     }
+
 
 # Mounted last, at the app's true root, so every route defined above (and
 # FastAPI's own /docs, /openapi.json, /redoc) is matched first by Starlette;

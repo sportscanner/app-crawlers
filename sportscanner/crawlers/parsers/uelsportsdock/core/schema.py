@@ -17,6 +17,7 @@ class UELSportsDockResponseSchema(BaseModel):
     shape, see sportscanner/crawlers/parsers/citysports/core/schema.py. Kept as
     a separate class (not a shared import) since these are independently
     operated venue instances of the same vendor platform and could diverge."""
+
     EventType: int
     SiteId: int
     ActivityCode: str

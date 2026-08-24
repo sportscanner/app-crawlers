@@ -8,7 +8,14 @@ from rich import print
 from starlette import status
 
 import sportscanner.storage.postgres.database as db
-from sportscanner.storage.postgres.tables import BadmintonMasterTable, SquashMasterTable, PickleballMasterTable, PadelMasterTable, TennisMasterTable
+from sportscanner.storage.postgres.tables import (
+    BadmintonMasterTable,
+    SquashMasterTable,
+    PickleballMasterTable,
+    PadelMasterTable,
+    TennisMasterTable,
+    SportsVenue,
+)
 from sportscanner.api.routers.search.schemas import SearchCriteria, SortByOptions
 from sportscanner.api.routers.users.service.userService import UserService
 from sportscanner.api.routers.venues.utils import get_venues_near_postcode
@@ -19,6 +26,7 @@ from sportscanner.storage.postgres.dataset_transform import (
 )
 
 router = APIRouter()
+
 
 def find_query_table(sport: SportscannerSupportedSports):
     if sport == SportscannerSupportedSports.BADMINTON:
@@ -37,12 +45,13 @@ def find_query_table(sport: SportscannerSupportedSports):
             detail=f"Unsupported sport category: {sport}",
         )
 
+
 @router.post("/{sport}")
 async def search(
     sport: SportscannerSupportedSports = Path(
         description="Sport category to filter venues and court availability"
     ),
-    date: date =  Query(...,description="Date to filter court availability"),
+    date: date = Query(..., description="Date to filter court availability"),
     filters: SearchCriteria = ...,
 ):
     """Returns all court availability relevant to specified filters passed via payload"""
@@ -59,6 +68,21 @@ async def search(
         composite_keys: List[str] = filters.analytics.specifiedVenues
     else:
         composite_keys = [venue.composite_key for venue in nearby_venues]
+
+    # Social games (per-person sessions like Lemon Pickleball) are not court
+    # bookings - they are surfaced through /games with spots remaining instead.
+    from sportscanner.api.routers.games.endpoints import GAMES_ORGANISATIONS
+
+    game_composite_keys: set = set(
+        db.get_all_rows(
+            db.engine,
+            None,
+            db.select(SportsVenue.composite_key).where(
+                SportsVenue.organisation.in_(GAMES_ORGANISATIONS)
+            ),
+        )
+    )
+    composite_keys = [key for key in composite_keys if key not in game_composite_keys]
 
     current_timestamp = datetime.now()
 
@@ -87,19 +111,28 @@ async def search(
         _response,
         key=lambda x: (
             datetime.strptime(x["date"], "%a, %b %d"),  # Closest date
-            float(x[filters.sortBy.name].replace("£", "")) if filters.sortBy == SortByOptions.price else x[filters.sortBy.name],
+            (
+                float(x[filters.sortBy.name].replace("£", ""))
+                if filters.sortBy == SortByOptions.price
+                else x[filters.sortBy.name]
+            ),
         ),
     )
-    logging.warning(f"Time taken for retrieval, transformations, sorting: {datetime.now() - current_timestamp}")
+    logging.warning(
+        f"Time taken for retrieval, transformations, sorting: {datetime.now() - current_timestamp}"
+    )
     return sorted_response
+
 
 @router.post("/{sport}/{composite_key}")
 async def search(
     sport: SportscannerSupportedSports = Path(
         description="Sport category to filter venues and court availability"
     ),
-    date: date =  Query(...,description="Date to filter court availability"),
-    composite_key: str = Path(..., description="Composite key identifier to filter venue court availability")
+    date: date = Query(..., description="Date to filter court availability"),
+    composite_key: str = Path(
+        ..., description="Composite key identifier to filter venue court availability"
+    ),
 ):
     queryTable = find_query_table(sport)
 
@@ -115,4 +148,3 @@ async def search(
         .where(queryTable.starts_at > current_timestamp),
     )
     return slots
-
