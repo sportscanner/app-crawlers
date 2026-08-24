@@ -97,7 +97,12 @@ async def get_with_proxy_fallback_on_403(
        handshake itself, and httpx's Python-ssl handshake is an automatic fail
        from datacenter IPs such as GitHub Actions runners even when the target
        IP is not blocklisted. Same fix CitySport needed (docs/clubs/citysport.md).
-    3. Rotating proxy attempts (only burns paid tier if stages 1-2 both failed).
+    3. Rotating proxy attempts - ONLY when `settings.USE_PROXIES` is true. This
+       keeps paid proxy tier usage at exactly zero for the default config; the
+       August 2026 runs showed the proxy stage was burning quota on Playtomic
+       403s that the impersonation stage also could not rescue (Cloudflare was
+       IP-blocking the runner range, not just the fingerprint), so the proxy is
+       now strictly opt-in rather than a default last resort.
 
     A 403 or 429 through a direct connection can mean this host's IP is blocklisted or
     rate-limited by Cloudflare / WAF for this specific target - confirmed for a handful of
@@ -157,6 +162,8 @@ async def get_with_proxy_fallback_on_403(
             )
 
     for attempt in range(1, max_proxy_attempts + 1):
+        if not settings.USE_PROXIES or not settings.ROTATING_PROXY_ENDPOINT:
+            break
         try:
             async with httpxAsyncClientWithProxyRotation(
                 force_proxy=True
@@ -173,8 +180,14 @@ async def get_with_proxy_fallback_on_403(
             logging.debug(
                 f"{log_label}: {last_status} via proxy, attempt {attempt}/{max_proxy_attempts}"
             )
-    logging.warning(
-        f"{log_label}: exhausted direct + TLS-impersonation + {max_proxy_attempts} proxy attempts "
-        f"- this run's IP may be blocklisted for this target"
-    )
+    if settings.USE_PROXIES:
+        logging.warning(
+            f"{log_label}: exhausted direct + TLS-impersonation + {max_proxy_attempts} proxy attempts "
+            f"- this run's IP may be blocklisted for this target"
+        )
+    else:
+        logging.warning(
+            f"{log_label}: exhausted direct + TLS-impersonation attempts "
+            f"(proxy disabled via USE_PROXIES) - this run's IP may be blocklisted for this target"
+        )
     return None

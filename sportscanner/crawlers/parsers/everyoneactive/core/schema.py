@@ -21,6 +21,7 @@ class BookableItem(BaseModel):
     courtId: str = Field(..., alias="id")
     slots: List[Slot]
 
+
 class EveryoneActiveRawSchema(BaseModel):
     apiVer: str = Field(..., alias="apiVer")
     globalInfo: Optional[dict]
@@ -37,6 +38,7 @@ class SlotAvailability(BaseModel):
     start_time: time
     end_time: time
     available_slots: int
+
 
 class AggregatedAvailabilityResponse(BaseModel):
     slots: List[SlotAvailability]

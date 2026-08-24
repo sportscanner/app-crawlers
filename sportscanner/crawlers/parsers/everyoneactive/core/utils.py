@@ -1,5 +1,6 @@
 from datetime import datetime, date, timezone
 
+
 def get_utc_timestamps(date_obj: date):
     """
     Convert a given Python date object to fromUTC and toUTC values.
@@ -7,14 +8,20 @@ def get_utc_timestamps(date_obj: date):
     :param date_obj: date, a Python date object
     :return: tuple (fromUTC, toUTC)
     """
-    from_utc = int(datetime.combine(date_obj, datetime.min.time(), tzinfo=timezone.utc).timestamp())
-    to_utc = int(datetime.combine(date_obj, datetime.max.time(), tzinfo=timezone.utc).timestamp())
+    from_utc = int(
+        datetime.combine(date_obj, datetime.min.time(), tzinfo=timezone.utc).timestamp()
+    )
+    to_utc = int(
+        datetime.combine(date_obj, datetime.max.time(), tzinfo=timezone.utc).timestamp()
+    )
 
     return from_utc, to_utc
 
 
 def convert_sUTC_to_datetime(sUTC):
-    return datetime.utcfromtimestamp(sUTC).strftime('%Y-%m-%d'), datetime.utcfromtimestamp(sUTC).strftime('%H:%M')
+    return datetime.utcfromtimestamp(sUTC).strftime(
+        "%Y-%m-%d"
+    ), datetime.utcfromtimestamp(sUTC).strftime("%H:%M")
 
 
 if __name__ == "__main__":

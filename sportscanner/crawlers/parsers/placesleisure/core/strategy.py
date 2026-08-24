@@ -27,6 +27,7 @@ via a per-provider concurrency semaphore.
 Time zone: schedule and availability timestamps are UTC ISO-8601. Converted
 to Europe/London for display, same convention as every other provider.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,6 +46,14 @@ from sportscanner.logger import logging
 PLACES_LEISURE_ORGANISATION_WEBSITE = "https://www.placesleisure.org"
 
 _LONDON_TZ = ZoneInfo("Europe/London")
+
+# The Umbraco availability API rate-limits aggressively (HTTP 429): the
+# 2026-08-23 GitHub Actions runs drowned in 429s when all 8 venues' availability
+# requests shared the pipeline-wide 20-slot semaphore. This provider-local
+# limiter caps availability fetches to 3 concurrent plus a small spacing delay,
+# which trades a slower crawl for actually returning data.
+_AVAILABILITY_SEMAPHORE = asyncio.Semaphore(3)
+_AVAILABILITY_SPACING_SECONDS = 0.3
 
 _HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
@@ -115,7 +124,9 @@ class PlacesLeisureSlotFetcher:
                 resp = await client.get(url, headers=_HEADERS, timeout=30)
             resp.raise_for_status()
         except Exception as exc:
-            logging.error(f"Places Leisure: failed to fetch centre page for {slug}: {exc}")
+            logging.error(
+                f"Places Leisure: failed to fetch centre page for {slug}: {exc}"
+            )
             return []
 
         content = html_lib.unescape(resp.text)
@@ -149,7 +160,8 @@ class PlacesLeisureSlotFetcher:
             "startDate": start_iso,
         }
         try:
-            async with semaphore:
+            async with _AVAILABILITY_SEMAPHORE:
+                await asyncio.sleep(_AVAILABILITY_SPACING_SECONDS)
                 resp = await client.get(
                     f"{PLACES_LEISURE_ORGANISATION_WEBSITE}/umbraco/api/timetables/getavailability",
                     params=params,

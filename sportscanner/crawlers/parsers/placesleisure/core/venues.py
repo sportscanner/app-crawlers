@@ -14,6 +14,7 @@ To add a new venue: visit its centre page, confirm `"ag":"BADMINTON"` or
 `"ag":"PICKLEBALL"` session entries exist in the page source, and read
 site-id from the page.
 """
+
 from typing import Dict
 
 SLUG_TO_SITE_ID: Dict[str, str] = {
