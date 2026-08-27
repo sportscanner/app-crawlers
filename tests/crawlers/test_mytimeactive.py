@@ -212,6 +212,65 @@ def test_response_parsing():
     assert slots[1].spaces == 0
 
 
+def test_response_parsing_excludes_non_web_bookable_sessions():
+    """Sessions with webBookable=False (e.g. The Walnuts Leisure Centre, which
+    is phone/walk-in only) must be dropped, otherwise the deep-linked
+    booking_url 404s into Gladstone Go's "no timetable slots" error page."""
+    venue = _make_sports_venue(
+        "WAL", "The Walnuts Leisure Centre", ["badminton", "squash"]
+    )
+    parser = GladstoneGoResponseParserStrategy()
+
+    raw_content = [
+        {
+            "id": "WALACT0008",
+            "name": "Badminton",
+            "date": "2026-08-24",
+            "siteId": "WAL",
+            "webBookable": False,
+            "slotCount": 1,
+            "locations": [
+                {
+                    "locationNameToDisplay": "Court 1",
+                    "slots": [
+                        {
+                            "startTime": "2026-08-24T06:00:00Z",
+                            "endTime": "2026-08-24T06:59:59Z",
+                            "availability": {"inCentre": 1, "virtual": 0},
+                            "status": "Available",
+                        },
+                    ],
+                },
+            ],
+        },
+    ]
+
+    req_meta = RequestDetailsWithMetadata(
+        url="https://mytimeactive.gladstonego.cloud/api/availability/V2/sessions?siteIds=WAL&activityIDs=WALACT0008&webBookableOnly=false&dateFrom=2026-08-24",
+        headers={},
+        payload={},
+        token=None,
+        cookies=None,
+        metadata=AdditionalRequestMetadata(
+            category="Badminton",
+            date=date(2026, 8, 24),
+            price="",
+            booking_url="https://mytimeactive.gladstonego.cloud/book/calendar/WALACT0008?activityDate=2026-08-24",
+            sportsCentre=venue,
+        ),
+    )
+
+    raw_response = RawResponseData(
+        status_code=200,
+        headers={},
+        requestMetadata=req_meta,
+        content=raw_content,
+    )
+    slots = parser.parse(raw_response)
+
+    assert slots == []
+
+
 def test_venue_fragment_definitions():
     fragment_path = (
         Path(__file__).parents[2]
