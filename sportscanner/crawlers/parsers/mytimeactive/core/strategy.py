@@ -160,12 +160,20 @@ class GladstoneGoResponseParserStrategy(AbstractResponseParserStrategy):
             )
             return []
 
-        # Filter down to sessions for this specific date and venue
+        # Filter down to sessions for this specific date and venue. webBookable
+        # is checked here (rather than via webBookableOnly=true on the request)
+        # because the request intentionally fetches in-centre-only sessions too;
+        # non-web-bookable sessions must still be dropped or their booking_url
+        # deep link 404s into Gladstone Go's "no timetable slots" error page
+        # (confirmed for The Walnuts Leisure Centre, which is phone/walk-in only
+        # for badminton and squash as of 2026-08-26).
         target_date_str = metadata.date.isoformat()
         day_sessions = [
             s
             for s in sessions
-            if s.date == target_date_str and s.siteId == metadata.sportsCentre.slug
+            if s.date == target_date_str
+            and s.siteId == metadata.sportsCentre.slug
+            and s.webBookable
         ]
 
         # Aggregate availability across courts for each unique (start_time, end_time) slot
