@@ -219,7 +219,17 @@ def badminton_scraping_pipeline():
             SouthwarkLeisureBadmintonScraperCoroutines(dates),
             HaringeyCouncilBadmintonScraperCoroutines(dates),
             UELSportsDockBadmintonScraperCoroutines(dates),
-            PlacesLeisureBadmintonScraperCoroutines(dates),
+            # Places Leisure temporarily disabled (2026-08-30): its per-timeslot
+            # availability API structurally cannot fit this pipeline's normal
+            # 1-2 minute runtime - even at a WAF-safe pacing (confirmed
+            # necessary: unpaced/lightly-paced requests get 429'd), 8 venues x
+            # hundreds of distinct scheduled slots each serializes to tens of
+            # minutes, which stacked overlapping pipeline runs and took down
+            # the production search API. Re-enable only alongside a real
+            # architectural fix (e.g. running it as its own slower, less
+            # frequent job outside this fast pipeline), not just a smaller
+            # pacing constant.
+            # PlacesLeisureBadmintonScraperCoroutines(dates),
             VisionRclBadmintonScraperCoroutines(dates),
             MytimeActiveBadmintonScraperCoroutines(dates),
         )
@@ -310,7 +320,9 @@ def pickleball_scraping_pipeline():
             BetterLeisurePickleballScraperCoroutines(dates),
             SouthwarkLeisurePickleballScraperCoroutines(dates),
             DecathlonPickleballScraperCoroutines(dates),
-            PlacesLeisurePickleballScraperCoroutines(dates),
+            # Places Leisure temporarily disabled - see the badminton pipeline
+            # above for why (same provider, same structural issue).
+            # PlacesLeisurePickleballScraperCoroutines(dates),
             PlaytomicPickleballScraperCoroutines(dates),
             CourtReservePickleballScraperCoroutines(dates),
         )
