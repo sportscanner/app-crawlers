@@ -67,6 +67,17 @@ VENUE_KEY_TO_SLUG: List[Tuple[str, str]] = [
     ("finchley", "finchley"),
 ]
 
+# Indoor/outdoor is already baked into venue identity above ("highgate" vs
+# "highgate-outdoors" are literally different composite_keys) - this just
+# surfaces that same fact as a queryable field. Slugs not listed here (most
+# of them - single-court-type venues with no "indoors"/"outdoors" in their
+# name) stay `None` (unknown), not a guess.
+VENUE_SLUG_TO_INDOOR: Dict[str, bool] = {
+    "highgate-indoors-red-ball": True,
+    "highgate-outdoors": False,
+    "finchley-outdoors": False,
+}
+
 _EPOCH_MS_PATTERN = re.compile(r"/Date\((\d+)\)/")
 
 
@@ -178,6 +189,7 @@ def parse_calendar_events(
                 booking_url=COURTRESERVE_BOOKING_URL_TEMPLATE.format(
                     number=event.Number
                 ),
+                indoor=VENUE_SLUG_TO_INDOOR.get(slug),
             )
         )
     if skipped_unmatched:

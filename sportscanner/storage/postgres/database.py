@@ -192,9 +192,14 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
         if existing is None or (slots.spaces > 0 and existing.spaces == 0):
             uid_to_slots[uid] = slots
 
+    # `indoor` only exists on the padel/tennis/pickleball tables (see
+    # ensure_indoor_column) - badminton/squash have no such column, so
+    # including the key unconditionally would break their INSERT.
+    has_indoor_column = TableForLoading.__tablename__ in _INDOOR_OUTDOOR_SPORT_TABLES
+
     all_data = []
     for uid, slots in uid_to_slots.items():
-        all_data.append(dict(
+        record = dict(
             uid=uid,
             composite_key=slots.composite_key,
             category=slots.category,
@@ -207,7 +212,10 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
             booking_url=slots.booking_url,
             starts_at=datetime.combine(slots.date, slots.starting_time),
             capacity=slots.capacity,
-        ))
+        )
+        if has_indoor_column:
+            record["indoor"] = slots.indoor
+        all_data.append(record)
 
     if not all_data:
         logging.warning("No data to insert after processing.")
@@ -289,10 +297,12 @@ def create_db_and_tables(engine):
         conn.commit()
 
     ensure_starts_at_column(engine)
+    ensure_indoor_column(engine)
     ensure_performance_indexes(engine)
 
 
 _SLOT_TABLES = ("badminton", "squash", "pickleball", "padel", "tennis")
+_INDOOR_OUTDOOR_SPORT_TABLES = ("pickleball", "padel", "tennis")
 
 
 def ensure_starts_at_column(engine):
@@ -307,6 +317,17 @@ def ensure_starts_at_column(engine):
                 SET starts_at = (date::text || ' ' || starting_time::text)::timestamp
                 WHERE starts_at IS NULL
             '''))
+        conn.commit()
+
+
+def ensure_indoor_column(engine):
+    """Additive-only migration — adds nullable `indoor` (True/False/unknown)
+    to the padel/tennis/pickleball tables only (badminton/squash are always
+    indoor, no column needed there). No backfill: existing rows stay NULL
+    (unknown) until the next crawl repopulates them. Safe to run repeatedly."""
+    with engine.connect() as conn:
+        for table in _INDOOR_OUTDOOR_SPORT_TABLES:
+            conn.execute(text(f'ALTER TABLE public.{table} ADD COLUMN IF NOT EXISTS indoor boolean'))
         conn.commit()
 
 

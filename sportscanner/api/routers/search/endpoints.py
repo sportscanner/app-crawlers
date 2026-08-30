@@ -86,17 +86,21 @@ async def search(
 
     current_timestamp = datetime.now()
 
-    slots = db.get_all_rows(
-        db.engine,
-        None,
+    query = (
         db.select(queryTable)
         .where(queryTable.composite_key.in_(composite_keys))
         .where(queryTable.spaces > 0)  # Ignore empty courts
         .where(queryTable.starting_time >= filters.timeRange.starting)
         .where(queryTable.ending_time <= filters.timeRange.ending)
         .where(queryTable.date == date)
-        .where(queryTable.starts_at > current_timestamp),
+        .where(queryTable.starts_at > current_timestamp)
     )
+    # `indoor` only exists on the padel/tennis/pickleball tables (see
+    # ensure_indoor_column) - badminton/squash have no such column.
+    if filters.indoor is not None and hasattr(queryTable, "indoor"):
+        query = query.where(queryTable.indoor == filters.indoor)
+
+    slots = db.get_all_rows(db.engine, None, query)
     grouped_slots = group_slots_by_attributes(
         slots, attributes=("composite_key", "date")
     )

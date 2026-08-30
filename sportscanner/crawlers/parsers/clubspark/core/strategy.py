@@ -154,6 +154,10 @@ class ClubSparkTennisResponseParserStrategy(AbstractResponseParserStrategy):
                             composite_key=metadata.sportsCentre.composite_key,
                             last_refreshed=metadata.last_refreshed,
                             booking_url=metadata.booking_url,
+                            # Every ClubSpark venue we track is an LTA public
+                            # park install - outdoor by construction, not
+                            # something GetVenueSessions exposes a field for.
+                            indoor=False,
                         )
                     )
         return results

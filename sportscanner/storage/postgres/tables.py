@@ -103,6 +103,10 @@ class PickleballMasterTable(SQLModel, table=True):
     # and rows written before this column existed have no capacity.
     capacity: Optional[int] = None
 
+    # True/False when the provider exposes indoor-vs-outdoor court metadata;
+    # None means unknown/unverified.
+    indoor: Optional[bool] = None
+
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "pickleball"
     __table_args__ = {"schema": "public"}
@@ -131,6 +135,10 @@ class PadelMasterTable(SQLModel, table=True):
     # and rows written before this column existed have no capacity.
     capacity: Optional[int] = None
 
+    # True/False when the provider exposes indoor-vs-outdoor court metadata;
+    # None means unknown/unverified.
+    indoor: Optional[bool] = None
+
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "padel"
     __table_args__ = {"schema": "public"}
@@ -158,6 +166,10 @@ class TennisMasterTable(SQLModel, table=True):
     # (e.g. CourtReserve's MaxMembersOnEvent). Nullable: whole-court providers
     # and rows written before this column existed have no capacity.
     capacity: Optional[int] = None
+
+    # True/False when the provider exposes indoor-vs-outdoor court metadata;
+    # None means unknown/unverified.
+    indoor: Optional[bool] = None
 
     composite_key: str = Field(default=None, foreign_key="public.sportsvenue.composite_key")
     __tablename__ = "tennis"

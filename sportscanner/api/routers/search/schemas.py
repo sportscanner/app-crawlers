@@ -26,3 +26,7 @@ class SearchCriteria(BaseModel):
     radius: Optional[float] = None
     analytics: Optional[AdvancedFiltersCriteria] = None
     sortBy: Optional[SortByOptions] = "distance" # 2 options: distance/price
+    # True/False to filter to indoor/outdoor courts only (padel/tennis/pickleball
+    # tables only - see UnifiedParserSchema.indoor). None (default) = no filter,
+    # returns indoor, outdoor, and unknown-status slots together.
+    indoor: Optional[bool] = None

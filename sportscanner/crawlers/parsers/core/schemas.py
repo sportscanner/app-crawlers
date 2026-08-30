@@ -54,3 +54,8 @@ class UnifiedParserSchema(BaseModel):
     # (e.g. CourtReserve's MaxMembersOnEvent). None for whole-court providers
     # where "capacity" doesn't apply.
     capacity: Optional[int] = None
+    # True/False when a provider exposes indoor-vs-outdoor court metadata
+    # (padel/tennis/pickleball only - see docs/clubs indoor-outdoor notes).
+    # None means unknown/unverified, not "outdoor" - never defaulted to a
+    # guess, and must not be excluded by an indoor/outdoor filter.
+    indoor: Optional[bool] = None

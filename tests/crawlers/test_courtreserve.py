@@ -9,6 +9,7 @@ from sportscanner.crawlers.parsers.courtreserve.core.schema import (
 from sportscanner.crawlers.parsers.courtreserve.core.strategy import (
     COURTRESERVE_ORGANISATION_WEBSITE,
     VENUE_KEY_TO_SLUG,
+    VENUE_SLUG_TO_INDOOR,
     build_calendar_read_payload,
     normalise_title,
     parse_calendar_events,
@@ -196,3 +197,71 @@ def test_parse_calendar_events():
     assert isinstance(slot.starting_time, time)
     assert isinstance(slot.ending_time, time)
     assert isinstance(slot.date, date)
+    # "hampstead" has no "indoors"/"outdoors" in its name - unknown, not a guess.
+    assert slot.indoor is None
+
+
+def test_parse_calendar_events_sets_indoor_for_highgate_variants():
+    indoor_venue = SportsVenue(
+        composite_key=generate_composite_key(
+            [COURTRESERVE_ORGANISATION_WEBSITE, "highgate-indoors-red-ball"]
+        ),
+        organisation="Lemon Pickleball",
+        organisation_website=COURTRESERVE_ORGANISATION_WEBSITE,
+        venue_name="Highgate (Indoors)",
+        slug="highgate-indoors-red-ball",
+        postcode="N6",
+        address="Highgate, London",
+        latitude=51.57,
+        longitude=-0.146,
+        sports=["pickleball"],
+    )
+    outdoor_venue = SportsVenue(
+        composite_key=generate_composite_key(
+            [COURTRESERVE_ORGANISATION_WEBSITE, "highgate-outdoors"]
+        ),
+        organisation="Lemon Pickleball",
+        organisation_website=COURTRESERVE_ORGANISATION_WEBSITE,
+        venue_name="Highgate (Outdoors)",
+        slug="highgate-outdoors",
+        postcode="N6",
+        address="Highgate, London",
+        latitude=51.571,
+        longitude=-0.147,
+        sports=["pickleball"],
+    )
+    slug_to_venue = {
+        "highgate-indoors-red-ball": indoor_venue,
+        "highgate-outdoors": outdoor_venue,
+    }
+    raw_events = [
+        {
+            "Title": "Drils - Highgate - Indoors - Red Ball",
+            "EventName": "Drils - Highgate - Indoors - Red Ball",
+            "Number": "IND1",
+            "Start": "/Date(1787470200000)/",
+            "End": "/Date(1787475600000)/",
+            "MaxMembersOnEvent": 8,
+            "SignedMembers": 2,
+            "IsFull": False,
+            "InPast": False,
+        },
+        {
+            "Title": "Social Play - Highgate - Outdoors",
+            "EventName": "Social Play - Highgate - Outdoors",
+            "Number": "OUT1",
+            "Start": "/Date(1787470200000)/",
+            "End": "/Date(1787475600000)/",
+            "MaxMembersOnEvent": 8,
+            "SignedMembers": 2,
+            "IsFull": False,
+            "InPast": False,
+        },
+    ]
+
+    slots = parse_calendar_events(raw_events, slug_to_venue, category="Pickleball")
+    slots_by_number = {s.booking_url.split("/")[-1]: s for s in slots}
+    assert slots_by_number["IND1"].indoor is True
+    assert slots_by_number["OUT1"].indoor is False
+    assert VENUE_SLUG_TO_INDOOR["highgate-indoors-red-ball"] is True
+    assert VENUE_SLUG_TO_INDOOR["highgate-outdoors"] is False

@@ -77,7 +77,11 @@ class SouthwarkLeisureResponseParserStrategy(AbstractResponseParserStrategy):
                     spaces=slotAvailability.available_slots,
                     composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
                     last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
-                    booking_url=raw_response.requestMetadata.metadata.booking_url
+                    booking_url=raw_response.requestMetadata.metadata.booking_url,
+                    # Southwark Leisure's pickleball offering is a single site
+                    # (Canada Water) on repurposed "Sports Hall Court N"
+                    # courts - uniformly indoor, no split to detect.
+                    indoor=True if raw_response.requestMetadata.metadata.category == "Pickleball" else None,
                 )
             )
         return unified_schema_output
