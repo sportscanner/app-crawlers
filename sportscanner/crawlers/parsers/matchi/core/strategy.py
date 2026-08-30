@@ -208,6 +208,58 @@ def _parse_listslots_html(html_content: str, facility_slug: str) -> List[MatchiS
 # ---------------------------------------------------------------------------
 
 
+# Facility page's "Court details" panel (confirmed live across Down Hall
+# Hotel, Frindsbury, BSLTC): <dt class="wide courtinfo">Padel OUTDOORS</dt>.
+# One <dt> per sport the venue offers - not per individual court, so this is
+# a venue+sport-level constant, coarser than Playtomic's per-resource split
+# but the finest grain Matchi's own site actually exposes.
+_COURT_INFO_PATTERN = re.compile(r"(\w+)\s+(INDOORS|OUTDOORS)", re.IGNORECASE)
+
+# (slug, sport_lower) -> indoor bool, populated once per slug and reused
+# across every date that facility is crawled for (static facility metadata).
+_facility_indoor_cache: Dict[str, Dict[str, bool]] = {}
+_facility_indoor_cache_locks: Dict[str, asyncio.Lock] = {}
+
+
+async def _fetch_facility_indoor_map(
+    client: httpx.AsyncClient, slug: str, semaphore: asyncio.Semaphore
+) -> Dict[str, bool]:
+    """Fetch and cache {sport_lower: indoor} for one facility's public page.
+
+    Returns {} (not raising) on any failure - a missing sport key is already
+    handled as "indoor unknown" by callers via .get()."""
+    if slug in _facility_indoor_cache:
+        return _facility_indoor_cache[slug]
+    lock = _facility_indoor_cache_locks.setdefault(slug, asyncio.Lock())
+    async with lock:
+        if slug in _facility_indoor_cache:
+            return _facility_indoor_cache[slug]
+        try:
+            async with semaphore:
+                resp = await get_with_proxy_fallback_on_403(
+                    client,
+                    f"{MATCHI_ORGANISATION_WEBSITE}/facilities/{slug}",
+                    headers=_HEADERS,
+                    timeout=20,
+                    log_label=f"Matchi facility page {slug}",
+                )
+            if resp is None:
+                _facility_indoor_cache[slug] = {}
+                return {}
+            soup = BeautifulSoup(resp.text, "html.parser")
+            result = {}
+            for dt in soup.select("dt.courtinfo"):
+                match = _COURT_INFO_PATTERN.search(dt.get_text())
+                if match:
+                    result[match.group(1).lower()] = match.group(2).upper() == "INDOORS"
+            _facility_indoor_cache[slug] = result
+            return result
+        except Exception as exc:
+            logging.warning(f"Matchi: failed to fetch indoor/outdoor metadata for {slug}: {exc}")
+            _facility_indoor_cache[slug] = {}
+            return {}
+
+
 class MatchiRequestStrategy(AbstractRequestStrategy):
     """Stub: Matchi crawler bypasses the standard per-venue request loop."""
 
@@ -309,12 +361,23 @@ class MatchiSlotFetcher:
                 f"add them to the relevant facility-id map: {unmatched}"
             )
 
-        slot_lists = await asyncio.gather(
-            *[
-                self._fetch_facility_slots(client, slug, fid, fetch_date, semaphore)
-                for slug, fid in matched
-            ],
-            return_exceptions=True,
+        slot_lists, indoor_maps = await asyncio.gather(
+            asyncio.gather(
+                *[
+                    self._fetch_facility_slots(client, slug, fid, fetch_date, semaphore)
+                    for slug, fid in matched
+                ],
+                return_exceptions=True,
+            ),
+            # Cached after the first date this facility is crawled for - not
+            # refetched per date (static facility metadata, not availability).
+            asyncio.gather(
+                *[
+                    _fetch_facility_indoor_map(client, slug, semaphore)
+                    for slug, _ in matched
+                ],
+                return_exceptions=True,
+            ),
         )
 
         matchi_slots: List[MatchiSlot] = []
@@ -328,9 +391,14 @@ class MatchiSlotFetcher:
         if not matchi_slots:
             return []
 
+        facility_indoor_maps: Dict[str, Dict[str, bool]] = {
+            slug: (m if isinstance(m, dict) else {})
+            for (slug, _), m in zip(matched, indoor_maps)
+        }
+
         results: List[UnifiedParserSchema] = []
         for ms in matchi_slots:
-            record = self._to_unified(ms, venue_by_slug, fetch_date)
+            record = self._to_unified(ms, venue_by_slug, fetch_date, facility_indoor_maps)
             if record:
                 results.append(record)
 
@@ -392,10 +460,15 @@ class MatchiSlotFetcher:
         ms: MatchiSlot,
         venue_by_slug: Dict[str, sportscanner.storage.postgres.tables.SportsVenue],
         search_date: date,
+        facility_indoor_maps: Optional[Dict[str, Dict[str, bool]]] = None,
     ) -> Optional[UnifiedParserSchema]:
         venue = venue_by_slug.get(ms.facility_slug)
         if not venue:
             return None
+
+        indoor = None
+        if facility_indoor_maps:
+            indoor = facility_indoor_maps.get(ms.facility_slug, {}).get(self.category.lower())
 
         return UnifiedParserSchema(
             category=self.category,
@@ -414,4 +487,5 @@ class MatchiSlotFetcher:
                     f"{ms.facility_slug}?date={search_date.isoformat()}&sport={self.sport_id}"
                 )
             ),
+            indoor=indoor,
         )

@@ -88,6 +88,10 @@ def sort_and_format_grouped_slots_for_ui(
                     "available": _available,
                     "bookingUrl": x.booking_url,
                     "price": x.price,
+                    # Always None for badminton/squash (no such DB column -
+                    # getattr's default covers that) and for padel/tennis/
+                    # pickleball rows the crawler hasn't determined yet.
+                    "indoor": getattr(x, "indoor", None),
                 }
             )
 

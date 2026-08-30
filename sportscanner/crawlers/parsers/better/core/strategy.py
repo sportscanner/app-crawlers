@@ -61,6 +61,29 @@ def populate_blank_response_for_upserts(
     ]
 
 
+def _derive_indoor(category: str, slot_name: str):
+    """True/False/None (unknown) for a slot's indoor-vs-outdoor status.
+
+    Tennis: Better's raw `name` field already comes back as "Tennis Court -
+    Indoor" / "Tennis Court - Outdoor" for venues with mixed court types
+    (confirmed live, e.g. Islington Tennis Centre) - just read it.
+    Pickleball: every Better pickleball court is a converted sports-hall
+    court - no indoor/outdoor split exists in the activity-slug config
+    (core/activities.py), so it's uniformly indoor.
+    Badminton/squash: not applicable - always None (those tables have no
+    `indoor` column, so this is dropped before it ever reaches the DB)."""
+    if category == "Tennis":
+        lowered = slot_name.lower()
+        if "indoor" in lowered:
+            return True
+        if "outdoor" in lowered:
+            return False
+        return None
+    if category == "Pickleball":
+        return True
+    return None
+
+
 class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
     def _transform_raw_response_to_typed(self, api_response) -> List[BetterApiResponseSchema]:
         aligned_api_response = []
@@ -96,12 +119,14 @@ class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
     @override
     def parse(self, raw_response: RawResponseData) -> List[UnifiedParserSchema]:
         raw_response_typed: List[BetterApiResponseSchema] = self._transform_raw_response_to_typed(raw_response.content)
+        category = raw_response.requestMetadata.metadata.category
         unified_schema_output = []
         for slot in raw_response_typed:
             try:
                 unified_schema_output.append(
                     UnifiedParserSchema(
-                        category=raw_response.requestMetadata.metadata.category,
+                        category=category,
+                        indoor=_derive_indoor(category, slot.name),
                         starting_time=datetime.strptime(
                             slot.starts_at.format_24_hour, "%H:%M"
                         ).time(),

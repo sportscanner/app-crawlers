@@ -21,12 +21,14 @@ the correct website slug; None means no working public page exists for that venu
 from __future__ import annotations
 
 import asyncio
+import re
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import httpx
+from curl_cffi.requests import AsyncSession as CurlAsyncSession
 
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.anonymize.proxies import get_with_proxy_fallback_on_403
@@ -104,6 +106,10 @@ _HEADERS = {
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-origin",
 }
+
+# Browser TLS fingerprint for the club-page fetch (indoor/outdoor metadata) -
+# same WAF class as the availability API, see anonymize/proxies.py.
+_IMPERSONATE = "chrome124"
 
 # Stable mapping of venues.json slug (= Playtomic tenant_uid) → tenant_id (UUID).
 # tenant_id never changes — add new venues here when they are added to venues.json.
@@ -216,16 +222,24 @@ def _resources_to_unified(
     venue: sportscanner.storage.postgres.tables.SportsVenue,
     fetch_date: date,
     category: str = "Padel",
+    resource_indoor_map: Optional[Dict[str, bool]] = None,
 ) -> List[UnifiedParserSchema]:
-    """Aggregate availability across courts into one record per (start_time, duration)."""
+    """Aggregate availability across courts into one record per
+    (start_time, duration, indoor). `indoor` is part of the grouping key, not
+    just an extra column - a venue can have both indoor and outdoor courts
+    (confirmed live, e.g. Kensington Pickleball Club), and merging their
+    `spaces` counts together would make the indoor/outdoor split unfilterable
+    and silently misreport which courts are actually available."""
+    resource_indoor_map = resource_indoor_map or {}
     slot_map: Dict[tuple, List[str]] = defaultdict(list)
 
     for resource in resources:
+        indoor = resource_indoor_map.get(resource.resource_id)
         for slot in resource.slots:
-            slot_map[(slot.start_time, slot.duration)].append(slot.price)
+            slot_map[(slot.start_time, slot.duration, indoor)].append(slot.price)
 
     results: List[UnifiedParserSchema] = []
-    for (start_time_str, duration_min), prices in slot_map.items():
+    for (start_time_str, duration_min, indoor), prices in slot_map.items():
         try:
             start_t = _utc_to_london(start_time_str, fetch_date)
         except (ValueError, AttributeError):
@@ -245,10 +259,65 @@ def _resources_to_unified(
                 composite_key=venue.composite_key,
                 last_refreshed=datetime.now(),
                 booking_url=_booking_url(venue.slug, fetch_date),
+                indoor=indoor,
             )
         )
 
     return results
+
+
+# Strips the backslash-escaping the club page's embedded JSON carries when
+# nested inside a JS string literal (confirmed live: the raw response has
+# literal `\"resourceId\"` etc, not `"resourceId"`), then matches the plain
+# {"resourceId":...,"name":...,"sport":...,"features":[...]} shape directly -
+# same "normalise then regex" pattern as Places Leisure's schedule scrape.
+_RESOURCE_FEATURES_PATTERN = re.compile(
+    r'"resourceId":"([^"]+)","name":"[^"]*","sport":"[^"]*","features":\[([^\]]*)\]'
+)
+
+# venue.slug -> {resource_id: indoor bool}, populated once per slug and
+# reused across every date that venue is crawled for (this is static
+# facility metadata, not availability - refetching it per date would be
+# hundreds of wasted requests per venue over a multi-week crawl window).
+_resource_indoor_cache: Dict[str, Dict[str, bool]] = {}
+_resource_indoor_cache_locks: Dict[str, asyncio.Lock] = {}
+
+
+async def _fetch_resource_indoor_map(slug: str) -> Dict[str, bool]:
+    """Fetch and cache {resource_id: indoor} for one venue's public club page.
+
+    Returns {} (not raising) on any failure - callers already handle a
+    resource missing from the map as "indoor unknown" via .get(), so a failed
+    fetch just means this run's availability rows have indoor=None for that
+    venue rather than blocking the crawl."""
+    if slug in _resource_indoor_cache:
+        return _resource_indoor_cache[slug]
+    lock = _resource_indoor_cache_locks.setdefault(slug, asyncio.Lock())
+    async with lock:
+        if slug in _resource_indoor_cache:  # populated while we waited for the lock
+            return _resource_indoor_cache[slug]
+        try:
+            async with CurlAsyncSession() as session:
+                resp = await session.get(
+                    f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{slug}",
+                    headers=_HEADERS,
+                    impersonate=_IMPERSONATE,
+                    timeout=20,
+                )
+            content = resp.text.replace("\\", "")
+            result = {}
+            for resource_id, features_raw in _RESOURCE_FEATURES_PATTERN.findall(content):
+                features = features_raw.lower()
+                if "indoor" in features:
+                    result[resource_id] = True
+                elif "outdoor" in features:
+                    result[resource_id] = False
+            _resource_indoor_cache[slug] = result
+            return result
+        except Exception as exc:
+            logging.warning(f"Playtomic: failed to fetch indoor/outdoor metadata for {slug}: {exc}")
+            _resource_indoor_cache[slug] = {}
+            return {}
 
 
 # ---------------------------------------------------------------------------
@@ -391,8 +460,13 @@ class PlaytomicAvailabilityFetcher:
             if resp is None:
                 return []
             resources = [PlaytomicResource(**r) for r in resp.json()]
+            resource_indoor_map = await _fetch_resource_indoor_map(venue.slug)
             slots = _resources_to_unified(
-                resources, venue, fetch_date, category=self.category
+                resources,
+                venue,
+                fetch_date,
+                category=self.category,
+                resource_indoor_map=resource_indoor_map,
             )
             logging.debug(
                 f"Playtomic: {venue.venue_name} {fetch_date} → {len(slots)} slot groups"
