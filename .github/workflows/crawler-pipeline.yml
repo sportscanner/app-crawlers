@@ -3,6 +3,18 @@ name: Run Crawler Pipeline
 on:
   workflow_dispatch:  # Allows you to manually trigger the workflow if needed
 
+# This workflow has no `schedule:` trigger of its own - it's fired externally
+# every 15 minutes by the cron service behind CRAWLER_CRONJOB_HEARTBEAT below,
+# regardless of whether the previous run finished. Without this, a slow run
+# (confirmed: Places Leisure 429s pushed a single run past 30+ minutes) stacks
+# up multiple concurrent runs fighting over the same DB tables. Cancelling the
+# stale run on each new trigger is safe: all writes go through
+# insert_records_to_table's idempotent upsert, so a cancelled mid-run pipeline
+# just leaves a partial-but-valid refresh, not corrupted data.
+concurrency:
+  group: crawler-pipeline
+  cancel-in-progress: true
+
 jobs:
   badminton-crawler-pipeline:
     runs-on: ubuntu-latest
