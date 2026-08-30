@@ -21,8 +21,10 @@ Two-phase fetch, unlike every other provider in this codebase:
 
 This means one HTML fetch per venue (cheap) followed by potentially hundreds
 of availability calls per venue (one per timetabled slot across several
-weeks) - comparable in request volume to Better/GLL, and handled the same way
-via a per-provider concurrency semaphore.
+weeks) - comparable in request volume to Better/GLL. Confirmed live that this endpoint has no day/date-range bulk mode (see the
+comment in `_fetch_and_build`), so that fan-out is structural, not a
+self-imposed inefficiency - it's throttled via a strict shared rate limiter
+instead (see `_paced_get`).
 
 Time zone: schedule and availability timestamps are UTC ISO-8601. Converted
 to Europe/London for display, same convention as every other provider.
@@ -33,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import html as html_lib
 import re
+import time
 from datetime import date, datetime
 from typing import List, Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -49,11 +52,54 @@ _LONDON_TZ = ZoneInfo("Europe/London")
 
 # The Umbraco availability API rate-limits aggressively (HTTP 429): the
 # 2026-08-23 GitHub Actions runs drowned in 429s when all 8 venues' availability
-# requests shared the pipeline-wide 20-slot semaphore. This provider-local
-# limiter caps availability fetches to 3 concurrent plus a small spacing delay,
-# which trades a slower crawl for actually returning data.
-_AVAILABILITY_SEMAPHORE = asyncio.Semaphore(3)
-_AVAILABILITY_SPACING_SECONDS = 0.3
+# requests shared the pipeline-wide 20-slot semaphore. A first attempt at a
+# provider-local limiter (3 concurrent + a 0.3s sleep before each task's own
+# request) still 429'd on 2026-08-30 - 3 workers independently pacing
+# themselves at 0.3s yields ~6-10 req/s in bursts, not the ~3 req/s the
+# spacing constant implies. Replaced with a real shared pacer below: every
+# availability request funnels through one lock and waits out a hard minimum
+# interval since the *previous* request fired, regardless of how many tasks
+# are scheduled concurrently - an actual guaranteed rate ceiling rather than
+# an approximate one.
+# Empirically tuned live against Latchmere Leisure Centre (2026-08-30): at
+# 0.5s this 429'd on every single first attempt (100%), recovering only via
+# the retry below. At 1.5s, 52/52 slots came back clean with just 3 transient
+# 429s total (~6%), all recovered on the first retry - no exhausted-retry
+# failures. Push this higher only if live logs show a sustained 429 rate
+# again; pushing it lower reintroduces the 100%-retry pattern.
+_MIN_REQUEST_INTERVAL_SECONDS = 1.5  # hard ceiling: ~0.67 req/s
+_rate_limiter_lock = asyncio.Lock()
+_last_request_at: float = 0.0
+
+# 429 is a transient "slow down", not a real failure - retrying (honoring
+# Retry-After when the server sends one) recovers the slot instead of
+# permanently dropping it from this run.
+_MAX_429_RETRIES = 3
+_BACKOFF_SECONDS = (1.0, 2.0, 4.0)
+
+
+async def _paced_get(client: httpx.AsyncClient, url: str, **kwargs) -> httpx.Response:
+    """GET `url`, first waiting out the shared minimum inter-request interval,
+    then retrying with backoff on 429 (honoring Retry-After if present)."""
+    global _last_request_at
+    for attempt in range(_MAX_429_RETRIES + 1):
+        async with _rate_limiter_lock:
+            wait = _MIN_REQUEST_INTERVAL_SECONDS - (time.monotonic() - _last_request_at)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            _last_request_at = time.monotonic()
+            resp = await client.get(url, **kwargs)
+        if resp.status_code != 429:
+            resp.raise_for_status()
+            return resp
+        if attempt == _MAX_429_RETRIES:
+            resp.raise_for_status()  # exhausted retries - raise so the caller logs/drops as before
+        retry_after = resp.headers.get("Retry-After")
+        delay = float(retry_after) if retry_after and retry_after.isdigit() else _BACKOFF_SECONDS[attempt]
+        logging.warning(f"Places Leisure: 429 on {url}, retrying in {delay}s (attempt {attempt + 1})")
+        await asyncio.sleep(delay)
+    raise AssertionError("unreachable")  # loop always returns or raises above
+
 
 _HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
@@ -103,7 +149,7 @@ class PlacesLeisureSlotFetcher:
             return []
 
         tasks = [
-            self._fetch_and_build(client, venue, site_id, session, semaphore)
+            self._fetch_and_build(client, venue, site_id, session)
             for session in relevant
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -150,8 +196,14 @@ class PlacesLeisureSlotFetcher:
         venue: sportscanner.storage.postgres.tables.SportsVenue,
         site_id: str,
         session: _SessionTuple,
-        semaphore: asyncio.Semaphore,
     ) -> Optional[UnifiedParserSchema]:
+        # One call per distinct scheduled StartDateTime is not a self-imposed
+        # inefficiency - confirmed live against this exact endpoint that it has
+        # no day/date-range bulk mode: a date-only or off-grid `startDate`
+        # returns {"success":false,"errors":["Failed to get availability"]},
+        # and an added `endDate` param is silently ignored. It already returns
+        # every court for that one timestamp in a single response (see `courts`
+        # below) - the fan-out is genuinely per-timeslot, not per-court.
         start_iso, end_iso, activity_id, location_id = session
         params = {
             "activityId": activity_id,
@@ -160,18 +212,16 @@ class PlacesLeisureSlotFetcher:
             "startDate": start_iso,
         }
         try:
-            async with _AVAILABILITY_SEMAPHORE:
-                await asyncio.sleep(_AVAILABILITY_SPACING_SECONDS)
-                resp = await client.get(
-                    f"{PLACES_LEISURE_ORGANISATION_WEBSITE}/umbraco/api/timetables/getavailability",
-                    params=params,
-                    headers={
-                        **_HEADERS,
-                        "Referer": f"{PLACES_LEISURE_ORGANISATION_WEBSITE}/centres/{venue.slug}/",
-                    },
-                    timeout=30,
-                )
-            resp.raise_for_status()
+            resp = await _paced_get(
+                client,
+                f"{PLACES_LEISURE_ORGANISATION_WEBSITE}/umbraco/api/timetables/getavailability",
+                params=params,
+                headers={
+                    **_HEADERS,
+                    "Referer": f"{PLACES_LEISURE_ORGANISATION_WEBSITE}/centres/{venue.slug}/",
+                },
+                timeout=30,
+            )
             payload = resp.json()
         except Exception as exc:
             logging.error(
