@@ -61,13 +61,19 @@ _LONDON_TZ = ZoneInfo("Europe/London")
 # interval since the *previous* request fired, regardless of how many tasks
 # are scheduled concurrently - an actual guaranteed rate ceiling rather than
 # an approximate one.
-# Empirically tuned live against Latchmere Leisure Centre (2026-08-30): at
-# 0.5s this 429'd on every single first attempt (100%), recovering only via
-# the retry below. At 1.5s, 52/52 slots came back clean with just 3 transient
-# 429s total (~6%), all recovered on the first retry - no exhausted-retry
-# failures. Push this higher only if live logs show a sustained 429 rate
-# again; pushing it lower reintroduces the 100%-retry pattern.
-_MIN_REQUEST_INTERVAL_SECONDS = 1.5  # hard ceiling: ~0.67 req/s
+# Empirically tuned live against Latchmere Leisure Centre from a residential/
+# office IP (2026-08-30): at 0.5s this 429'd on every single first attempt
+# (100%), recovering only via the retry below. At 1.5s, 52/52 slots came back
+# clean with just 3 transient 429s total (~6%). But the *actual* GitHub
+# Actions runner IP range hit the same 100%-first-attempt-429 pattern at
+# 1.5s (confirmed from real pipeline run logs same day) - cloud/CI IP ranges
+# are commonly held to a stricter WAF threshold than a normal office/
+# residential IP, so a locally-tuned value doesn't transfer directly. Pushed
+# to 3.0s to give real headroom in the actual run environment - each 429 is
+# still recovered via retry (no data loss either way), this is purely about
+# cutting the wasted-first-attempt rate. Re-tune from live GitHub Actions
+# logs specifically, not local testing, if this still isn't enough.
+_MIN_REQUEST_INTERVAL_SECONDS = 3.0  # hard ceiling: ~0.33 req/s
 _rate_limiter_lock = asyncio.Lock()
 _last_request_at: float = 0.0
 
