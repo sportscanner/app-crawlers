@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta, time
 from typing import Dict, List, Optional
@@ -7,6 +8,7 @@ import httpx
 from curl_cffi.requests import Session as CurlSession
 from pydantic import ValidationError
 
+from sportscanner.crawlers.anonymize.flaresolverr import get_cookie_via_flaresolverr
 from sportscanner.crawlers.anonymize.proxies import next_impersonate_profile
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
@@ -66,6 +68,15 @@ def get_anonymous_jwt() -> Optional[str]:
     isn't enough here, so this retries across `next_impersonate_profile()`'s
     rotation before giving up, same rationale as
     `anonymize/proxies.get_with_proxy_fallback_on_403`.
+
+    Confirmed live (2026-09) that rotation alone still doesn't get past this
+    one: real Chrome traffic itself is required, not just a matching TLS
+    fingerprint - a genuine headless browser (FlareSolverr) gets a clean 200
+    with no challenge shown at all ("Challenge not detected!"), meaning
+    Cloudflare here is scoring JS-execution capability rather than (or in
+    addition to) the handshake. So FlareSolverr is tried as a final fallback,
+    extracting the `Jwt` cookie straight from its solved browser session. A
+    true no-op unless `FLARESOLVERR_URL` is set.
     """
     last_exc: Optional[Exception] = None
     for attempt in range(1, _JWT_FETCH_ATTEMPTS + 1):
@@ -97,9 +108,19 @@ def get_anonymous_jwt() -> Optional[str]:
                 f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE} "
                 f"(attempt {attempt}/{_JWT_FETCH_ATTEMPTS}, profile {profile}): {e}"
             )
+
+    jwt = get_cookie_via_flaresolverr(
+        f"{GLADSTONEGO_PORTAL_BASE}/api/samlauthentication/anonymous",
+        cookie_name="Jwt",
+        log_label="mytimeactive",
+    )
+    if jwt:
+        return jwt
+
     logging.error(
         f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE} after "
-        f"{_JWT_FETCH_ATTEMPTS} attempts across rotated TLS profiles: {last_exc}"
+        f"{_JWT_FETCH_ATTEMPTS} attempts across rotated TLS profiles"
+        f"{' + FlareSolverr' if os.environ.get('FLARESOLVERR_URL') else ''}: {last_exc}"
     )
     return None
 

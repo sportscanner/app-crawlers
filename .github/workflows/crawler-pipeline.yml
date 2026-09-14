@@ -35,14 +35,37 @@ jobs:
         run: |
           echo "${{ secrets.ENV_FILE_CONTENT }}" > .env  # Store the content of your .env file in the secret "ENV_FILE_CONTENT"
 
+      - name: Start FlareSolverr sidecar
+        # Last-resort WAF bypass for mytimeactive (Gladstone Go), which was
+        # 100% blocked every run (see anonymize/flaresolverr.py) - confirmed
+        # live that a real headless browser passes straight through with no
+        # challenge at all, so this recovers what curl_cffi TLS-impersonation
+        # rotation alone could not. --network=host so `localhost:8191`
+        # reaches it directly from the crawler container below.
+        run: |
+          docker run -d --name flaresolverr --network=host \
+            -e LOG_LEVEL=info \
+            ghcr.io/flaresolverr/flaresolverr:latest
+          for i in $(seq 1 15); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8191/ || true)
+            [ "$code" = "200" ] && echo "FlareSolverr ready" && exit 0
+            sleep 2
+          done
+          echo "FlareSolverr did not become ready in time - continuing without it"
+
       - name: Run crawler pipeline container
         run: |
           echo "Running container for image (tag: latest) to run data crawlers pipeline"
           docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+            -e FLARESOLVERR_URL=http://localhost:8191/v1 \
             -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
             ghcr.io/sportscanner/app-crawlers:latest \
             python sportscanner/crawlers/pipeline.py --task badminton
-  
+
+      - name: Stop FlareSolverr sidecar
+        if: always()
+        run: docker rm -f flaresolverr || true
+
   squash-crawler-pipeline:
     needs: badminton-crawler-pipeline
     runs-on: ubuntu-latest
@@ -63,13 +86,32 @@ jobs:
         run: |
           echo "${{ secrets.ENV_FILE_CONTENT }}" > .env  # Store the content of your .env file in the secret "ENV_FILE_CONTENT"
 
+      - name: Start FlareSolverr sidecar
+        # Last-resort WAF bypass for mytimeactive (Gladstone Go) - see the
+        # Badminton Crawler job above and anonymize/flaresolverr.py.
+        run: |
+          docker run -d --name flaresolverr --network=host \
+            -e LOG_LEVEL=info \
+            ghcr.io/flaresolverr/flaresolverr:latest
+          for i in $(seq 1 15); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8191/ || true)
+            [ "$code" = "200" ] && echo "FlareSolverr ready" && exit 0
+            sleep 2
+          done
+          echo "FlareSolverr did not become ready in time - continuing without it"
+
       - name: Run crawler pipeline container
         run: |
           echo "Running container for image (tag: latest) to run data crawlers pipeline"
           docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+            -e FLARESOLVERR_URL=http://localhost:8191/v1 \
             -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
             ghcr.io/sportscanner/app-crawlers:latest \
             python sportscanner/crawlers/pipeline.py --task squash
+
+      - name: Stop FlareSolverr sidecar
+        if: always()
+        run: docker rm -f flaresolverr || true
 
   pickleball-crawler-pipeline:
     needs: squash-crawler-pipeline
