@@ -6,6 +6,7 @@ import httpx
 from curl_cffi.requests import AsyncSession
 from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 
+from sportscanner.crawlers.anonymize.flaresolverr import get_via_flaresolverr
 from sportscanner.logger import logging
 from sportscanner.variables import settings
 
@@ -86,15 +87,24 @@ async def get_with_proxy_fallback_on_403(
        fix CitySport needed (docs/clubs/citysport.md). Rotating profiles also
        covers the case where one specific fingerprint (not just "any
        non-browser TLS handshake") has itself been blocklisted.
+    3. FlareSolverr (`get_via_flaresolverr`), only if `FLARESOLVERR_URL` is set
+       - a genuine last resort for the handful of venues that 403 on every
+       date/run regardless of fingerprint. Confirmed live (2026-09) that at
+       least one such ClubSpark venue is behind a real, solvable Cloudflare JS
+       challenge (a real browser gets a `cf_clearance` cookie), not a flat
+       network-level IP block - so a real headless browser stage can rescue
+       requests TLS impersonation alone cannot. No-op with zero extra latency
+       when the env var isn't set, so this is safe in every environment that
+       hasn't opted in.
 
     A 403 or 429 through a direct connection can mean this host's IP is blocklisted or
     rate-limited by Cloudflare / WAF for this specific target.
 
     Any other non-403/429 HTTP error is raised immediately.
 
-    Returns the successful response (httpx or curl_cffi - both expose .json() /
-    .text / .status_code), or `None` if every impersonation retry also failed
-    with 403/429.
+    Returns the successful response (httpx, curl_cffi, or a FlareSolverr
+    wrapper - all expose .json() / .text / .status_code), or `None` if every
+    stage also failed with 403/429.
     """
     try:
         resp = await client.get(url, params=params, headers=headers, timeout=timeout)
@@ -143,8 +153,14 @@ async def get_with_proxy_fallback_on_403(
                 f"({profile}) failed: {type(exc_tls_unexpected).__name__}: {exc_tls_unexpected!r}"
             )
 
+    # Last resort: a real headless browser via FlareSolverr, only if configured.
+    flaresolverr_resp = await get_via_flaresolverr(url, params=params, log_label=log_label)
+    if flaresolverr_resp is not None and flaresolverr_resp.status_code not in (403, 429):
+        return flaresolverr_resp
+
     logging.warning(
-        f"{log_label}: exhausted direct + TLS-impersonation attempts "
+        f"{log_label}: exhausted direct + TLS-impersonation"
+        f"{' + FlareSolverr' if os.environ.get('FLARESOLVERR_URL') else ''} attempts "
         f"- this run's IP may be blocklisted for this target"
     )
     return None

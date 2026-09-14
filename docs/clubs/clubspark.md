@@ -44,6 +44,10 @@ Discovery method: the venue booking HTML page is a thin client-rendered shell wi
 
 Responses set a `__cf_bm` cookie. The crawler uses `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py` to transparently fall back to curl_cffi requests with a rotating browser TLS fingerprint whenever a direct IP is challenged with 403 or 429.
 
+### FlareSolverr fallback (September 2026)
+
+A handful of venues still 403 on every date/run even after every TLS-impersonation profile is exhausted. Confirmed live that these are genuine solvable Cloudflare JS challenges — a real browser gets issued a `cf_clearance` cookie after solving one — not a network-level IP block, so `get_with_proxy_fallback_on_403` now falls back to a real headless browser via a `flaresolverr/flaresolverr` sidecar (`anonymize/flaresolverr.py`) as a last resort. The Tennis Crawler CI job starts this sidecar (`--network=host`, `FLARESOLVERR_URL=http://localhost:8191/v1`) before running the crawler container; it's a true no-op everywhere else (local dev, other jobs, tests) since the client returns `None` immediately when that env var isn't set. FlareSolverr can only pass along the resolved page body, not custom headers, so it can't carry a `referer` — not needed here since ClubSpark's GetVenueSessions endpoint works without one when hit through a real browser.
+
 ## Verified London Park Tennis Venues (49 venues)
 
 The full organisation fragment is saved to `reports/venue-fragments/clubspark.json` with 49 verified London park tennis venues:
