@@ -44,9 +44,17 @@ Discovery method: the venue booking HTML page is a thin client-rendered shell wi
 
 Responses set a `__cf_bm` cookie. The crawler uses `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py` to transparently fall back to curl_cffi requests with a rotating browser TLS fingerprint whenever a direct IP is challenged with 403 or 429.
 
-### FlareSolverr fallback (September 2026)
+### Status: all 49 venues 403 on every run (September 2026)
 
-A handful of venues still 403 on every date/run even after every TLS-impersonation profile is exhausted. Confirmed live that these are genuine solvable Cloudflare JS challenges — a real browser gets issued a `cf_clearance` cookie after solving one — not a network-level IP block, so `get_with_proxy_fallback_on_403` now falls back to a real headless browser via a `flaresolverr/flaresolverr` sidecar (`anonymize/flaresolverr.py`) as a last resort. The Tennis Crawler CI job starts this sidecar (`--network=host`, `FLARESOLVERR_URL=http://localhost:8191/v1`) before running the crawler container; it's a true no-op everywhere else (local dev, other jobs, tests) since the client returns `None` immediately when that env var isn't set. FlareSolverr can only pass along the resolved page body, not custom headers, so it can't carry a `referer` — not needed here since ClubSpark's GetVenueSessions endpoint works without one when hit through a real browser.
+Confirmed live via full CI logs: **every one of the 49 ClubSpark venues** 403s on every date, every run, even after every TLS-impersonation profile in `get_with_proxy_fallback_on_403` is exhausted — this is a total provider outage from GitHub Actions, not "a handful of venues."
+
+### FlareSolverr fallback - tried, does not help from the runner IP
+
+`anonymize/flaresolverr.py` adds a real-headless-browser fallback (`flaresolverr/flaresolverr`) to `get_with_proxy_fallback_on_403`, gated behind `FLARESOLVERR_URL` (true no-op when unset). This looked promising from a residential IP - a real browser gets issued a `cf_clearance` cookie after solving Cloudflare's JS challenge, proving it's a solvable challenge in principle, not a flat network block.
+
+**But tested live against the actual GitHub Actions runner IP (2026-09-14), it made no difference: all 39 ClubSpark venues reached before the test run was cancelled still failed with `exhausted direct + TLS-impersonation + FlareSolverr attempts`.** Cloudflare's bot-management scoring for this runner IP range is apparently strict enough to present something even a real headless browser can't auto-solve (most likely an interactive challenge, not the JS-only proof-of-work a residential IP gets) - IP reputation still gates the outcome even when JS execution is genuine. The CI sidecar wiring was reverted for this reason (pure latency/complexity cost with zero payoff); the client code stays as an inert capability (`FLARESOLVERR_URL` unset in production) in case it's useful again alongside a non-datacenter egress IP for the FlareSolverr container itself.
+
+No known free/open-source technique gets past this. The remaining levers are the same non-free ones as Playtomic's always-blocked venues (see `playtomic.md`): a residential-IP egress for the whole request (proxy or self-hosted runner), not a client-side trick.
 
 ## Verified London Park Tennis Venues (49 venues)
 
