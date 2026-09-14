@@ -12,9 +12,8 @@ from datetime import date, timedelta
 from typing import Any, Coroutine, List, Optional, Dict
 import asyncio
 import itertools
-import httpx
 from sportscanner.crawlers.helpers import override
-from sportscanner.crawlers.anonymize.proxies import httpxAsyncClientWithProxyRotation
+from sportscanner.crawlers.anonymize.proxies import next_impersonate_profile
 from curl_cffi.requests import AsyncSession as CurlAsyncSession
 from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 
@@ -114,61 +113,35 @@ class EveryoneActiveCrawler(BaseCrawler):
     async def _fetch_with_retry(
         self, request_details: RequestDetailsWithMetadata
     ) -> List[UnifiedParserSchema]:
-        # Stage 1 (free): browser TLS fingerprint via curl_cffi. The AWS WAF in
-        # front of caching.everyoneactive.com may score the handshake as well as
-        # the IP, so this costs nothing and can rescue runner-IP runs without
-        # touching the paid proxy pool at all.
-        try:
-            async with CurlAsyncSession(impersonate="chrome124") as impersonated:
-                response = await impersonated.get(
-                    request_details.url, headers=request_details.headers, timeout=15
-                )
-            if response.status_code not in (403, 429):
-                response.raise_for_status()
-                content_type = response.headers.get("content-type", "")
-                validated_response = validate_api_response(
-                    response, content_type, request_details.url
-                )
-                if not validated_response:
-                    return []
-                raw_data_obj = RawResponseData(
-                    content=validated_response,
-                    status_code=response.status_code,
-                    headers=dict(response.headers),
-                    requestMetadata=request_details,
-                )
-                return self.response_parser_strategy.parse(raw_data_obj)
-        except CurlHTTPError as e:
-            status = e.response.status_code if e.response is not None else None
-            if status not in (403, 429):
-                logging.error(
-                    f"EveryoneActive: impersonated fetch failed with HTTP {status} "
-                    f"for {request_details.url}"
-                )
-                return []
-        except Exception as e:
-            logging.error(
-                f"EveryoneActive impersonated fetch failed for {request_details.url}: {type(e).__name__}: {e!r}"
-            )
-
-        # Stage 2: direct httpx retries with fresh connections (the AWS WAF
-        # occasionally lets a fresh connection through after a 403).
+        # Stage 1+2 (free): browser TLS fingerprint via curl_cffi, cycling
+        # through `next_impersonate_profile()`'s rotation on every attempt. The
+        # AWS WAF in front of caching.everyoneactive.com scores the handshake
+        # as well as the IP, and a plain-httpx retry against the same blocked
+        # IP (the old Stage 2) has no chance of succeeding once the paid
+        # rotating-proxy pool was removed - a different TLS fingerprint per
+        # attempt is the only thing that can plausibly change the outcome now.
         last_status: Optional[int] = None
         for attempt in range(1, self._MAX_RETRY_ATTEMPTS + 1):
+            profile = next_impersonate_profile()
             try:
-                async with httpxAsyncClientWithProxyRotation() as client:
-                    response = await client.get(
+                async with CurlAsyncSession(impersonate=profile) as impersonated:
+                    response = await impersonated.get(
                         request_details.url, headers=request_details.headers, timeout=15
                     )
+                if response.status_code in (403, 429):
+                    last_status = response.status_code
+                    logging.debug(
+                        f"EveryoneActive: {last_status} via TLS impersonation ({profile}), "
+                        f"attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} for {request_details.url}"
+                    )
+                    continue
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(
                     response, content_type, request_details.url
                 )
                 if not validated_response:
-                    return (
-                        []
-                    )  # a clean connection genuinely reporting no slots - not worth retrying
+                    return []  # a clean connection genuinely reporting no slots - not worth retrying
                 raw_data_obj = RawResponseData(
                     content=validated_response,
                     status_code=response.status_code,
@@ -176,21 +149,28 @@ class EveryoneActiveCrawler(BaseCrawler):
                     requestMetadata=request_details,
                 )
                 return self.response_parser_strategy.parse(raw_data_obj)
-            except httpx.HTTPStatusError as e:
-                last_status = e.response.status_code
+            except CurlHTTPError as e:
+                status = e.response.status_code if e.response is not None else None
+                if status not in (403, 429):
+                    logging.error(
+                        f"EveryoneActive: impersonated fetch failed with HTTP {status} "
+                        f"for {request_details.url}"
+                    )
+                    return []
+                last_status = status
                 logging.debug(
-                    f"EveryoneActive: {last_status} for "
-                    f"{request_details.url}, attempt {attempt}/{self._MAX_RETRY_ATTEMPTS}"
+                    f"EveryoneActive: {last_status} via TLS impersonation ({profile}), "
+                    f"attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} for {request_details.url}"
                 )
-                continue
             except Exception as e:
                 logging.error(
-                    f"EveryoneActive fetch failed for {request_details.url}: {type(e).__name__}: {e!r}"
+                    f"EveryoneActive impersonated fetch failed for {request_details.url}: {type(e).__name__}: {e!r}"
                 )
                 return []
         logging.warning(
-            f"EveryoneActive: exhausted {self._MAX_RETRY_ATTEMPTS} direct retries (last status {last_status}) "
-            f"for {request_details.url} - this run's IP is likely blocklisted by the AWS WAF"
+            f"EveryoneActive: exhausted {self._MAX_RETRY_ATTEMPTS} TLS-impersonation retries "
+            f"(last status {last_status}) for {request_details.url} - this run's IP is "
+            f"likely blocklisted by the AWS WAF"
         )
         return []
 

@@ -31,7 +31,10 @@ import httpx
 from curl_cffi.requests import AsyncSession as CurlAsyncSession
 
 import sportscanner.storage.postgres.tables
-from sportscanner.crawlers.anonymize.proxies import get_with_proxy_fallback_on_403
+from sportscanner.crawlers.anonymize.proxies import (
+    get_with_proxy_fallback_on_403,
+    next_impersonate_profile,
+)
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
@@ -107,9 +110,6 @@ _HEADERS = {
     "sec-fetch-site": "same-origin",
 }
 
-# Browser TLS fingerprint for the club-page fetch (indoor/outdoor metadata) -
-# same WAF class as the availability API, see anonymize/proxies.py.
-_IMPERSONATE = "chrome124"
 
 # Stable mapping of venues.json slug (= Playtomic tenant_uid) → tenant_id (UUID).
 # tenant_id never changes — add new venues here when they are added to venues.json.
@@ -301,7 +301,7 @@ async def _fetch_resource_indoor_map(slug: str) -> Dict[str, bool]:
                 resp = await session.get(
                     f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{slug}",
                     headers=_HEADERS,
-                    impersonate=_IMPERSONATE,
+                    impersonate=next_impersonate_profile(),
                     timeout=20,
                 )
             content = resp.text.replace("\\", "")

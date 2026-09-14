@@ -1,4 +1,5 @@
 import os
+from itertools import cycle
 from typing import Any, Dict, Optional
 
 import httpx
@@ -8,13 +9,28 @@ from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 from sportscanner.logger import logging
 from sportscanner.variables import settings
 
-# Browser TLS fingerprint used for the free WAF retry stage. Playtomic, Matchi
+# Browser TLS fingerprints used for the free WAF retry stage. Playtomic, Matchi
 # and ClubSpark sit behind Cloudflare-style bot checks that score the TLS
 # handshake: Python's httpx/ssl handshake fails from datacenter IPs (GitHub
 # Actions runners) with an immediate 403 even when the same request succeeds
-# from residential IPs. curl_cffi replays a genuine Chrome handshake, which is
+# from residential IPs. curl_cffi replays a genuine browser handshake, which is
 # the same fix CitySport needed (see docs/clubs/citysport.md).
-_IMPERSONATE = "chrome124"
+#
+# Rotated rather than fixed on one profile: "chrome124" is the default
+# impersonate target in nearly every curl_cffi tutorial/example, so it is a
+# well-known JA3/JA4 hash to WAF operators specifically because it is so
+# common in the scraping community - a WAF can blocklist that one fingerprint
+# without touching real Chrome traffic (real Chrome moved past v124 in mid
+# 2024). Cycling through several current, less-fingerprinted browsers gives
+# each retry attempt a materially different handshake instead of hammering
+# the same one twice.
+_IMPERSONATE_PROFILES = ("chrome136", "safari180", "firefox135", "chrome124")
+_impersonate_cycle = cycle(_IMPERSONATE_PROFILES)
+
+
+def next_impersonate_profile() -> str:
+    """Returns the next browser TLS-impersonation profile in rotation."""
+    return next(_impersonate_cycle)
 
 # The paid rotating-proxy integration (Webshare) was removed in August 2026:
 # the subscription's bandwidth cap was being burned on 403 retries that the
@@ -58,15 +74,18 @@ async def get_with_proxy_fallback_on_403(
     log_label: str = "",
 ) -> Optional[Any]:
     """GET `url` via `client` first; on HTTP 403 or 429 (bot challenge / rate limit),
-    retry once via curl_cffi with a browser TLS fingerprint before giving up.
+    retry via curl_cffi with a rotating browser TLS fingerprint before giving up.
 
     Retry chain:
     1. Direct httpx request.
-    2. curl_cffi with `impersonate="chrome124"` - replays a genuine browser TLS
-       handshake. Cloudflare-style WAFs (Playtomic, Matchi, ClubSpark) score the
-       handshake itself, and httpx's Python-ssl handshake is an automatic fail
-       from datacenter IPs such as GitHub Actions runners even when the target
-       IP is not blocklisted. Same fix CitySport needed (docs/clubs/citysport.md).
+    2. curl_cffi, cycling through `_IMPERSONATE_PROFILES` - each retry replays a
+       different genuine browser TLS handshake. Cloudflare-style WAFs
+       (Playtomic, Matchi, ClubSpark) score the handshake itself, and httpx's
+       Python-ssl handshake is an automatic fail from datacenter IPs such as
+       GitHub Actions runners even when the target IP is not blocklisted. Same
+       fix CitySport needed (docs/clubs/citysport.md). Rotating profiles also
+       covers the case where one specific fingerprint (not just "any
+       non-browser TLS handshake") has itself been blocklisted.
 
     A 403 or 429 through a direct connection can mean this host's IP is blocklisted or
     rate-limited by Cloudflare / WAF for this specific target.
@@ -74,7 +93,7 @@ async def get_with_proxy_fallback_on_403(
     Any other non-403/429 HTTP error is raised immediately.
 
     Returns the successful response (httpx or curl_cffi - both expose .json() /
-    .text / .status_code), or `None` if the impersonation retry also failed
+    .text / .status_code), or `None` if every impersonation retry also failed
     with 403/429.
     """
     try:
@@ -86,21 +105,24 @@ async def get_with_proxy_fallback_on_403(
             raise
         last_status = exc.response.status_code
 
-    # Free browser-TLS retry via curl_cffi.
-    for attempt in range(1, 3):
+    # Free browser-TLS retry via curl_cffi, one attempt per rotation profile.
+    total_attempts = len(_IMPERSONATE_PROFILES)
+    for attempt in range(1, total_attempts + 1):
+        profile = next_impersonate_profile()
         try:
             async with AsyncSession() as impersonated:
                 resp = await impersonated.get(
                     url,
                     params=params,
                     headers=headers,
-                    impersonate=_IMPERSONATE,
+                    impersonate=profile,
                     timeout=timeout,
                 )
             if resp.status_code in (403, 429):
                 last_status = resp.status_code
                 logging.debug(
-                    f"{log_label}: {last_status} via TLS impersonation, attempt {attempt}/2"
+                    f"{log_label}: {last_status} via TLS impersonation ({profile}), "
+                    f"attempt {attempt}/{total_attempts}"
                 )
                 continue
             return resp
@@ -112,12 +134,13 @@ async def get_with_proxy_fallback_on_403(
                 raise
             last_status = status
             logging.debug(
-                f"{log_label}: {last_status} via TLS impersonation, attempt {attempt}/2"
+                f"{log_label}: {last_status} via TLS impersonation ({profile}), "
+                f"attempt {attempt}/{total_attempts}"
             )
         except Exception as exc_tls_unexpected:
             logging.debug(
-                f"{log_label}: TLS-impersonation attempt {attempt}/2 failed: "
-                f"{type(exc_tls_unexpected).__name__}: {exc_tls_unexpected!r}"
+                f"{log_label}: TLS-impersonation attempt {attempt}/{total_attempts} "
+                f"({profile}) failed: {type(exc_tls_unexpected).__name__}: {exc_tls_unexpected!r}"
             )
 
     logging.warning(

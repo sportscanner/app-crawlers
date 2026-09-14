@@ -50,11 +50,11 @@ Verified London squash venues and activity codes:
 | Harrow Leisure Centre | `harrow-leisure-centre` | `091BADMINT001` |
 | The Centre (Slough) | `the-centre-slough` | `208BADM060SH001` |
 
-## WAF and Proxy Rotation
+## WAF and TLS-fingerprint Rotation
 
 `caching.everyoneactive.com` uses a CDN/WAF layer that blocks requests from GitHub Actions runner IP ranges (residential/local IP connections succeed directly).
 
-To prevent runner IP blocks, crawler requests route through `httpxAsyncClientWithProxyRotation()`. Because the proxy pool may occasionally draw a blocklisted IP, `EveryoneActiveCrawler` implements retry logic with up to 5 attempts per request. Each attempt instantiates a fresh proxied connection to rotate exit IPs.
+The paid rotating-proxy pool that used to sit in front of this was removed in August 2026 (see `anonymize/proxies.py`) — its exits were blocklisted by the same WAF as the runner range, so it was burning budget for no benefit. `EveryoneActiveCrawler._fetch_with_retry` now retries entirely through `curl_cffi`, cycling through `next_impersonate_profile()`'s rotation (`chrome136`, `safari180`, `firefox135`, `chrome124`) on each of its up to 5 attempts per request, so every retry presents a materially different TLS handshake rather than repeating the same one (or, previously, a plain-httpx retry with no fingerprint at all — which had no chance of getting past a WAF that already scored the handshake, not just the IP).
 
 ## Status (August 2026)
 

@@ -12,7 +12,7 @@ the identical request without it gets a Cloudflare `403`, with it gets `200` (co
 
 A companion endpoint, `GET /v0/VenueBooking/{VenueSlug}/GetSettings`, returns venue metadata (roles, resource categories, timezone, authentication flags) and is used to verify a candidate slug: guessed slugs return HTTP `500` or `404` on `GetSettings`, and login-gated venues return `MustAuthenticate: true`.
 
-Rate limiting: aggressive back-to-back probing trips Cloudflare `429` / `403` challenges for the source IP. The crawler routes through `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py`, which retries against rotating proxy connections if a direct connection is challenged.
+Rate limiting: aggressive back-to-back probing trips Cloudflare `429` / `403` challenges for the source IP. The crawler routes through `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py`, which retries via curl_cffi with a rotating browser TLS fingerprint (`next_impersonate_profile()`) if a direct connection is challenged.
 
 Discovery method: the venue booking HTML page is a thin client-rendered shell with no embedded JSON. The API URL template lives in a shared JS bundle served identically to every venue. The pattern applies to any ClubSpark venue by slug substitution.
 
@@ -42,7 +42,7 @@ Discovery method: the venue booking HTML page is a thin client-rendered shell wi
 
 ## Cloudflare bot management
 
-Responses set a `__cf_bm` cookie. The crawler uses `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py` to transparently fall back to fresh rotating proxy connections whenever a direct IP is challenged with 403 or 429.
+Responses set a `__cf_bm` cookie. The crawler uses `get_with_proxy_fallback_on_403` in `sportscanner/crawlers/anonymize/proxies.py` to transparently fall back to curl_cffi requests with a rotating browser TLS fingerprint whenever a direct IP is challenged with 403 or 429.
 
 ## Verified London Park Tennis Venues (49 venues)
 

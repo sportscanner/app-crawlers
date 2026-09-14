@@ -7,6 +7,7 @@ import httpx
 from curl_cffi.requests import Session as CurlSession
 from pydantic import ValidationError
 
+from sportscanner.crawlers.anonymize.proxies import next_impersonate_profile
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
@@ -48,6 +49,9 @@ USER_AGENT = (
 _LONDON = ZoneInfo("Europe/London")
 
 
+_JWT_FETCH_ATTEMPTS = 4
+
+
 def get_anonymous_jwt() -> Optional[str]:
     """Fetches an anonymous session JWT from Gladstone Go samlauthentication endpoint.
 
@@ -56,33 +60,48 @@ def get_anonymous_jwt() -> Optional[str]:
     (confirmed in the 2026-08-23 badminton/squash workflow logs, 0/12 and 0/6
     requests returned data) while succeeding locally from residential IPs.
     Same WAF class as CitySport, same fix.
+
+    Every run was still getting 403 on every attempt (see 2026-09-14 badminton
+    logs, 0/13 succeeded) despite this - a single fixed impersonation profile
+    isn't enough here, so this retries across `next_impersonate_profile()`'s
+    rotation before giving up, same rationale as
+    `anonymize/proxies.get_with_proxy_fallback_on_403`.
     """
-    try:
-        with CurlSession(
-            headers={
-                "user-agent": USER_AGENT,
-                "accept": "application/json",
-                "x-use-sso": "1",
-            },
-            impersonate="chrome124",
-            timeout=15.0,
-        ) as session:
-            res = session.get(
-                f"{GLADSTONEGO_PORTAL_BASE}/api/samlauthentication/anonymous"
+    last_exc: Optional[Exception] = None
+    for attempt in range(1, _JWT_FETCH_ATTEMPTS + 1):
+        profile = next_impersonate_profile()
+        try:
+            with CurlSession(
+                headers={
+                    "user-agent": USER_AGENT,
+                    "accept": "application/json",
+                    "x-use-sso": "1",
+                },
+                impersonate=profile,
+                timeout=15.0,
+            ) as session:
+                res = session.get(
+                    f"{GLADSTONEGO_PORTAL_BASE}/api/samlauthentication/anonymous"
+                )
+                res.raise_for_status()
+                jwt = session.cookies.get("Jwt")
+                if jwt:
+                    return jwt
+                logging.error(
+                    "No Jwt cookie returned by Gladstone Go anonymous auth endpoint "
+                    f"(attempt {attempt}/{_JWT_FETCH_ATTEMPTS}, profile {profile})"
+                )
+        except Exception as e:
+            last_exc = e
+            logging.debug(
+                f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE} "
+                f"(attempt {attempt}/{_JWT_FETCH_ATTEMPTS}, profile {profile}): {e}"
             )
-            res.raise_for_status()
-            jwt = session.cookies.get("Jwt")
-            if jwt:
-                return jwt
-            logging.error(
-                "No Jwt cookie returned by Gladstone Go anonymous auth endpoint"
-            )
-            return None
-    except Exception as e:
-        logging.error(
-            f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE}: {e}"
-        )
-        return None
+    logging.error(
+        f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE} after "
+        f"{_JWT_FETCH_ATTEMPTS} attempts across rotated TLS profiles: {last_exc}"
+    )
+    return None
 
 
 def _round_slot_time(dt_val: datetime) -> time:

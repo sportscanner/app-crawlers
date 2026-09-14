@@ -29,13 +29,21 @@ hosted-runner IP ranges being blocked), just manifesting as a silent hang
 instead of an explicit 403. Since there's no clean error to trigger a
 try-direct-first fallback on (direct connections don't fail fast, they just
 sit there until they time out), `UELSportsDockCrawler` bypasses `BaseCrawler`'s
-shared fetch loop entirely and routes straight through the rotating proxy with
-retry (up to 4 attempts per request) — skipping the direct attempt rather than
-wasting a timeout on it first. Confirmed live end-to-end after the fix.
+shared fetch loop entirely.
+
+The paid rotating proxy this used to route through was removed in August 2026
+(same WAF blocklisted the proxy exits too — see `anonymize/proxies.py`).
+`_fetch_with_retry` now retries via `curl_cffi`, cycling through
+`next_impersonate_profile()`'s rotation (`chrome136`, `safari180`, `firefox135`,
+`chrome124`) across its up to 4 attempts per request — worth trying even though
+the block was originally diagnosed as IP-based rather than TLS-fingerprint-based,
+since a fresh `curl_cffi` connection per attempt is also just a fresh shot at
+the handshake, and it's strictly better than the plain-`httpx` retries this
+fell back to previously (no chance of success once the proxy pool no longer
+backs them with a different exit IP).
 
 Low request volume here (1 venue, 10 requests/run) keeps this cheap relative
-to Everyone Active's 120/run, so it doesn't meaningfully compete for the
-shared proxy pool's capacity.
+to Everyone Active's 120/run.
 
 ### Badminton filter differs from CitySport
 

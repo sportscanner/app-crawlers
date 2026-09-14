@@ -18,7 +18,9 @@ Booking URLs need a separate slug: the API's `tenant_id`/slug (stored as `venue.
 
 ## WAF and Proxy Fallback
 
-Playtomic availability API uses CloudFront WAF rate limiting and TLS fingerprint validation. Requests carry browser headers (`_HEADERS` in `playtomic/core/strategy.py`). On HTTP 403 or 429 status codes, `fetch_venue_date()` retries through `get_with_proxy_fallback_on_403()` in `crawlers/anonymize/proxies.py`, which now walks a three-stage chain: direct httpx, then a free curl_cffi retry with a Chrome TLS fingerprint (`chrome124`), then rotating-proxy attempts as a last resort. The TLS-impersonation stage is what usually rescues GitHub Actions runs (Python's ssl handshake is an automatic WAF fail from datacenter IPs), so paid proxy tier usage for Playtomic should be near zero.
+Playtomic availability API uses CloudFront WAF rate limiting and TLS fingerprint validation. Requests carry browser headers (`_HEADERS` in `playtomic/core/strategy.py`). On HTTP 403 or 429 status codes, `fetch_venue_date()` retries through `get_with_proxy_fallback_on_403()` in `crawlers/anonymize/proxies.py`, which retries direct httpx first, then curl_cffi, cycling through `next_impersonate_profile()`'s rotation (`chrome136`, `safari180`, `firefox135`, `chrome124`) once per remaining attempt. This is what usually rescues GitHub Actions runs (Python's ssl handshake is an automatic WAF fail from datacenter IPs).
+
+A small number of specific venues/tenants (confirmed live: Kensington Tennis Club venues, Tennis England Club, on some runs) still exhaust every rotation profile and get 403 on every date in a run, even though other Playtomic venues succeed in the same run from the same runner IP. That points at a per-tenant WAF rule (rate-based or bot-score) rather than a purely IP- or fingerprint-based block — TLS impersonation can't fix a rule that specifically penalizes traffic to that URL/tenant_id combination regardless of handshake. If this keeps recurring for the same venues, the next lever to pull is request pacing/concurrency for just those tenant_ids, not more fingerprint variety.
 
 ## Tennis
 

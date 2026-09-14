@@ -12,9 +12,8 @@ from datetime import date
 from typing import Any, Coroutine, List, Optional
 import asyncio
 import itertools
-import httpx
 from sportscanner.crawlers.helpers import override
-from sportscanner.crawlers.anonymize.proxies import httpxAsyncClientWithProxyRotation
+from sportscanner.crawlers.anonymize.proxies import next_impersonate_profile
 from curl_cffi.requests import AsyncSession as CurlAsyncSession
 from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 
@@ -105,48 +104,26 @@ class UELSportsDockCrawler(BaseCrawler):
     async def _fetch_with_retry(
         self, request_details: RequestDetailsWithMetadata
     ) -> List[UnifiedParserSchema]:
-        # Stage 1 (free): browser TLS fingerprint via curl_cffi.
-        try:
-            async with CurlAsyncSession(impersonate="chrome124") as impersonated:
-                response = await impersonated.get(
-                    request_details.url, headers=request_details.headers, timeout=15
-                )
-            if response.status_code not in (403, 429):
-                response.raise_for_status()
-                content_type = response.headers.get("content-type", "")
-                validated_response = validate_api_response(
-                    response, content_type, request_details.url
-                )
-                if not validated_response:
-                    return []
-                raw_data_obj = RawResponseData(
-                    content=validated_response,
-                    status_code=response.status_code,
-                    headers=dict(response.headers),
-                    requestMetadata=request_details,
-                )
-                return self.response_parser_strategy.parse(raw_data_obj)
-        except CurlHTTPError as e:
-            status = e.response.status_code if e.response is not None else None
-            if status not in (403, 429):
-                logging.error(
-                    f"UEL SportsDock: impersonated fetch failed with HTTP {status} "
-                    f"for {request_details.url}"
-                )
-                return []
-        except Exception as e:
-            logging.error(
-                f"UEL SportsDock impersonated fetch failed for {request_details.url}: "
-                f"{type(e).__name__}: {e!r}"
-            )
-
-        # Stage 2: direct httpx retries with fresh connections.
+        # Browser TLS fingerprint via curl_cffi, cycling through
+        # `next_impersonate_profile()`'s rotation on every attempt - a plain
+        # httpx retry against the same blocked IP (the old Stage 2) has no
+        # chance of succeeding once the paid rotating-proxy pool was removed,
+        # so every attempt here now varies the one thing that can plausibly
+        # change the outcome: the TLS handshake fingerprint.
         for attempt in range(1, self._MAX_RETRY_ATTEMPTS + 1):
+            profile = next_impersonate_profile()
             try:
-                async with httpxAsyncClientWithProxyRotation() as client:
-                    response = await client.get(
+                async with CurlAsyncSession(impersonate=profile) as impersonated:
+                    response = await impersonated.get(
                         request_details.url, headers=request_details.headers, timeout=15
                     )
+                if response.status_code in (403, 429):
+                    logging.debug(
+                        f"UEL SportsDock: {response.status_code} via TLS impersonation "
+                        f"({profile}), attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} for "
+                        f"{request_details.url}"
+                    )
+                    continue
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(
@@ -161,14 +138,26 @@ class UELSportsDockCrawler(BaseCrawler):
                     requestMetadata=request_details,
                 )
                 return self.response_parser_strategy.parse(raw_data_obj)
+            except CurlHTTPError as e:
+                status = e.response.status_code if e.response is not None else None
+                if status not in (403, 429):
+                    logging.error(
+                        f"UEL SportsDock: impersonated fetch failed with HTTP {status} "
+                        f"for {request_details.url}"
+                    )
+                    return []
+                logging.debug(
+                    f"UEL SportsDock: {status} via TLS impersonation ({profile}), "
+                    f"attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} for {request_details.url}"
+                )
             except Exception as e:
                 logging.debug(
-                    f"UEL SportsDock: attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} failed for "
-                    f"{request_details.url}: {type(e).__name__}: {e!r}"
+                    f"UEL SportsDock: attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} "
+                    f"({profile}) failed for {request_details.url}: {type(e).__name__}: {e!r}"
                 )
         logging.warning(
-            f"UEL SportsDock: exhausted {self._MAX_RETRY_ATTEMPTS} direct retries for "
-            f"{request_details.url}"
+            f"UEL SportsDock: exhausted {self._MAX_RETRY_ATTEMPTS} TLS-impersonation "
+            f"retries for {request_details.url}"
         )
         return []
 

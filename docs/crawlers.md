@@ -45,8 +45,8 @@ Several providers don't fit the per-venue request loop and override
 strategies: Playtomic and Matchi, since their APIs return all venues for a date
 in one call; CitySport, which needs a TLS-impersonating client instead of httpx
 (see `docs/clubs/citysport.md`); and Everyone Active, which needs a
-proxy-with-retry fetch to work around a constrained proxy pool (see
-`docs/clubs/everyone-active.md`).
+TLS-impersonation-with-retry fetch to work around a WAF that blocks GitHub
+Actions runner IPs (see `docs/clubs/everyone-active.md`).
 
 ## Concurrency: the semaphore
 
