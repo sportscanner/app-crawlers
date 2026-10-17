@@ -25,6 +25,8 @@ from sportscanner.api.routers.mcp_connections.endpoints import (
 )
 
 from sportscanner.logger import logging
+from sportscanner.api.routers.discovery.endpoints import create_router, discovery_links
+from sportscanner.variables import settings
 
 import httpx
 
@@ -64,20 +66,22 @@ except Exception as exc:  # pragma: no cover - defensive
 description = """
 ## Sportscanner API
 
-This aggregator API is a comprehensive platform designed to help sports enthusiasts find and book badminton, squash, and pickleball courts across London with ease.
+Find publicly available badminton, squash, pickleball, padel and tennis courts across London.
 
 You will be able to:
 
-* Search for Badminton, Squash and Pickleball court bookings across London
-* Find Venues near you that offers different types of sports, and amneties
-* Compare prices, facilities, and peak/off-peak times. Book directly through venue links
+* Search court availability by sport, postcode, date, time, distance and price. Search and venue lookup require no authentication.
+* Find nearby venues and compare GBP prices. Times use Europe/London.
+* Follow provider booking links. SportScanner does not reserve courts or process payments.
+* Read /agents.md for request examples, freshness guidance and MCP setup.
 """
 
 app = FastAPI(
     title="Sportscanner",
     description=description,
-    summary="Find Badminton, Squash, and Pickleball facilities; and available courts for hire across London",
+    summary="Find badminton, squash, pickleball, padel and tennis courts across London",
     version="1.0.0",
+    servers=[{"url": settings.MCP_PUBLIC_BASE_URL.rstrip("/")}],
     contact={
         "name": "Sportscanner (dev)",
         "url": "https://www.linkedin.com/company/sportscanner/",
@@ -91,6 +95,14 @@ app = FastAPI(
     # manager is initialised; wiring it here lets us mount it below.
     lifespan=_mcp_app.lifespan if _mcp_app is not None else None,
 )
+
+@app.middleware("http")
+async def agent_discovery_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/":
+        response.headers.append("Link", discovery_links(settings.MCP_PUBLIC_BASE_URL.rstrip("/")))
+    return response
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -130,6 +142,7 @@ app.include_router(
 )
 
 app.include_router(router=HealthRouter, prefix="/health", tags=["Health"])
+app.include_router(create_router(settings.MCP_PUBLIC_BASE_URL, _mcp_app is not None))
 
 app.include_router(
     router=NotificationsRouter,
@@ -146,9 +159,11 @@ async def root():
         "message": "Welcome to the Sportscanner API",
         "version": "v1.3.0",
         "actions": {
-            "/search/": "Endpoint to find available sports bookings",
-            "/venue/": "Endpoint to find Venues covered by Sportscanner monitoring",
+            "/search/{sport}": "POST court search with date query and JSON filters",
+            "/venues/": "Venues covered by Sportscanner monitoring",
             "/docs": "Documentation for API endpoints",
+            "/agents.md": "Public search instructions and MCP setup for agents",
+            "/.well-known/api-catalog": "Machine-readable API discovery",
         },
     }
 

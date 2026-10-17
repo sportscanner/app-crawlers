@@ -1,102 +1,60 @@
-"""MCP tool: find available courts near a postcode for a given sport/date."""
+"""MCP court search uses the same filters and availability rules as REST."""
 
-from datetime import datetime
-from typing import Annotated, List
+from datetime import date as Date, time
+from typing import Annotated, Literal
 
-import httpx
 from pydantic import Field
 
-import sportscanner.storage.postgres.database as db
-from sportscanner.api.routers.venues.utils import get_sports_venues_within_radius
-from sportscanner.storage.postgres.dataset_transform import (
-    group_slots_by_attributes,
-    sort_and_format_grouped_slots_for_ui,
-)
-from sportscanner.storage.postgres.tables import (
-    BadmintonMasterTable,
-    PadelMasterTable,
-    PickleballMasterTable,
-    SquashMasterTable,
-    TennisMasterTable,
+from sportscanner.api.routers.core.schemas import SportscannerSupportedSports
+from sportscanner.api.routers.search.endpoints import search_courts
+from sportscanner.api.routers.search.schemas import (
+    AdvancedFiltersCriteria,
+    SearchCriteria,
+    SortByOptions,
+    TimeFilter,
 )
 
-_TABLES = {
-    "badminton": BadmintonMasterTable,
-    "squash": SquashMasterTable,
-    "pickleball": PickleballMasterTable,
-    "padel": PadelMasterTable,
-    "tennis": TennisMasterTable,
-}
 
-
-def _geocode_postcode(postcode: str):
-    response = httpx.get(
-        f"https://api.postcodes.io/postcodes/{postcode.strip()}", timeout=10
-    )
-    if response.status_code != 200:
-        return None, None
-    result = response.json().get("result") or {}
-    return result.get("longitude"), result.get("latitude")
-
-
-def find_available_courts(
-    sport: Annotated[
-        str,
-        Field(description="Sport to search: 'badminton', 'squash', 'pickleball', 'padel' or 'tennis'"),
-    ],
+async def find_available_courts(
+    sport: SportscannerSupportedSports,
     postcode: Annotated[
-        str, Field(description="UK postcode to search around, e.g. 'SE1 8UL'")
+        str, Field(min_length=1, description="UK postcode, e.g. SE1 8UL")
     ],
-    date: Annotated[str, Field(description="Date to search, in YYYY-MM-DD format")],
+    date: Annotated[
+        Date, Field(description="Search date as YYYY-MM-DD, Europe/London")
+    ],
     radius_miles: Annotated[
-        float, Field(description="Search radius in miles from the postcode")
+        float, Field(gt=0, le=50, description="Radius in miles")
     ] = 3.0,
-) -> List[dict]:
+    starting_time: Annotated[
+        time, Field(description="Earliest start, local HH:MM")
+    ] = time(0, 0),
+    ending_time: Annotated[time, Field(description="Latest end, local HH:MM")] = time(
+        23, 59
+    ),
+    indoor: Annotated[
+        bool | None, Field(description="Indoor/outdoor filter; omit for any")
+    ] = None,
+    sort_by: Literal["distance", "price"] = "distance",
+) -> list[dict]:
+    """Find available badminton, squash, pickleball, padel or tennis courts.
+
+    Returns venue, distance in miles, GBP prices, freshness and provider booking
+    links. Times use Europe/London. Social games and past slots are excluded.
+    Availability is a snapshot, not a reservation. Booking happens with the
+    provider and may require the user's account. No payment or booking is made.
     """
-    Find available court slots for a sport near a UK postcode on a given date.
-
-    Returns venues (nearest first) with their available time slots, price,
-    distance and a direct booking URL for each slot.
-    """
-    sport_key = sport.strip().lower()
-    query_table = _TABLES.get(sport_key)
-    if query_table is None:
-        raise ValueError(
-            f"Unsupported sport '{sport}'. Choose from: {', '.join(_TABLES)}"
-        )
-    try:
-        search_date = datetime.strptime(date.strip(), "%Y-%m-%d").date()
-    except ValueError:
-        raise ValueError("date must be in YYYY-MM-DD format, e.g. 2026-07-05")
-
-    longitude, latitude = _geocode_postcode(postcode)
-    if longitude is None or latitude is None:
-        raise ValueError(f"'{postcode}' is not a valid UK postcode")
-
-    nearby = get_sports_venues_within_radius(
-        longitude=longitude,
-        latitude=latitude,
-        distance=radius_miles,
-        sport_category=sport_key,
+    if starting_time >= ending_time:
+        raise ValueError("starting_time must be before ending_time")
+    return await search_courts(
+        sport=sport,
+        date=date,
+        filters=SearchCriteria(
+            postcode=postcode,
+            radius=radius_miles,
+            timeRange=TimeFilter(starting=starting_time, ending=ending_time),
+            analytics=AdvancedFiltersCriteria(),
+            sortBy=SortByOptions(sort_by),
+            indoor=indoor,
+        ),
     )
-    if not nearby:
-        return []
-
-    distance_reference = {
-        item["venue"].composite_key: item["distance"] for item in nearby
-    }
-    composite_keys = list(distance_reference.keys())
-
-    now = datetime.now()
-    slots = db.get_all_rows(
-        db.engine,
-        None,
-        db.select(query_table)
-        .where(query_table.composite_key.in_(composite_keys))
-        .where(query_table.spaces > 0)
-        .where(query_table.date == search_date),
-    )
-    grouped_slots = group_slots_by_attributes(
-        slots, attributes=("composite_key", "date")
-    )
-    return sort_and_format_grouped_slots_for_ui(grouped_slots, distance_reference)

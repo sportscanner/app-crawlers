@@ -97,6 +97,7 @@ auth = TrackingOIDCProxy(
 
 mcp = FastMCP(
     name="Sportscanner Unified MCP",
+    version="1.0.0",
     tools=[func for func in TOOL_FUNCTIONS.values()],
     auth=auth,
     website_url="https://www.sportscanner.co.uk",
