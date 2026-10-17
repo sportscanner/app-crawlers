@@ -15,6 +15,12 @@ from sportscanner.api.routers.health.schema import VenueAvailability
 
 router = APIRouter()
 
+
+@router.get("/")
+async def healthcheck():
+    """Service liveness; provider data freshness is reported by /scrapers."""
+    return {"status": "ok"}
+
 # The sport param is interpolated as a TABLE NAME below, which can never be a bound
 # SQL parameter — so it must be validated against an allow-list before it reaches the
 # query string. This also doubles as the array-value allow-list for the `sports @>` filter.

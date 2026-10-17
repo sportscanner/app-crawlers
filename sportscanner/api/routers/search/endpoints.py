@@ -46,8 +46,8 @@ def find_query_table(sport: SportscannerSupportedSports):
         )
 
 
-@router.post("/{sport}")
-async def search(
+@router.post("/{sport}", operation_id="search_search__sport__post")
+async def search_courts(
     sport: SportscannerSupportedSports = Path(
         description="Sport category to filter venues and court availability"
     ),
@@ -128,8 +128,8 @@ async def search(
     return sorted_response
 
 
-@router.post("/{sport}/{composite_key}")
-async def search(
+@router.post("/{sport}/{composite_key}", operation_id="search_search__sport___composite_key__post")
+async def search_venue_courts(
     sport: SportscannerSupportedSports = Path(
         description="Sport category to filter venues and court availability"
     ),

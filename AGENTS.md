@@ -233,9 +233,9 @@ time you read it — but as of writing, adding a sport means touching all of:
 - `sportscanner/api/routers/venues/utils.py` — the `Literal[...]` sport
   lists (and their defaults) on `get_venues_from_database` and
   `get_sports_venues_within_radius`.
-- `sportscanner/mcp/tools/search.py` — `_TABLES` dict for the MCP search
-  tool, plus its `Field(description=...)` string (cosmetic, but an agent or
-  LLM client reads that description to know what's valid).
+- `sportscanner/mcp/tools/search.py`: the MCP search tool uses
+  `SportscannerSupportedSports` and calls the REST `search_courts` handler.
+  Keep its description and public discovery guide's sport list current.
 - `sportscanner/storage/postgres/tables.py` — new `{Sport}MasterTable`
   class, and `sportscanner/storage/postgres/database.py` — `_SLOT_TABLES`
   tuple and the `tables=[...]` list inside `create_db_and_tables()`. Not

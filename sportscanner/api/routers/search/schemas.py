@@ -2,7 +2,7 @@ from datetime import date, datetime, time
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AdvancedFiltersCriteria(BaseModel):
@@ -21,6 +21,20 @@ class SortByOptions(Enum):
     price = "price"
 
 class SearchCriteria(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [{
+            "postcode": "SE1 8UL",
+            "timeRange": {"starting": "18:00", "ending": "22:00"},
+            "radius": 3,
+            "sortBy": "distance",
+            "analytics": {
+                "consecutiveSlots": None,
+                "searchUserPreferredLocations": False,
+                "specifiedVenues": None,
+            },
+            "indoor": None,
+        }],
+    })
     postcode: Optional[str] = None
     timeRange: Optional[TimeFilter] = None
     radius: Optional[float] = None
