@@ -1,19 +1,18 @@
 # SportScanner auth.md
 
-## Public search
+## Public REST and MCP search
 
-Agents can search courts without registration, a token or a SportScanner account using `POST https://api.sportscanner.co.uk/search/{sport}?date=YYYY-MM-DD`. Venue lookup and social session search are also public. Read [the API guide](https://api.sportscanner.co.uk/agents.md).
+Court availability, venue information, prices and provider booking links are public. No SportScanner account, registration, API key, bearer token or OAuth flow is required.
 
-## MCP with user consent
+- REST: `POST https://api.sportscanner.co.uk/search/{sport}?date=YYYY-MM-DD`. See [the API guide](https://api.sportscanner.co.uk/agents.md).
+- MCP: `https://api.sportscanner.co.uk/mcp` over Streamable HTTP, with authentication set to **None** in your client. Initialize the connection, then list and call tools.
 
-The Streamable HTTP MCP endpoint is `https://api.sportscanner.co.uk/mcp`.
+Existing connectors configured with SportScanner OAuth should be reconnected without authentication. Personal API tokens are no longer needed or checked for these public queries. Public MCP does not issue or accept account access grants and publishes no OAuth protected-resource or authorization-server metadata.
 
-1. Fetch [protected resource metadata](https://api.sportscanner.co.uk/.well-known/oauth-protected-resource/mcp).
-2. Fetch the advertised authorization server's [OAuth metadata](https://api.sportscanner.co.uk/.well-known/oauth-authorization-server). Use its endpoints and supported methods as the source of truth.
-3. Use the advertised dynamic client registration endpoint when supported by your MCP client. Registration identifies a client; it does not grant access or create a user account.
-4. Run the authorization-code flow with PKCE S256 and the user's interactive consent. Redirect URIs must be permitted by the server. Never collect the user's password.
-5. Send the granted access token as `Authorization: Bearer <token>`. Refresh/revoke using the advertised endpoints.
+## Private account data
 
-The MCP proxy fronts the existing Kinde login. There are currently no custom MCP scopes. Existing personal API tokens (`ssc_...`) created by a signed-in user in SportScanner's developer console are also accepted. Treat them as secrets; users can revoke them in the console.
+Website sign-in uses Kinde to retain your profile, preferences and favourites and personalize the website. Profile, preference, notification and legacy credential-management endpoints still require the existing Kinde authentication. They are not exposed as MCP tools. Public tools cannot read or change a user's account.
 
-SportScanner does not implement autonomous agent account provisioning, verified-email claims, ID-JAG exchange, client-credentials grants or Auth.md-specific registration methods. There is no `agent_auth` registration contract. Use public REST for anonymous queries or the existing user-consented MCP flow. User profile, token management and notifications remain protected and are outside the public search integration.
+## Booking boundary
+
+SportScanner returns public availability snapshots and provider booking links. It cannot reserve courts, take payment or complete bookings. A provider may require its own account to book. Never collect a user's password or bypass provider login gates.

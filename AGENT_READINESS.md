@@ -1,6 +1,6 @@
 # Agent discovery and direct search
 
-SportScanner already exposes public, anonymous REST search and an authenticated
+SportScanner already exposes public, anonymous REST search and an anonymous
 MCP server. The readiness changes make these discoverable from the main website
 and align MCP court results with the website's existing search rules.
 
@@ -8,17 +8,15 @@ and align MCP court results with the website's existing search rules.
 
 The API owns the API catalog, AI catalog, agent guide, authentication guide,
 skills index and skill artifact. The frontend proxies these public documents.
-OAuth metadata remains owned by FastMCP at the API issuer; frontend discovery
-paths redirect there. Deploy this backend branch before the frontend branch.
+MCP exposes only public read-only tools and does not publish OAuth metadata. Deploy this backend branch before the frontend branch.
 
 - `/.well-known/api-catalog`: RFC 9727 / RFC 9264 Linkset with OpenAPI, guide and liveness links.
 - `/.well-known/ai-catalog.json`: API and MCP discovery, representative queries and public CORS.
 - `/agents.md`, `/llms-full.txt`: complete public search contract and booking boundary.
-- `/auth.md`: anonymous REST and existing user-consented OAuth/PKCE for MCP.
+- `/auth.md`: anonymous REST/MCP setup and the separate private account boundary.
 - `/.well-known/agent-skills/index.json`: v0.2.0 index with a digest of the exact served skill bytes.
 - `/.well-known/agent-skills/find-london-courts/SKILL.md`: court search instructions.
 - `/mcp/server-card` and `/.well-known/mcp/server-card.json`: current SEP-2127 Server Card extension format. The linked scanner guidance references an older shape; current cards describe identity and remotes, with tools/capabilities negotiated live.
-- `/.well-known/oauth-protected-resource`: redirects to FastMCP's existing `/mcp` resource metadata. Issuer and authorization endpoints are unchanged.
 - `/health/`: service liveness, separate from provider freshness.
 
 The frontend adds homepage Link headers, `/llms.txt`, an explicit
@@ -41,7 +39,7 @@ compatible. The MCP tool name and its original required arguments are retained.
 
 Read [the served guide](sportscanner/api/routers/discovery/agents.md) for units,
 examples, stale data handling and booking links. SportScanner cannot book or
-pay for a court. User-specific endpoints and MCP authorization remain protected.
+pay for a court. User-specific endpoints remain protected by Kinde; MCP never exposes account data.
 
 ## DNS and deployment follow-up
 
@@ -80,8 +78,7 @@ experimental record examples as stable production configuration.
 There is no A2A agent, Personal Agent Protocol service, autonomous Auth.md
 provisioning, or commerce/payment service. No fictional manifests, registration
 methods, grants, JWKS URLs or payment endpoints are published to satisfy checks.
-OAuth metadata is the existing OAuth server's actual contract, not an OIDC
-identity provider impersonated at the website origin.
+OAuth discovery is intentionally absent because public court/venue tools require no authentication. A scanner may still count this as missing; publishing a fictional protected resource would misrepresent the service.
 
 ## Verification
 
@@ -109,3 +106,9 @@ verifies application wiring, not native experimental-browser interoperability.
 The existing homepage sport picker and badminton search navigation rendered
 without page errors. The T3 collaborative browser later timed out; the final
 browser checks used local headless Chromium through Playwright.
+
+## Anonymous MCP migration
+
+MCP now accepts requests without credentials and no longer depends on Kinde discovery or OAuth session storage at startup. Existing OAuth connectors should reconnect with authentication set to None. The developer guide is public at `/developer`; token creation and connected-client UI have been retired because public tools do not use those credentials. Legacy account credential-management routes remain Kinde-protected. Old OAuth grants cannot access private account data or authenticate MCP. No database migration or DNS change is required.
+
+Migration validation: 52 backend tests pass, including anonymous initialize, tools/list, tools/call and rejection of anonymous account reads/writes. A standard MCP SDK client completed a real anonymous court query against the local API, and all five REST sport searches returned 200. Frontend agent tests (6) and the production build pass; full TypeScript checking retains exactly the same 23 existing main-branch errors. The public guide renders without login and makes no credential-management requests.

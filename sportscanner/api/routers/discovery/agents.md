@@ -1,6 +1,6 @@
 # SportScanner agent API guide
 
-Find badminton, squash, pickleball, padel and tennis court availability across London on a user's behalf. Search is public and read-only. No SportScanner account, API key or website visit is required for REST search.
+Find badminton, squash, pickleball, padel and tennis court availability across London on a user's behalf. Search is public and read-only. No SportScanner account, API key or website visit is required for REST or MCP search.
 
 Base URL: https://api.sportscanner.co.uk
 
@@ -60,7 +60,7 @@ The response is an array of venue groups. Each has `composite_key`, `venue`, `ad
 
 Streamable HTTP endpoint: `https://api.sportscanner.co.uk/mcp` (no trailing slash).
 
-MCP requires user-authorized OAuth or a personal API token. Read [auth.md](https://api.sportscanner.co.uk/auth.md). After connecting, negotiate capabilities and list tools. `find_available_courts` accepts sport, postcode, date and optional radius_miles, starting_time, ending_time, indoor and sort_by. It uses the same court search rules as REST. REST search remains the simplest anonymous integration.
+MCP is public: no login, API key, bearer token or OAuth flow is required. Connect directly, negotiate capabilities and list tools. Read [auth.md](https://api.sportscanner.co.uk/auth.md). `find_available_courts` accepts sport, postcode, date and optional radius_miles, starting_time, ending_time, indoor and sort_by. It uses the same court search rules as REST. Both REST and MCP support anonymous queries.
 
 ## Booking boundary
 

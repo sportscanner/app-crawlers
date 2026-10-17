@@ -3,8 +3,8 @@ Personal API token management.
 
 Mounted at `/user/tokens`. Authentication uses the same Kinde refresh-token
 header contract as the rest of the `/user` endpoints — the frontend passes the
-Kinde refresh token in the `Authorization` header. The tokens minted here are a
-*separate* credential used to authenticate the MCP server / public API.
+Kinde refresh token in the `Authorization` header. These legacy management routes remain protected for compatibility; tokens
+are no longer required or accepted by the public MCP search server.
 """
 
 from datetime import datetime, timedelta

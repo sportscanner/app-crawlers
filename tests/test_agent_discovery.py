@@ -65,21 +65,22 @@ def test_server_card_uses_current_schema_and_correct_transport():
 def test_mcp_discovery_fails_closed_when_optional_server_is_unavailable():
     http = client(mcp_enabled=False)
     assert http.get("/mcp/server-card").status_code == 503
-    assert http.get("/.well-known/oauth-protected-resource").status_code == 503
     assert len(http.get("/.well-known/ai-catalog.json").json()["entries"]) == 1
     assert http.get("/.well-known/api-catalog").status_code == 200
 
 
-def test_resource_metadata_redirect_preserves_library_owned_oauth_contract():
-    response = client().get(
-        "/.well-known/oauth-protected-resource", follow_redirects=False
-    )
-    assert response.status_code == 307
-    assert (
-        response.headers["location"]
-        == f"{ORIGIN}/.well-known/oauth-protected-resource/mcp"
-    )
-    auth = client().get("/auth.md")
+def test_public_mcp_does_not_advertise_oauth():
+    http = client()
+    for path in (
+        "/.well-known/oauth-protected-resource",
+        "/.well-known/oauth-protected-resource/mcp",
+        "/.well-known/oauth-authorization-server",
+    ):
+        assert http.get(path).status_code == 404
+    auth = http.get("/auth.md")
     assert auth.status_code == 200
-    assert "# SportScanner auth.md" in auth.text
-    assert "does not implement autonomous agent account provisioning" in auth.text
+    assert (
+        "No SportScanner account, registration, API key, bearer token or OAuth flow is required"
+        in auth.text
+    )
+    assert "still require the existing Kinde authentication" in auth.text

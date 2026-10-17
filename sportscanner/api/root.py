@@ -30,25 +30,9 @@ from sportscanner.variables import settings
 
 import httpx
 
-# ── MCP server (optional dependency: fastmcp) ────────────────────────────────
-# The MCP layer is mounted into this same FastAPI app so the REST API and the
-# MCP server ship as a single deployment. Auth (personal API tokens and Kinde
-# OAuth) is enforced inside the FastMCP app itself via its `auth=` provider
-# (see sportscanner/mcp/server.py). Import is defensive: a missing/incompatible
-# fastmcp must never take the core API down.
-#
-# The FastMCP app is mounted at the FastAPI app's true root (not under /mcp),
-# with its own internal MCP endpoint path set to "/mcp" (so the externally
-# visible URL is unchanged: https://api.sportscanner.co.uk/mcp). This matters
-# for OAuth: RFC 9728 requires protected-resource metadata to be served at
-# `{origin}/.well-known/oauth-protected-resource{resource_path}` — a fixed
-# location FastMCP computes from `base_url`/`resource_path` alone, with no
-# awareness of an extra outer mount prefix. Nesting the FastMCP app under an
-# additional "/mcp" Mount (as before) made that metadata route only reachable
-# at "/mcp/.well-known/..." — a path Claude (and any spec-compliant client)
-# never requests, since it fetches the RFC-mandated root-level path. Mounting
-# at the true root keeps the metadata (and /authorize, /token, /register,
-# /auth/callback) at root while the JSON-RPC endpoint stays at /mcp.
+# MCP shares this deployment but exposes only public, read-only tools.
+# Account routes keep their own Kinde authentication. Import defensively so
+# a missing/incompatible optional FastMCP dependency cannot take REST down.
 _mcp_app = None
 try:
     from sportscanner.mcp.server import mcp as _sportscanner_mcp
@@ -168,12 +152,8 @@ async def root():
     }
 
 
-# Mounted last, at the app's true root, so every route defined above (and
-# FastAPI's own /docs, /openapi.json, /redoc) is matched first by Starlette;
-# this only catches what nothing else claimed — the MCP endpoint (/mcp) and
-# FastMCP's OAuth routes (/authorize, /token, /register, /auth/callback,
-# /.well-known/...). See the comment above `_mcp_app`'s construction for why
-# it can't be nested under an extra "/mcp" prefix.
+# Mount last so REST, docs and discovery routes take precedence. FastMCP
+# handles the public /mcp endpoint; it does not publish OAuth routes.
 if _mcp_app is not None:
     app.mount("/", _mcp_app)
     logging.info("Sportscanner MCP server mounted (JSON-RPC endpoint at /mcp)")
