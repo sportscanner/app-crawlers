@@ -157,6 +157,7 @@ make crawler-pipeline-container # Run crawler pipeline in container (prod)
 
 An MCP (Model Context Protocol) server lives in `sportscanner/mcp/`.
 - Runs via `FastMCP` on HTTP transport, port 8080
+- Public, anonymous read-only court/venue tools; no OAuth or API key. Never add private account operations to this server. Website account endpoints retain Kinde authentication.
 - Exposes geolocation tools for venue search
 - Start with: `python -m sportscanner.mcp.server`
 

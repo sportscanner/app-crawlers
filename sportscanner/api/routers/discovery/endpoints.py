@@ -4,7 +4,7 @@ from hashlib import sha256
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, Response
 
 VERSION = "1.0.0"
 RESOURCES = Path(__file__).parent
@@ -112,20 +112,11 @@ def create_router(origin: str, mcp_enabled: bool) -> APIRouter:
                 "name": "uk.co.sportscanner/courts",
                 "title": "Sportscanner Unified MCP",
                 "version": VERSION,
-                "description": "Find London sports courts, availability, prices and provider booking links.",
+                "description": "Public court search: London availability, prices and provider booking links. No account or API key required.",
                 "websiteUrl": f"{origin}/agents.md",
                 "remotes": [{"type": "streamable-http", "url": f"{origin}/mcp"}],
             },
             headers=PUBLIC_HEADERS,
-        )
-
-    @router.get("/.well-known/oauth-protected-resource")
-    async def resource_metadata():
-        if not mcp_enabled:
-            raise HTTPException(503, "MCP is unavailable on this deployment")
-        # FastMCP owns OAuth metadata. Never invent a second issuer.
-        return RedirectResponse(
-            f"{origin}/.well-known/oauth-protected-resource/mcp", status_code=307
         )
 
     @router.get("/.well-known/ai-catalog.json")

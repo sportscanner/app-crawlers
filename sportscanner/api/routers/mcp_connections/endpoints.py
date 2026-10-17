@@ -2,9 +2,8 @@
 Connected MCP agents (Claude, Cursor, etc.) - list and revoke.
 
 Mounted at `/user/mcp-connections`. Same Kinde refresh-token header contract
-as `/user/tokens` (see that router). Revoking calls into the OAuth proxy
-itself (see `sportscanner/mcp/oidc_proxy.py`) so it takes effect immediately,
-not just when our own tracking row is hidden.
+as `/user/tokens` (see that router). These are legacy records: the public
+MCP server no longer accepts or issues OAuth grants.
 """
 
 from fastapi import APIRouter, Header, HTTPException, Path
@@ -12,7 +11,9 @@ from starlette import status
 
 import sportscanner.storage.postgres.database as db
 from sportscanner.core.kinde.auth import get_kinde_access_token, get_kinde_user_details
-from sportscanner.storage.postgres.mcp_client_repository import McpAuthorizedClientRepository
+from sportscanner.storage.postgres.mcp_client_repository import (
+    McpAuthorizedClientRepository,
+)
 
 router = APIRouter()
 repo = McpAuthorizedClientRepository(db.engine)
@@ -47,11 +48,7 @@ async def revoke_connection(
     if not row:
         raise HTTPException(status_code=404, detail="Connection not found")
 
-    # Lazy import: the MCP server is an optional dependency elsewhere in the
-    # app (see sportscanner/api/root.py) - don't make this router's import
-    # able to take the whole API down if fastmcp is unavailable.
-    from sportscanner.mcp.server import auth as mcp_auth
-
-    await mcp_auth.revoke_grant(row.access_jti, row.refresh_jti)
+    # The public MCP server no longer accepts any OAuth grants. Retain this
+    # authenticated endpoint so users can remove legacy connection records.
     repo.revoke(user_id, connection_id)
     return {"success": True}
