@@ -24,7 +24,7 @@ def discovery_links(origin: str) -> str:
     )
 
 
-def create_router(origin: str, mcp_enabled: bool) -> APIRouter:
+def create_router(origin: str, mcp_enabled: bool, a2a_enabled: bool = False) -> APIRouter:
     origin = origin.rstrip("/")
     router = APIRouter(include_in_schema=False)
 
@@ -144,6 +144,19 @@ def create_router(origin: str, mcp_enabled: bool) -> APIRouter:
                     "representativeQueries": [
                         "Use SportScanner to find a court on my behalf",
                         "Find available squash courts with booking links",
+                    ],
+                }
+            )
+        if a2a_enabled:
+            entries.append(
+                {
+                    "identifier": "urn:air:sportscanner.co.uk:a2a:court-finder",
+                    "displayName": "SportScanner court-finder A2A agent",
+                    "type": "application/a2a-agent-card+json",
+                    "url": f"{origin}/.well-known/agent-card.json",
+                    "representativeQueries": [
+                        "Ask Sportscanner's agent for badminton near E1 2AD tomorrow evening",
+                        "Delegate a London padel court search to another agent",
                     ],
                 }
             )

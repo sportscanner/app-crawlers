@@ -80,6 +80,22 @@ app = FastAPI(
     lifespan=_mcp_app.lifespan if _mcp_app is not None else None,
 )
 
+# ── A2A (Agent2Agent) court-finder agent ─────────────────────────────────────
+# Served on this same app, next to REST and MCP: Agent Card at
+# /.well-known/agent-card.json, JSON-RPC + HTTP+JSON at /a2a. Mounted before the
+# CORS middleware is added (so CORS stays outermost and wraps its 401s) and
+# before the catch-all MCP mount below. Defensive like MCP: a broken optional
+# dependency must never take the core API down.
+_a2a_enabled = False
+try:
+    from sportscanner.agents.a2a import mount_a2a
+
+    mount_a2a(app)
+    _a2a_enabled = True
+except Exception as exc:  # pragma: no cover - defensive
+    logging.warning(f"A2A agent not mounted (a2a-sdk unavailable?): {exc}")
+
+
 @app.middleware("http")
 async def agent_discovery_headers(request: Request, call_next):
     response = await call_next(request)
@@ -111,6 +127,15 @@ app.include_router(
     router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False
 )
 
+# The website's Agent mode: the court-finder agent streamed with generative UI.
+# Optional like A2A: a missing agent dependency must not take the core API down.
+try:
+    from sportscanner.agents.chat import router as AgentChatRouter
+
+    app.include_router(router=AgentChatRouter, prefix="/agent", tags=["internal"], include_in_schema=False)
+except Exception as exc:  # pragma: no cover - defensive
+    logging.warning(f"Agent chat not mounted: {exc}")
+
 app.include_router(
     router=TokensRouter,
     prefix="/user/tokens",
@@ -126,7 +151,7 @@ app.include_router(
 )
 
 app.include_router(router=HealthRouter, prefix="/health", tags=["Health"])
-app.include_router(create_router(settings.MCP_PUBLIC_BASE_URL, _mcp_app is not None))
+app.include_router(create_router(settings.MCP_PUBLIC_BASE_URL, _mcp_app is not None, a2a_enabled=_a2a_enabled))
 
 app.include_router(
     router=NotificationsRouter,
@@ -147,6 +172,7 @@ async def root():
             "/venues/": "Venues covered by Sportscanner monitoring",
             "/docs": "Documentation for API endpoints",
             "/agents.md": "Public search instructions and MCP setup for agents",
+            "/.well-known/agent-card.json": "A2A Agent Card for the court-finder agent (JSON-RPC at /a2a)",
             "/.well-known/api-catalog": "Machine-readable API discovery",
         },
     }

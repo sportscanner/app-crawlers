@@ -1,7 +1,7 @@
 """For fetching environment variables used across all modules"""
 
 import os
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urljoin
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -34,6 +34,27 @@ class Settings(BaseSettings):
     # Public API origin used in discovery links (no /mcp suffix).
     # Retain the environment variable name for deployment compatibility.
     MCP_PUBLIC_BASE_URL: str = "https://api.sportscanner.co.uk"
+    # A2A court-finder agent (sportscanner/agents/a2a). The LLM is reached
+    # through an OpenAI-compatible API: OpenRouter (default) or OpenCode.
+    # A2A_MODEL uses the selected provider's model ids. Without a key the
+    # agent card is still served, but tasks fail with a clear error.
+    A2A_LLM_PROVIDER: Literal["openrouter", "opencode"] = "openrouter"
+    A2A_MODEL: str = "deepseek/deepseek-v4.1-flash"
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENCODE_API_KEY: Optional[str] = None
+    OPENCODE_BASE_URL: str = "https://opencode.ai/inference/openai/v1"
+    # Every A2A message costs an LLM call, so callers must present a
+    # Sportscanner API token (ssc_...) or Kinde access token by default.
+    A2A_REQUIRE_AUTH: bool = True
+    # The website's Agent mode (POST /agent/chat) runs the same agent. Signed-in
+    # users send their Kinde refresh token (like /user); signed-out homepage
+    # visitors are allowed with a tighter per-IP limit. REQUIRE_AUTH=false
+    # skips identity checks entirely (local dev only).
+    AGENT_CHAT_REQUIRE_AUTH: bool = True
+    AGENT_CHAT_ALLOW_ANONYMOUS: bool = True
+    AGENT_CHAT_MESSAGES_PER_HOUR: int = 40
+    AGENT_CHAT_ANON_MESSAGES_PER_HOUR: int = 10
 
     model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8", extra="ignore")
 

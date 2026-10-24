@@ -50,14 +50,16 @@ Verified London squash venues and activity codes:
 | Harrow Leisure Centre | `harrow-leisure-centre` | `091BADMINT001` |
 | The Centre (Slough) | `the-centre-slough` | `208BADM060SH001` |
 
-## WAF and TLS-fingerprint Rotation
+## WAF: total outage from GitHub Actions (September 2026)
 
-`caching.everyoneactive.com` uses a CDN/WAF layer that blocks requests from GitHub Actions runner IP ranges (residential/local IP connections succeed directly).
+`caching.everyoneactive.com` sits behind Cloudflare (`server: cloudflare`, confirmed via a live header check) and blocks 100% of requests from GitHub Actions runner IPs — residential/local IP connections succeed directly. Confirmed live via full CI logs (2026-09-14): **all 120 badminton requests in a run (12 venues × ~10 dates) exhausted every retry stage and got 403 every single time.** This is not new; the same 100% failure rate was already true before the fingerprint-rotation change below.
 
-The paid rotating-proxy pool that used to sit in front of this was removed in August 2026 (see `anonymize/proxies.py`) — its exits were blocklisted by the same WAF as the runner range, so it was burning budget for no benefit. `EveryoneActiveCrawler._fetch_with_retry` now retries entirely through `curl_cffi`, cycling through `next_impersonate_profile()`'s rotation (`chrome136`, `safari180`, `firefox135`, `chrome124`) on each of its up to 5 attempts per request, so every retry presents a materially different TLS handshake rather than repeating the same one (or, previously, a plain-httpx retry with no fingerprint at all — which had no chance of getting past a WAF that already scored the handshake, not just the IP).
+The paid rotating-proxy pool that used to sit in front of this was removed in August 2026 (see `anonymize/proxies.py`) — its exits were blocklisted by the same WAF as the runner range, so it was burning budget for no benefit. `EveryoneActiveCrawler._fetch_with_retry` now retries entirely through `curl_cffi`, cycling through `next_impersonate_profile()`'s rotation (`chrome136`, `safari180`, `firefox135`, `chrome124`) on each of its up to 5 attempts per request, replacing what used to be a plain-httpx retry with no fingerprint at all (which had no chance of getting past a WAF that already scored the handshake). **This is a real improvement in principle but made no measurable difference here** — every request still fails, same as before the change. Combined with the identical result for ClubSpark and mytimeactive (same Cloudflare WAF, same GitHub Actions IP range - see `clubspark.md`, `mytime-active.md`), including a live FlareSolverr (real headless browser) test that also made no difference for ClubSpark, the working theory is that this specific IP range is scored badly enough that no client-side technique (TLS fingerprint or real JS execution) gets past it. The only fix that would plausibly work is a non-datacenter egress IP for these three providers specifically (residential proxy, or a self-hosted runner) - a cost/infra decision, not a code fix.
 
-## Status (August 2026)
+## Status (August 2026, superseded)
 
 Verified live:
 - Badminton: 12 venues verified.
 - Squash: 6 London venues verified (155 slots returned across 6 centres on test date, genuine mixed availability).
+
+This was true from a residential IP at the time. As of September 2026 it does not reflect production (GitHub Actions) behavior - see "WAF: total outage from GitHub Actions" above.

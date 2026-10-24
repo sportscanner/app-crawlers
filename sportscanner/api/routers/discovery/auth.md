@@ -16,3 +16,7 @@ Website sign-in uses Kinde to retain your profile, preferences and favourites an
 ## Booking boundary
 
 SportScanner returns public availability snapshots and provider booking links. It cannot reserve courts, take payment or complete bookings. A provider may require its own account to book. Never collect a user's password or bypass provider login gates.
+
+## A2A agent
+
+Unlike public REST and MCP, the A2A endpoint `https://api.sportscanner.co.uk/a2a` needs a bearer credential, because every task runs a language model on our side: a personal API token (`ssc_...`, created in Developer mode) or a Kinde access token. The [Agent Card](https://api.sportscanner.co.uk/.well-known/agent-card.json) is public and declares this as an HTTP bearer scheme.

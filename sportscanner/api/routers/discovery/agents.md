@@ -62,6 +62,16 @@ Streamable HTTP endpoint: `https://api.sportscanner.co.uk/mcp` (no trailing slas
 
 MCP is public: no login, API key, bearer token or OAuth flow is required. Connect directly, negotiate capabilities and list tools. Read [auth.md](https://api.sportscanner.co.uk/auth.md). `find_available_courts` accepts sport, postcode, date and optional radius_miles, starting_time, ending_time, indoor and sort_by. It uses the same court search rules as REST. Both REST and MCP support anonymous queries.
 
+## A2A agents
+
+Sportscanner also runs a court-finder agent over the Agent2Agent (A2A) protocol, v1.0 (v0.3 method names accepted).
+
+- Agent Card: `https://api.sportscanner.co.uk/.well-known/agent-card.json`
+- JSON-RPC endpoint: `https://api.sportscanner.co.uk/a2a` (`SendMessage`, `SendStreamingMessage`, `GetTask`, `CancelTask`); send the `A2A-Version: 1.0` header.
+- HTTP+JSON binding: `https://api.sportscanner.co.uk/a2a/message:send`, `/a2a/message:stream`, `/a2a/tasks/{id}`.
+
+Send a plain-English request such as "badminton near E1 2AD tomorrow evening". Completed tasks carry an `answer` text artifact and a `court_availability` JSON artifact in the same shape as REST search results. If the agent needs a sport or location it ends in `input-required`; reply in the same `contextId`. Unlike public MCP, A2A calls require `Authorization: Bearer <token>` with a personal API token (`ssc_...`) or a Kinde access token (see [auth.md](https://api.sportscanner.co.uk/auth.md)), because each message runs an LLM.
+
 ## Booking boundary
 
 SportScanner finds availability and provider booking links. It cannot reserve courts, take payment or complete bookings. Present the returned provider URL to the user, who may need a provider account to book. Only publicly viewable availability is covered. Do not bypass provider login gates.
