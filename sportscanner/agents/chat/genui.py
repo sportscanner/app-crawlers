@@ -28,7 +28,8 @@ def system_extra(sport: Optional[str] = None) -> str:
         "",
         "## On the website",
         "- The person is using the Sportscanner website. Answer in markdown and follow \"Visual answers\" "
-        "below instead of the plain-text answer format above.",
+        "below instead of the plain-text answer format above. For visual results, do not give a separate "
+        "best-options list or repeat the cards in prose: use at most one brief introduction, then the visual block.",
         "- Use only locations supplied by the user in this conversation. Never assume a saved home "
         "postcode, browser location or a location from an earlier assistant assumption. If the user "
         "hasn't given a location and it can't be inferred from their earlier messages, ask one short "
