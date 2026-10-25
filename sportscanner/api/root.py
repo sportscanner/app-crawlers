@@ -80,7 +80,7 @@ app = FastAPI(
     lifespan=_mcp_app.lifespan if _mcp_app is not None else None,
 )
 
-# ── A2A (Agent2Agent) court-finder agent ─────────────────────────────────────
+# ── A2A (Agent2Agent) Sportscanner Agent ─────────────────────────────────────
 # Served on this same app, next to REST and MCP: Agent Card at
 # /.well-known/agent-card.json, JSON-RPC + HTTP+JSON at /a2a. Mounted before the
 # CORS middleware is added (so CORS stays outermost and wraps its 401s) and
@@ -127,7 +127,7 @@ app.include_router(
     router=UsersRouter, prefix="/user", tags=["internal"], include_in_schema=False
 )
 
-# The website's Agent mode: the court-finder agent streamed with generative UI.
+# The website's Agent mode: Sportscanner Agent streamed with generative UI.
 # Optional like A2A: a missing agent dependency must not take the core API down.
 try:
     from sportscanner.agents.chat import router as AgentChatRouter
@@ -172,7 +172,7 @@ async def root():
             "/venues/": "Venues covered by Sportscanner monitoring",
             "/docs": "Documentation for API endpoints",
             "/agents.md": "Public search instructions and MCP setup for agents",
-            "/.well-known/agent-card.json": "A2A Agent Card for the court-finder agent (JSON-RPC at /a2a)",
+            "/.well-known/agent-card.json": "A2A Agent Card for Sportscanner Agent (JSON-RPC at /a2a)",
             "/.well-known/api-catalog": "Machine-readable API discovery",
         },
     }

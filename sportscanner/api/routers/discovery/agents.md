@@ -64,7 +64,7 @@ MCP is public: no login, API key, bearer token or OAuth flow is required. Connec
 
 ## A2A agents
 
-Sportscanner also runs a court-finder agent over the Agent2Agent (A2A) protocol, v1.0 (v0.3 method names accepted).
+Sportscanner Agent is also available over the Agent2Agent (A2A) protocol, v1.0 (v0.3 method names accepted).
 
 - Agent Card: `https://api.sportscanner.co.uk/.well-known/agent-card.json`
 - JSON-RPC endpoint: `https://api.sportscanner.co.uk/a2a` (`SendMessage`, `SendStreamingMessage`, `GetTask`, `CancelTask`); send the `A2A-Version: 1.0` header.

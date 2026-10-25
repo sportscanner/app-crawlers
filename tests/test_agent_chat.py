@@ -1,4 +1,4 @@
-"""The website's Agent mode: POST /agent/chat streams the court-finder agent as NDJSON.
+"""The website's Agent mode: POST /agent/chat streams Sportscanner Agent as NDJSON.
 
 The LLM is stubbed with an SSE stream at the HTTP layer and the court search is
 stubbed, so these run offline.
@@ -128,7 +128,7 @@ def test_memory_keeps_the_prose_but_drops_ui_blocks(monkeypatch):
 def test_llm_errors_become_a_readable_error_event(monkeypatch):
     client, _ = make_client(monkeypatch, [httpx.Response(402, json={"error": "no credit"})])
     got = events(client.post("/agent/chat", json={"message": "hi", "conversation_id": "c3"}))
-    assert got == [{"type": "error", "message": "The court-finder agent's LLM account has run out of credit."}]
+    assert got == [{"type": "error", "message": "Sportscanner Agent's LLM account has run out of credit."}]
 
 
 def test_requests_are_validated_and_rate_limited(monkeypatch):

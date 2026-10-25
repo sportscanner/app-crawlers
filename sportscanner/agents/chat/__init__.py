@@ -1,4 +1,4 @@
-"""The website's Agent mode: the court-finder agent streamed to the homepage with generative UI."""
+"""The website's Agent mode: Sportscanner Agent streamed to the homepage with generative UI."""
 
 from sportscanner.agents.chat.endpoints import router
 

@@ -1,4 +1,4 @@
-"""A2A AgentExecutor: maps the court-finder agent onto the A2A task lifecycle.
+"""A2A AgentExecutor: maps Sportscanner Agent onto the A2A task lifecycle.
 
 submitted -> working -> completed (answer + court data artifacts)
                      -> input-required (agent asked a clarifying question)
@@ -47,7 +47,7 @@ class CourtFinderExecutor(AgentExecutor):
         try:
             reply = await self.agent.respond(user_text, context_id=f"{caller}:{task.context_id}")
         except LLMError as exc:
-            logging.error(f"A2A court-finder LLM error: {exc}")
+            logging.error(f"A2A Sportscanner Agent LLM error: {exc}")
             await updater.failed(say(exc.public_message))
             return
 

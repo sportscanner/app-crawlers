@@ -151,7 +151,7 @@ def create_router(origin: str, mcp_enabled: bool, a2a_enabled: bool = False) -> 
             entries.append(
                 {
                     "identifier": "urn:air:sportscanner.co.uk:a2a:court-finder",
-                    "displayName": "SportScanner court-finder A2A agent",
+                    "displayName": "Sportscanner Agent (A2A)",
                     "type": "application/a2a-agent-card+json",
                     "url": f"{origin}/.well-known/agent-card.json",
                     "representativeQueries": [

@@ -1,4 +1,4 @@
-"""POST /agent/chat: the court-finder agent for the website's Agent mode.
+"""POST /agent/chat: Sportscanner Agent for the website's Agent mode.
 
 Same agent, tools and LLM as A2A (sportscanner/agents/a2a), but streamed as
 NDJSON so the page can show each step as it happens and draw generative UI:

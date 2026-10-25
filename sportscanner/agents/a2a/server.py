@@ -1,4 +1,4 @@
-"""Serves the court-finder agent over A2A on the main FastAPI app.
+"""Serves Sportscanner Agent over A2A on the main FastAPI app.
 
 Routes (alongside REST and the MCP mount):
 - GET  /.well-known/agent-card.json   public Agent Card (discovery)
@@ -58,7 +58,7 @@ TokenVerifier = Callable[[str], Awaitable[Optional[str]]]
 def build_agent_card(origin: str, require_auth: bool) -> AgentCard:
     origin = origin.rstrip("/")
     card = AgentCard(
-        name="Sportscanner Court Finder",
+        name="Sportscanner Agent",
         description=(
             "Finds publicly bookable badminton, squash, pickleball, padel and tennis courts across "
             "London from live availability on 250+ venues. Ask in plain English; answers include "
@@ -212,5 +212,5 @@ def mount_a2a(
             if not isinstance(route, Mount)
         ],
     )
-    logging.info(f"A2A court-finder agent mounted at {A2A_PATH} (llm={llm.provider}/{llm.model}, auth={'on' if require_auth else 'off'})")
+    logging.info(f"A2A Sportscanner Agent mounted at {A2A_PATH} (llm={llm.provider}/{llm.model}, auth={'on' if require_auth else 'off'})")
     return card

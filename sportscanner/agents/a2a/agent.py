@@ -1,4 +1,4 @@
-"""The court-finder agent: an LLM tool-use loop over Sportscanner's search.
+"""Sportscanner Agent: an LLM tool-use loop over Sportscanner's search.
 
 Conversation memory is kept per A2A `contextId` in-process (bounded size and
 TTL), so a follow-up like "what about Hackney?" inherits the sport and date
@@ -26,7 +26,7 @@ HISTORY_TURNS = 8
 CONTEXT_TTL_SECONDS = 30 * 60
 MAX_CONTEXTS = 500
 
-SYSTEM_PROMPT = """You are Sportscanner's court-finder agent. You help people and other agents find \
+SYSTEM_PROMPT = """You are Sportscanner Agent. You help people and other agents find \
 publicly bookable badminton, squash, pickleball, padel and tennis courts in London.
 
 Now: {now} (Europe/London). Resolve relative dates like "tomorrow" or "Saturday" against this.

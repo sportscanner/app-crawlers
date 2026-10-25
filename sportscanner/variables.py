@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # Public API origin used in discovery links (no /mcp suffix).
     # Retain the environment variable name for deployment compatibility.
     MCP_PUBLIC_BASE_URL: str = "https://api.sportscanner.co.uk"
-    # A2A court-finder agent (sportscanner/agents/a2a). The LLM is reached
+    # A2A Sportscanner Agent (sportscanner/agents/a2a). The LLM is reached
     # through an OpenAI-compatible API: OpenRouter (default) or OpenCode.
     # A2A_MODEL uses the selected provider's model ids. Without a key the
     # agent card is still served, but tasks fail with a clear error.

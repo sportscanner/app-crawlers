@@ -1,4 +1,4 @@
-"""A2A court-finder agent: protocol wiring, auth, and the LLM tool loop.
+"""A2A Sportscanner Agent: protocol wiring, auth, and the LLM tool loop.
 
 The LLM provider is stubbed at the HTTP layer (httpx.MockTransport) and the court
 search is stubbed at the tool boundary, so these run without network or DB.
@@ -108,7 +108,7 @@ def test_agent_card_is_public_and_advertises_bearer_auth():
     response = client.get("/.well-known/agent-card.json")
     assert response.status_code == 200
     card = response.json()
-    assert card["name"] == "Sportscanner Court Finder"
+    assert card["name"] == "Sportscanner Agent"
     assert {i["url"] for i in card["supportedInterfaces"]} == {f"{ORIGIN}/a2a"}
     assert {i["protocolBinding"] for i in card["supportedInterfaces"]} == {"JSONRPC", "HTTP+JSON"}
     assert card["skills"][0]["id"] == "find-courts"

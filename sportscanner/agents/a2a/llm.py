@@ -26,10 +26,10 @@ class LLMError(RuntimeError):
 
 
 _STATUS_MESSAGES = {
-    401: "The court-finder agent's LLM credentials are invalid.",
-    402: "The court-finder agent's LLM account has run out of credit.",
-    403: "The court-finder agent's LLM key is not allowed to use this model.",
-    429: "The court-finder agent is rate limited. Try again shortly.",
+    401: "Sportscanner Agent's LLM credentials are invalid.",
+    402: "Sportscanner Agent's LLM account has run out of credit.",
+    403: "Sportscanner Agent's LLM key is not allowed to use this model.",
+    429: "Sportscanner Agent is rate limited. Try again shortly.",
 }
 
 
@@ -66,7 +66,7 @@ class LLMClient:
     ) -> dict[str, Any]:
         """Return the assistant message dict from the first choice."""
         if not self._api_key:
-            raise LLMError(f"The court-finder agent is not configured (missing {self.provider} API key).")
+            raise LLMError(f"Sportscanner Agent is not configured (missing {self.provider} API key).")
 
         payload: dict[str, Any] = {
             "model": self.model,
@@ -86,17 +86,17 @@ class LLMClient:
                     headers={**self._headers, "Authorization": f"Bearer {self._api_key}"},
                 )
             except httpx.HTTPError as exc:
-                raise LLMError("The court-finder agent couldn't reach its LLM provider.", str(exc)) from exc
+                raise LLMError("Sportscanner Agent couldn't reach its LLM provider.", str(exc)) from exc
 
         if response.status_code != 200:
             raise LLMError(
-                _STATUS_MESSAGES.get(response.status_code, "The court-finder agent's LLM provider returned an error."),
+                _STATUS_MESSAGES.get(response.status_code, "Sportscanner Agent's LLM provider returned an error."),
                 f"{self.provider} {response.status_code}: {response.text[:500]}",
             )
         try:
             return response.json()["choices"][0]["message"]
         except (ValueError, KeyError, IndexError) as exc:
-            raise LLMError("The court-finder agent got an unreadable LLM response.", response.text[:500]) from exc
+            raise LLMError("Sportscanner Agent got an unreadable LLM response.", response.text[:500]) from exc
 
     async def chat_stream(
         self,
@@ -109,7 +109,7 @@ class LLMClient:
         then ("message", assistant_message) once, with tool-call fragments
         reassembled into the same shape `chat()` returns."""
         if not self._api_key:
-            raise LLMError(f"The court-finder agent is not configured (missing {self.provider} API key).")
+            raise LLMError(f"Sportscanner Agent is not configured (missing {self.provider} API key).")
 
         payload: dict[str, Any] = {
             "model": self.model,
@@ -141,7 +141,7 @@ class LLMClient:
                         body = (await response.aread()).decode(errors="replace")
                         raise LLMError(
                             _STATUS_MESSAGES.get(
-                                response.status_code, "The court-finder agent's LLM provider returned an error."
+                                response.status_code, "Sportscanner Agent's LLM provider returned an error."
                             ),
                             f"{self.provider} {response.status_code}: {body[:500]}",
                         )
@@ -158,7 +158,7 @@ class LLMClient:
                             continue
                         if chunk.get("error"):
                             raise LLMError(
-                                "The court-finder agent's LLM provider returned an error.",
+                                "Sportscanner Agent's LLM provider returned an error.",
                                 f"{self.provider} stream error: {str(chunk['error'])[:500]}",
                             )
                         for choice in chunk.get("choices") or []:
@@ -185,7 +185,7 @@ class LLMClient:
                                 call["function"]["name"] += fn.get("name") or ""
                                 call["function"]["arguments"] += fn.get("arguments") or ""
             except httpx.HTTPError as exc:
-                raise LLMError("The court-finder agent couldn't reach its LLM provider.", str(exc)) from exc
+                raise LLMError("Sportscanner Agent couldn't reach its LLM provider.", str(exc)) from exc
 
         message: dict[str, Any] = {"role": "assistant", "content": "".join(content) or None}
         if reasoning:
@@ -214,5 +214,5 @@ def client_from_settings() -> LLMClient:
         model=settings.A2A_MODEL,
         provider="OpenRouter",
         # Optional OpenRouter app attribution headers.
-        headers={"HTTP-Referer": "https://www.sportscanner.co.uk", "X-Title": "Sportscanner Court Finder"},
+        headers={"HTTP-Referer": "https://www.sportscanner.co.uk", "X-Title": "Sportscanner Agent"},
     )
