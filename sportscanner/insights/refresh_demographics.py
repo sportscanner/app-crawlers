@@ -12,6 +12,9 @@ Sources (all ONS and Open Government Licence v3.0):
   level. ONS does not publish a small-area median, so the bundled reference
   carries the mean and the API leaves median_income null.
 - LSOA to MSOA mapping: ONS OA21 to LSOA21 to MSOA21 exact-fit lookup.
+- Deprivation: MHCLG English Indices of Deprivation 2025, File 7, Index of
+  Multiple Deprivation decile per LSOA (2021 boundaries; 1 = most deprived 10%
+  of LSOAs in England).
 
 The output files are small references, not request-time dependencies. The
 income xlsx is read with the standard library so refreshing does not add a
@@ -33,6 +36,7 @@ CENTROID_URL = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/servic
 MEDIAN_AGE_URL = "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationestimates/adhocs/2093estimatesofmedianageforlowerlayersuperoutputareasinenglandandwalesmid2021andmid2022/lsoamedian2021and2022.xlsx"
 INCOME_URL = "https://www.ons.gov.uk/file?uri=/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales/financialyearending2023/datasetfinal.xlsx"
 LOOKUP_URL = "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/items/b9ca90c10aaa4b8d9791e9859a38ca67/csv?layers=0"
+IMD_URL = "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv"
 LICENCE = "Open Government Licence v3.0"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 POPULATION_TARGET = DATA_DIR / "london_lsoa_population.json"
@@ -143,6 +147,23 @@ def _load_lsoa_msoa(client):
     return mapping
 
 
+def _load_imd(client):
+    response = client.get(IMD_URL)
+    response.raise_for_status()
+    rows = csv.DictReader(io.StringIO(response.content.decode("utf-8-sig")))
+    decile = next(name for name in rows.fieldnames if name.startswith("Index of Multiple Deprivation (IMD) Decile"))
+    return {row["LSOA code (2021)"].strip(): int(row[decile]) for row in rows if row.get(decile)}
+
+
+DEPRIVATION_META = {
+    "year": 2025,
+    "measure": "Index of Multiple Deprivation decile (1 = most deprived 10% of LSOAs in England)",
+    "source": "MHCLG English Indices of Deprivation 2025, File 7 (LSOA 2021)",
+    "source_url": IMD_URL,
+    "licence": LICENCE,
+}
+
+
 def main():
     people = {}
     with httpx.Client(timeout=120, follow_redirects=True) as client:
@@ -182,16 +203,17 @@ def main():
         median_age = _load_median_age(client)
         incomes = _load_income(client)
         lookup = _load_lsoa_msoa(client)
+        imd = _load_imd(client)
 
     missing = [code for code, row in people.items() if "latitude" not in row or any(g not in row for g in AGE_GROUPS.values())]
     if missing:
         raise RuntimeError(f"Incomplete population reference: {len(missing)} missing centroids or age counts")
     missing_demographics = [
         code for code in people
-        if code not in median_age or lookup.get(code) not in incomes
+        if code not in median_age or lookup.get(code) not in incomes or code not in imd
     ]
     if missing_demographics:
-        raise RuntimeError(f"Incomplete demographics reference: {len(missing_demographics)} missing median ages or incomes")
+        raise RuntimeError(f"Incomplete demographics reference: {len(missing_demographics)} missing median ages, incomes or deprivation deciles")
 
     population = {
         "year": 2024, "geography": "London LSOAs (2021 boundaries)",
@@ -217,12 +239,14 @@ def main():
             "lookup_url": LOOKUP_URL,
             "licence": LICENCE,
         },
+        "deprivation": DEPRIVATION_META,
         "areas": [
             {
                 "code": code,
                 "msoa_code": lookup[code],
                 "median_age": median_age[code],
                 "mean_income": incomes[lookup[code]],
+                "imd_decile": imd[code],
             }
             for code in sorted(people)
         ],
@@ -230,7 +254,7 @@ def main():
     POPULATION_TARGET.write_text(json.dumps(population, separators=(",", ":")) + "\n")
     DEMOGRAPHICS_TARGET.write_text(json.dumps(demographics, separators=(",", ":")) + "\n")
     print(f"Wrote {len(people)} London LSOAs, population {sum(r['population'] for r in people.values()):,}")
-    print(f"Wrote median age and mean income for {len(demographics['areas'])} LSOAs")
+    print(f"Wrote median age, mean income and deprivation decile for {len(demographics['areas'])} LSOAs")
 
 
 if __name__ == "__main__":

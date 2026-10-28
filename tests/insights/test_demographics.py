@@ -40,3 +40,25 @@ def test_radius_includes_sourced_age_and_income_fields():
     assert "ONS" in report["income_source"]
     assert "median" in report["income_note"]
     assert radius_population(53, -3, 3)["median_age"] is None
+
+
+def test_every_area_has_a_deprivation_decile():
+    assert demographic_reference()["deprivation"]["year"] == 2025
+    for area in demographic_reference()["areas"]:
+        assert 1 <= area["imd_decile"] <= 10
+
+
+def test_radius_reports_deprivation_income_bands_and_london_baseline():
+    report = radius_population(51.5074, -0.1278, 3)
+    deciles = report["deprivation"]["deciles"]
+    assert [d["decile"] for d in deciles] == list(range(1, 11))
+    assert sum(d["population"] for d in deciles) == report["population"]
+    assert sum(b["population"] for b in report["income_bands"]) == report["population"]
+    assert 0 <= report["deprivation"]["least_deprived_20_share"] <= 1
+    assert "Indices of Deprivation 2025" in report["deprivation"]["source"]
+    london = report["london"]
+    assert london["population"] == 9089736
+    assert sum(g["population"] for g in london["age_groups"]) == london["population"]
+    assert all("imd_decile" in a and "mean_income" in a for a in report["areas"])
+    empty = radius_population(53, -3, 3)
+    assert empty["deprivation"]["least_deprived_20_share"] is None
