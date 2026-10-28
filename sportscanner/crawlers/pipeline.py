@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import itertools
+import sys
 from datetime import date, datetime, timedelta
 from typing import Any, List, Optional, Tuple, Union
 
@@ -65,6 +66,9 @@ from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import (
 )
 from sportscanner.crawlers.parsers.placesleisure.pickleball.scraper import (
     coroutines as PlacesLeisurePickleballScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.placesleisure.core.strategy import (
+    pacing_summary as places_leisure_pacing_summary,
 )
 from sportscanner.crawlers.parsers.playtomic.pickleball.scraper import (
     coroutines as PlaytomicPickleballScraperCoroutines,
@@ -139,7 +143,9 @@ def record_slot_history(TableForLoading, run_started: datetime) -> None:
     try:
         snapshot_slot_history(TableForLoading, refreshed_since=run_started)
     except Exception as exc:
-        logging.error(f"slot_history snapshot failed for {TableForLoading.__tablename__}: {exc!r}")
+        logging.error(
+            f"slot_history snapshot failed for {TableForLoading.__tablename__}: {exc!r}"
+        )
 
 
 def flatten_responses(responses_from_all_sources) -> List[UnifiedParserSchema]:
@@ -239,17 +245,11 @@ def badminton_scraping_pipeline():
             SouthwarkLeisureBadmintonScraperCoroutines(dates),
             HaringeyCouncilBadmintonScraperCoroutines(dates),
             UELSportsDockBadmintonScraperCoroutines(dates),
-            # Places Leisure temporarily disabled (2026-08-30): its per-timeslot
-            # availability API structurally cannot fit this pipeline's normal
-            # 1-2 minute runtime - even at a WAF-safe pacing (confirmed
-            # necessary: unpaced/lightly-paced requests get 429'd), 8 venues x
-            # hundreds of distinct scheduled slots each serializes to tens of
-            # minutes, which stacked overlapping pipeline runs and took down
-            # the production search API. Re-enable only alongside a real
-            # architectural fix (e.g. running it as its own slower, less
-            # frequent job outside this fast pipeline), not just a smaller
-            # pacing constant.
-            # PlacesLeisureBadmintonScraperCoroutines(dates),
+            # Places Leisure runs as its own slower job (see
+            # places_leisure_scraping_pipeline below and
+            # .github/workflows/places-leisure-pipeline.yml). Its per-timeslot
+            # availability API needs ~1,500 paced requests for a 10 day window,
+            # which cannot fit this pipeline's 15 minute budget.
             VisionRclBadmintonScraperCoroutines(dates),
             MytimeActiveBadmintonScraperCoroutines(dates),
         )
@@ -259,8 +259,8 @@ def badminton_scraping_pipeline():
     )
 
     # Flatten nested list structure and remove empty or failed responses
-    flattened_responses_for_upsertion: List[UnifiedParserSchema] = fill_estimated_prices(
-        flatten_responses(responses_for_upsertion)
+    flattened_responses_for_upsertion: List[UnifiedParserSchema] = (
+        fill_estimated_prices(flatten_responses(responses_for_upsertion))
     )
     flattened_responses_for_reload: List[UnifiedParserSchema] = fill_estimated_prices(
         flatten_responses(responses_for_reload)
@@ -344,9 +344,8 @@ def pickleball_scraping_pipeline():
             BetterLeisurePickleballScraperCoroutines(dates),
             SouthwarkLeisurePickleballScraperCoroutines(dates),
             DecathlonPickleballScraperCoroutines(dates),
-            # Places Leisure temporarily disabled - see the badminton pipeline
-            # above for why (same provider, same structural issue).
-            # PlacesLeisurePickleballScraperCoroutines(dates),
+            # Places Leisure runs as its own slower job - same provider, same
+            # per-timeslot fan-out as the badminton pipeline.
             PlaytomicPickleballScraperCoroutines(dates),
             CourtReservePickleballScraperCoroutines(dates),
         )
@@ -445,13 +444,83 @@ def tennis_scraping_pipeline():
         return False
 
 
+# Places Leisure cannot join the fast pipelines: its availability API is one
+# request per distinct scheduled timeslot (confirmed live 2026-10-28 - no bulk
+# mode, and the embedded schedule carries no availability data), so a 10 day
+# badminton window is ~1,500 paced requests, ~76 minutes at the WAF-safe 3s
+# interval. Three days keeps a dedicated run around 45 minutes for both sports
+# while still covering everything a player can book this week.
+_PLACES_LEISURE_HORIZON_DAYS = 3
+
+
+@timeit
+def places_leisure_scraping_pipeline():
+    """Slow, low-frequency refresh for Places Leisure only.
+
+    Runs both sports in one process and one event loop so they share the
+    provider's single rate limiter (`_paced_get` in
+    placesleisure/core/strategy.py). The pacer serialises the availability
+    calls, so the sports interleave rather than each getting its own 3s budget.
+    Two parallel containers would double the real request rate against the same
+    egress IP, which is what the 2026-08-30 outage looked like.
+    """
+    logging.warning(f"Running Places Leisure refresh for environment: `{settings.ENV}`")
+    run_started = datetime.now()
+    today = date.today()
+    dates = [today + timedelta(days=i) for i in range(_PLACES_LEISURE_HORIZON_DAYS)]
+    logging.info(f"Finding Places Leisure slots for dates: {dates}")
+
+    completed = True
+
+    async def _crawl_both():
+        return await SportscannerCrawlerBot(
+            PlacesLeisureBadmintonScraperCoroutines(dates),
+            PlacesLeisurePickleballScraperCoroutines(dates),
+        )
+
+    # One event loop for both sports. The provider's rate limiter
+    # (`_rate_limiter_lock` / `_pacer` in placesleisure/core/strategy.py)
+    # is a module-level asyncio primitive, so a second asyncio.run() in the same
+    # process rebinds it to a new loop and every request fails with "bound to a
+    # different event loop".
+    responses = asyncio.run(_crawl_both())
+    logging.info(f"Places Leisure pacing settled at {places_leisure_pacing_summary()}")
+
+    targets = (
+        ("badminton", responses[0], BadmintonMasterTable),
+        ("pickleball", responses[1], PickleballMasterTable),
+    )
+    for label, response, master_table in targets:
+        all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
+            [slot for slot in response if slot]
+        )
+        if not all_slots:
+            logging.warning(
+                f"Places Leisure {label}: no slots returned, table left untouched"
+            )
+            completed = False
+            continue
+        logging.success(f"Places Leisure {label}: {len(all_slots)} slot(s) collected")
+        insert_records_to_table(all_slots, master_table)
+        record_slot_history(master_table, run_started)
+    return completed
+
+
 if __name__ == "__main__":
     """Gathers data from all sources/providers and loads to SQL database"""
 
     parser = argparse.ArgumentParser(description="Run SportScanner scraping pipelines")
     parser.add_argument(
         "--task",
-        choices=["badminton", "squash", "pickleball", "padel", "tennis", "all"],
+        choices=[
+            "badminton",
+            "squash",
+            "pickleball",
+            "padel",
+            "tennis",
+            "placesleisure",
+            "all",
+        ],
         required=False,
         help="Which pipeline to run",
     )
@@ -472,6 +541,11 @@ if __name__ == "__main__":
     elif args.task == "tennis":
         logging.info("Starting Tennis scraping pipeline...")
         tennis_scraping_pipeline()
+    elif args.task == "placesleisure":
+        logging.info("Starting Places Leisure scraping pipeline...")
+        # Exit non-zero on a partial or empty run so the dedicated workflow
+        # goes red instead of leaving a silent hole in badminton/pickleball.
+        sys.exit(0 if places_leisure_scraping_pipeline() else 1)
     else:
         logging.info("Starting ALL scraping pipelines...")
         badminton_scraping_pipeline()

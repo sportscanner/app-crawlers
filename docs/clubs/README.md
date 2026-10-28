@@ -26,7 +26,7 @@ detail that sits underneath it.
 | Playtomic | [playtomic.md](playtomic.md) | padel, tennis | 33 padel + 1 tennis | healthy; tennis added Aug 2026, verified end-to-end (318 real slots landed in `tennis` table on first full pipeline run), only 1 venue so far |
 | South Croydon Sports Club | [south-croydon-sports-club.md](south-croydon-sports-club.md) | (none implemented) | 1 | **not implemented** |
 | UEL SportsDock | [uel-sportsdock.md](uel-sportsdock.md) | badminton | 1 | healthy (added July 2026) |
-| Places Leisure | [places-leisure.md](places-leisure.md) | badminton, pickleball | 8 | healthy (added July 2026) |
+| Places Leisure | [places-leisure.md](places-leisure.md) | badminton, pickleball | 8 | healthy (added July 2026); re-enabled Oct 2026 as its own 2-hourly job, not in the fast pipeline (per-timeslot API, ~1,500 requests for 10 days) |
 | Vision RCL (Redbridge) | [vision-rcl.md](vision-rcl.md) | badminton, squash | 3 | healthy (added Aug 2026, flow.onl v2 Gladstone tenant) |
 | CourtReserve (Lemon Pickleball) | [courtreserve.md](courtreserve.md) | pickleball | 19 | healthy (added Aug 2026, 19 London venues on orgId 13469) |
 | Stratford Padel Club | [stratford-padel.md](stratford-padel.md) | padel | 1 | healthy (added Aug 2026, TPC-MatchPoint ASP.NET grid) |

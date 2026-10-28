@@ -75,11 +75,75 @@ _LONDON_TZ = ZoneInfo("Europe/London")
 # residential IP, so a locally-tuned value doesn't transfer directly. Pushed
 # to 3.0s to give real headroom in the actual run environment - each 429 is
 # still recovered via retry (no data loss either way), this is purely about
-# cutting the wasted-first-attempt rate. Re-tune from live GitHub Actions
-# logs specifically, not local testing, if this still isn't enough.
-_MIN_REQUEST_INTERVAL_SECONDS = 3.0  # hard ceiling: ~0.33 req/s
+# cutting the wasted-first-attempt rate.
+# 2026-10-28: a controlled A/B killed the assumption that fingerprint mattered
+# (httpx HTTP/1.1, HTTP/2, curl_cffi chrome136 and safari180 produced identical
+# status sequences). The limit is an IP-scoped sliding 60s window of ~30
+# requests, so one constant cannot fit both a residential IP and a CI runner.
+# The pacer now starts at 3.0s and adapts (see AdaptivePacer).
+_MIN_REQUEST_INTERVAL_SECONDS = 3.0  # initial value; the pacer adapts from here
+# Floor measured live on 2026-10-28. A controlled sweep of 30 requests per
+# interval found zero 429s down to 1.8s, but the limit is a sliding 60 second
+# window of ~30 requests: request #31 is always the first 429, so a sustained
+# 1.8s (33/min) would 429 once a minute. 2.1s is 28.6/min, just under the cap.
+_MIN_REQUEST_INTERVAL_FLOOR_SECONDS = 2.1
+_MAX_REQUEST_INTERVAL_SECONDS = 8.0
+_SUCCESSES_BEFORE_SPEEDUP = 20
+_SPEEDUP_FACTOR = 0.95
+_SLOWDOWN_FACTOR = 1.5
+
 _rate_limiter_lock = asyncio.Lock()
-_last_request_at: float = 0.0
+
+
+class AdaptivePacer:
+    """Interval that adapts to the provider's per-IP sliding window.
+
+    Fixed pacing was always wrong for someone: 3.0s wastes a third of the
+    budget on a residential IP, but the 2026-08-30 GitHub Actions runs 429'd
+    every first attempt at 1.5s, so a single tuned constant cannot serve both.
+    Start at the conservative default, speed up after a clean streak, and back
+    off hard on a 429. Every 429 is still retried, so this only trades wasted
+    attempts for throughput.
+    """
+
+    def __init__(
+        self,
+        interval: float = _MIN_REQUEST_INTERVAL_SECONDS,
+        floor: float = _MIN_REQUEST_INTERVAL_FLOOR_SECONDS,
+        ceiling: float = _MAX_REQUEST_INTERVAL_SECONDS,
+        adaptive: bool = True,
+    ):
+        self.interval = interval
+        self.floor = floor
+        self.ceiling = ceiling
+        self.adaptive = adaptive
+        self.last_request_at = 0.0
+        self._success_streak = 0
+
+    def on_success(self) -> None:
+        if not self.adaptive:
+            return
+        self._success_streak += 1
+        if self._success_streak < _SUCCESSES_BEFORE_SPEEDUP:
+            return
+        self._success_streak = 0
+        self.interval = max(self.floor, self.interval * _SPEEDUP_FACTOR)
+
+    def on_rate_limited(self) -> None:
+        self._success_streak = 0
+        self.interval = min(self.ceiling, self.interval * _SLOWDOWN_FACTOR)
+
+
+_pacer = AdaptivePacer()
+
+
+def pacing_summary() -> str:
+    """Settled pacer state, so CI run logs show the runner's real budget."""
+    return (
+        f"interval={_pacer.interval:.2f}s "
+        f"floor={_pacer.floor:.2f}s ceiling={_pacer.ceiling:.2f}s"
+    )
+
 
 # 429 is a transient "slow down", not a real failure - retrying (honoring
 # Retry-After when the server sends one) recovers the slot instead of
@@ -89,20 +153,21 @@ _BACKOFF_SECONDS = (1.0, 2.0, 4.0)
 
 
 async def _paced_get(client: httpx.AsyncClient, url: str, **kwargs) -> httpx.Response:
-    """GET `url`, first waiting out the shared minimum inter-request interval,
-    then retrying with backoff on 429 (honoring Retry-After if present)."""
-    global _last_request_at
+    """GET `url`, first waiting out the shared inter-request interval, then
+    retrying with backoff on 429 (honoring Retry-After if present)."""
     for attempt in range(_MAX_429_RETRIES + 1):
         async with _rate_limiter_lock:
-            wait = _MIN_REQUEST_INTERVAL_SECONDS - (time.monotonic() - _last_request_at)
+            wait = _pacer.interval - (time.monotonic() - _pacer.last_request_at)
             if wait > 0:
                 await asyncio.sleep(wait)
-            _last_request_at = time.monotonic()
+            _pacer.last_request_at = time.monotonic()
             resp = await client.get(url, **kwargs)
         if resp.status_code != 429:
+            _pacer.on_success()
             record_http_status(resp.status_code, headers=resp.headers)
             resp.raise_for_status()
             return resp
+        _pacer.on_rate_limited()
         if attempt == _MAX_429_RETRIES:
             record_http_status(resp.status_code, headers=resp.headers)
             resp.raise_for_status()  # exhausted retries - raise so the caller logs/drops as before
@@ -113,7 +178,8 @@ async def _paced_get(client: httpx.AsyncClient, url: str, **kwargs) -> httpx.Res
             else _BACKOFF_SECONDS[attempt]
         )
         logging.warning(
-            f"Places Leisure: 429 on {url}, retrying in {delay}s (attempt {attempt + 1})"
+            f"Places Leisure: 429 on {url}, retrying in {delay}s "
+            f"(attempt {attempt + 1}, interval now {_pacer.interval:.2f}s)"
         )
         await asyncio.sleep(delay)
     raise AssertionError("unreachable")  # loop always returns or raises above
@@ -158,7 +224,26 @@ class PlacesLeisureSlotFetcher:
     ) -> List[UnifiedParserSchema]:
         sessions = await self._fetch_schedule(client, venue.slug, semaphore)
         allowed_dates = set(search_dates)
-        relevant = [s for s in sessions if _to_london(s[0]).date() in allowed_dates]
+        # Skip sessions that have already started. They are never shown (the
+        # search API filters starting_time > NOW()) and they were ~15% of a
+        # 3 day window in the 2026-10-28 measurement, so they are the cheapest
+        # request saving available.
+        now = datetime.now(_LONDON_TZ)
+        relevant = []
+        skipped_past = 0
+        for session in sessions:
+            starts_at = _to_london(session[0])
+            if starts_at.date() not in allowed_dates:
+                continue
+            if starts_at <= now:
+                skipped_past += 1
+                continue
+            relevant.append(session)
+        if skipped_past:
+            logging.debug(
+                f"Places Leisure {venue.venue_name}: skipped {skipped_past} "
+                f"already-started {self.category} session(s)"
+            )
         if not relevant:
             logging.debug(
                 f"Places Leisure {venue.venue_name}: no {self.category} sessions "
@@ -201,10 +286,21 @@ class PlacesLeisureSlotFetcher:
                     f"Places Leisure centre page fetch failed for {slug}: {exc}",
                     retryable=True,
                 )
-            return []
+            # Surface as a venue-level failure instead of returning []: an
+            # empty list is identical to "this venue has no sessions", which is
+            # how a whole-provider 503 can look like a clean run that simply
+            # collected nothing.
+            raise
 
         content = html_lib.unescape(resp.text)
         matches = self._session_pattern.findall(content)
+        if not matches:
+            logging.warning(
+                f"Places Leisure: centre page for {slug} returned "
+                f"{len(resp.text)} chars but no {self.activity_group} sessions - "
+                f"either the venue genuinely has none scheduled or the embedded "
+                f"schedule shape changed"
+            )
 
         # The same (start, activityId, locationId) can appear more than once in
         # the embedded schedule (once per bookable resource sharing the slot
