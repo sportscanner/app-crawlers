@@ -14,6 +14,9 @@ class AdditionalRequestMetadata(BaseModel):
     last_refreshed: Optional[datetime] = Field(default_factory=datetime.now)
     booking_url: Optional[str] = None # can be pre-defined, or extracted from response
     sportsCentre: SportsVenue
+    # Provider-side site identifier when it differs from the venues.json slug
+    # (e.g. Gladstone Go sites are ids like "BSC"/"SRSLC", not the readable slug).
+    provider_site_id: Optional[str] = None
 
 
 class RequestDetailsWithMetadata(BaseModel):

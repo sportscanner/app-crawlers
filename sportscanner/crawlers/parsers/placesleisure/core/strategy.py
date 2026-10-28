@@ -43,6 +43,10 @@ from zoneinfo import ZoneInfo
 import httpx
 
 import sportscanner.storage.postgres.tables
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.logger import logging
 
@@ -96,13 +100,21 @@ async def _paced_get(client: httpx.AsyncClient, url: str, **kwargs) -> httpx.Res
             _last_request_at = time.monotonic()
             resp = await client.get(url, **kwargs)
         if resp.status_code != 429:
+            record_http_status(resp.status_code, headers=resp.headers)
             resp.raise_for_status()
             return resp
         if attempt == _MAX_429_RETRIES:
+            record_http_status(resp.status_code, headers=resp.headers)
             resp.raise_for_status()  # exhausted retries - raise so the caller logs/drops as before
         retry_after = resp.headers.get("Retry-After")
-        delay = float(retry_after) if retry_after and retry_after.isdigit() else _BACKOFF_SECONDS[attempt]
-        logging.warning(f"Places Leisure: 429 on {url}, retrying in {delay}s (attempt {attempt + 1})")
+        delay = (
+            float(retry_after)
+            if retry_after and retry_after.isdigit()
+            else _BACKOFF_SECONDS[attempt]
+        )
+        logging.warning(
+            f"Places Leisure: 429 on {url}, retrying in {delay}s (attempt {attempt + 1})"
+        )
         await asyncio.sleep(delay)
     raise AssertionError("unreachable")  # loop always returns or raises above
 
@@ -174,11 +186,21 @@ class PlacesLeisureSlotFetcher:
         try:
             async with semaphore:
                 resp = await client.get(url, headers=_HEADERS, timeout=30)
+            record_http_status(resp.status_code, headers=resp.headers)
             resp.raise_for_status()
         except Exception as exc:
             logging.error(
                 f"Places Leisure: failed to fetch centre page for {slug}: {exc}"
             )
+            if isinstance(exc, httpx.HTTPStatusError):
+                record_http_status(
+                    exc.response.status_code, headers=exc.response.headers
+                )
+            else:
+                record_failure(
+                    f"Places Leisure centre page fetch failed for {slug}: {exc}",
+                    retryable=True,
+                )
             return []
 
         content = html_lib.unescape(resp.text)
@@ -234,6 +256,12 @@ class PlacesLeisureSlotFetcher:
                 f"Places Leisure {venue.venue_name} availability fetch failed "
                 f"for {start_iso}: {exc}"
             )
+            if not isinstance(exc, httpx.HTTPStatusError):
+                record_failure(
+                    f"Places Leisure availability fetch failed for {start_iso}: "
+                    f"{type(exc).__name__}: {exc!r}",
+                    retryable=True,
+                )
             return None
 
         courts = payload.get("data", [])

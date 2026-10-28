@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from sportscanner.crawlers.anonymize.flaresolverr import get_cookie_via_flaresolverr
 from sportscanner.crawlers.anonymize.proxies import next_impersonate_profile
 from sportscanner.crawlers.helpers import override
+from sportscanner.crawlers.parsers.core.fetch_failures import record_failure
 from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
     AbstractResponseParserStrategy,
@@ -54,7 +55,10 @@ _LONDON = ZoneInfo("Europe/London")
 _JWT_FETCH_ATTEMPTS = 4
 
 
-def get_anonymous_jwt() -> Optional[str]:
+def get_anonymous_jwt(
+    portal_base: str = GLADSTONEGO_PORTAL_BASE,
+    log_label: str = "mytimeactive",
+) -> Optional[str]:
     """Fetches an anonymous session JWT from Gladstone Go samlauthentication endpoint.
 
     Uses curl_cffi with a browser TLS fingerprint: the endpoint 403s plain
@@ -92,7 +96,7 @@ def get_anonymous_jwt() -> Optional[str]:
                 timeout=15.0,
             ) as session:
                 res = session.get(
-                    f"{GLADSTONEGO_PORTAL_BASE}/api/samlauthentication/anonymous"
+                    f"{portal_base}/api/samlauthentication/anonymous"
                 )
                 res.raise_for_status()
                 jwt = session.cookies.get("Jwt")
@@ -105,22 +109,26 @@ def get_anonymous_jwt() -> Optional[str]:
         except Exception as e:
             last_exc = e
             logging.debug(
-                f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE} "
+                f"Failed to fetch anonymous JWT from {portal_base} "
                 f"(attempt {attempt}/{_JWT_FETCH_ATTEMPTS}, profile {profile}): {e}"
             )
 
     jwt = get_cookie_via_flaresolverr(
-        f"{GLADSTONEGO_PORTAL_BASE}/api/samlauthentication/anonymous",
+        f"{portal_base}/api/samlauthentication/anonymous",
         cookie_name="Jwt",
-        log_label="mytimeactive",
+        log_label=log_label,
     )
     if jwt:
         return jwt
 
     logging.error(
-        f"Failed to fetch anonymous JWT from {GLADSTONEGO_PORTAL_BASE} after "
+        f"Failed to fetch anonymous JWT from {portal_base} after "
         f"{_JWT_FETCH_ATTEMPTS} attempts across rotated TLS profiles"
         f"{' + FlareSolverr' if os.environ.get('FLARESOLVERR_URL') else ''}: {last_exc}"
+    )
+    record_failure(
+        f"Failed to fetch anonymous JWT from {portal_base}: {last_exc}",
+        retryable=True,
     )
     return None
 
@@ -208,11 +216,12 @@ class GladstoneGoResponseParserStrategy(AbstractResponseParserStrategy):
         # (confirmed for The Walnuts Leisure Centre, which is phone/walk-in only
         # for badminton and squash as of 2026-08-26).
         target_date_str = metadata.date.isoformat()
+        site_id = metadata.provider_site_id or metadata.sportsCentre.slug
         day_sessions = [
             s
             for s in sessions
             if s.date == target_date_str
-            and s.siteId == metadata.sportsCentre.slug
+            and s.siteId == site_id
             and s.webBookable
         ]
 

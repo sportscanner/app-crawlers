@@ -1,5 +1,7 @@
 import uuid
+from datetime import datetime, timedelta
 from enum import Enum
+from zoneinfo import ZoneInfo
 
 import sqlmodel
 from sportscanner.logger import logging
@@ -17,13 +19,14 @@ from sportscanner.variables import settings
 connection_string = settings.DB_CONNECTION_STRING
 
 engine_configs = {"timeout": 5}
-# Aiven max_connections is 20 (3 reserved for SUPERUSER). Cap each process
-# at 5 total so multiple workers + the crawler pipeline can coexist.
+# Aiven max_connections is 20 (3 reserved for SUPERUSER). The API keeps the
+# default 3 + 2 pool; each parallel crawler container overrides DB_POOL_SIZE=1
+# and DB_MAX_OVERFLOW=1 (two connections) so five sports plus the API fit.
 engine = create_engine(
     connection_string,
     pool_pre_ping=True,
-    pool_size=3,
-    max_overflow=2,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
     pool_recycle=300,
     pool_timeout=10,
     echo=False,
@@ -286,6 +289,11 @@ def create_db_and_tables(engine):
             McpAuthorizedClient.__table__,
             Notification.__table__,
             NotificationAck.__table__,
+            SlotHistory.__table__,
+            DailyPriceSnapshot.__table__,
+            DailySupplySnapshot.__table__,
+            CrawlJob.__table__,
+            CrawlSourceStatus.__table__,
         ]
     )
 
@@ -421,6 +429,169 @@ def truncate_by_composite_key_and_reload(slots_from_all_venues, TableForLoading:
 
         session.commit()
         logging.success(f"Reloaded {len(slots_from_all_venues)} slots into {TableForLoading.__tablename__}")
+
+
+SLOT_HISTORY_RETENTION_DAYS = 120
+PRICE_HISTORY_RETENTION_DAYS = 400
+_slot_history_ready = False
+# Five sports may start in parallel on the first run after a deploy. Without a
+# lock, their CREATE TABLE IF NOT EXISTS statements can race in PostgreSQL.
+_INSIGHTS_SCHEMA_LOCK_KEY = 0x5C0A12
+
+
+def ensure_slot_history_table(engine):
+    """Creates the insights tables on first use.
+
+    Schema setup is not part of any deploy step, so the crawler pipeline creates
+    the tables itself. Idempotent and safe when several sport containers start
+    together: a session-level advisory lock serialises the first DDL.
+    """
+    global _slot_history_ready
+    if _slot_history_ready:
+        return
+    with engine.connect() as lock_conn:
+        lock_conn.execute(
+            text("SELECT pg_advisory_lock(:key)"),
+            {"key": _INSIGHTS_SCHEMA_LOCK_KEY},
+        )
+        try:
+            SlotHistory.__table__.create(bind=engine, checkfirst=True)
+            DailyPriceSnapshot.__table__.create(bind=engine, checkfirst=True)
+            DailySupplySnapshot.__table__.create(bind=engine, checkfirst=True)
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_slot_history_sport_starts_at "
+                    "ON public.slot_history (sport, starts_at)"
+                ))
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_daily_price_snapshot_sport_day "
+                    "ON public.daily_price_snapshot (sport, observed_on)"
+                ))
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_daily_supply_snapshot_sport_day "
+                    "ON public.daily_supply_snapshot (sport, observed_on)"
+                ))
+                conn.commit()
+            _slot_history_ready = True
+        finally:
+            lock_conn.execute(
+                text("SELECT pg_advisory_unlock(:key)"),
+                {"key": _INSIGHTS_SCHEMA_LOCK_KEY},
+            )
+            lock_conn.commit()
+
+
+def snapshot_slot_history(TableForLoading: sqlmodel.main.SQLModelMetaclass, refreshed_since: datetime) -> None:
+    """Copies this run's view of every not-yet-started slot into `slot_history`.
+
+    Only rows refreshed during this run (`last_refreshed >= refreshed_since`) are
+    copied, so a provider that failed this run leaves its history untouched
+    instead of re-stamping old availability as fresh. Only slots that have not
+    started are copied: after the start time the provider stops listing a slot
+    and the stale-marking UPDATE zeroes it, which would read as fully booked.
+
+    Runs as one INSERT ... SELECT per sport, so nothing is read back into Python.
+    """
+    sport = TableForLoading.__tablename__
+    if sport not in _SLOT_TABLES:
+        raise ValueError(f"Unknown slot table: {sport!r}")
+    indoor_expr = "indoor" if sport in _INDOOR_OUTDOOR_SPORT_TABLES else "NULL::boolean"
+    now_london = datetime.now(ZoneInfo("Europe/London")).replace(tzinfo=None)
+
+    ensure_slot_history_table(engine)
+    statement = text(f"""
+        INSERT INTO public.slot_history AS h (
+            sport, composite_key, date, starting_time, ending_time, starts_at,
+            duration_min, price, price_gbp, first_spaces, last_spaces, max_spaces,
+            capacity, indoor, first_seen, last_seen, observations
+        )
+        SELECT
+            :sport, composite_key, date, starting_time, ending_time,
+            (date + starting_time),
+            ((EXTRACT(EPOCH FROM (ending_time - starting_time)) / 60)::int + 1440) % 1440,
+            price,
+            -- "~" marks a price the pipeline estimated (fill_estimated_prices),
+            -- sometimes from a sport-wide default; keep it out of market figures.
+            CASE WHEN price ~ '^[£ ]*[0-9]+([.][0-9]+)?[ ]*$'
+                 THEN regexp_replace(price, '[£ ]', '', 'g')::numeric END,
+            spaces, spaces, spaces, capacity, {indoor_expr}, :now_london, :now_london, 1
+        FROM public.{sport}
+        WHERE last_refreshed >= :refreshed_since
+          AND (date + starting_time) > :now_london
+        ON CONFLICT (sport, composite_key, date, starting_time, ending_time) DO UPDATE SET
+            last_spaces = EXCLUDED.last_spaces,
+            max_spaces = GREATEST(h.max_spaces, EXCLUDED.last_spaces),
+            -- A slot that sells out drops its price on some providers; keep the
+            -- last real price rather than overwriting it with an empty one.
+            price = CASE WHEN EXCLUDED.price_gbp > 0 OR (EXCLUDED.price_gbp = 0 AND EXCLUDED.last_spaces > 0)
+                         THEN EXCLUDED.price ELSE h.price END,
+            price_gbp = CASE WHEN EXCLUDED.price_gbp > 0 OR (EXCLUDED.price_gbp = 0 AND EXCLUDED.last_spaces > 0)
+                             THEN EXCLUDED.price_gbp ELSE h.price_gbp END,
+            capacity = COALESCE(EXCLUDED.capacity, h.capacity),
+            indoor = COALESCE(EXCLUDED.indoor, h.indoor),
+            last_seen = EXCLUDED.last_seen,
+            observations = h.observations + 1
+    """)
+    retention = text(
+        "DELETE FROM public.slot_history WHERE sport = :sport AND starts_at < :cutoff"
+    )
+    with Session(engine) as session:
+        # Save observation-day prices before updating the final slot readings.
+        # No carry-forward from slot_history: failed providers cannot produce
+        # fresh quotes. Sold-out, absent, and pipeline-estimated prices are not
+        # tariff observations. Keep explicit zero-price public sessions.
+        session.execute(text(f"""
+            INSERT INTO public.daily_supply_snapshot AS s
+                (sport, composite_key, observed_on, courts, observed_at)
+            SELECT :sport, composite_key, CAST(:now_london AS date),
+                   MAX(GREATEST(COALESCE(capacity, spaces), spaces)), :now_london
+            FROM public.{sport}
+            WHERE last_refreshed >= :refreshed_since
+              AND (date + starting_time) > :now_london
+            GROUP BY composite_key
+            ON CONFLICT (sport, composite_key, observed_on) DO UPDATE
+            SET courts = GREATEST(s.courts, EXCLUDED.courts), observed_at = EXCLUDED.observed_at
+        """), dict(sport=sport, now_london=now_london, refreshed_since=refreshed_since))
+        session.execute(text(
+            "DELETE FROM public.daily_supply_snapshot WHERE sport = :sport AND observed_on < :cutoff"
+        ), dict(sport=sport, cutoff=now_london.date() - timedelta(days=PRICE_HISTORY_RETENTION_DAYS)))
+        session.execute(text(f"""
+            INSERT INTO public.daily_price_snapshot AS p
+                (sport, composite_key, observed_on, dow, starting_time,
+                 duration_min, price_per_hour, observed_at, days_ahead)
+            SELECT :sport, composite_key, CAST(:now_london AS date),
+                   EXTRACT(ISODOW FROM date)::int AS dow, starting_time, duration_min,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY quote * 60.0 / duration_min),
+                   :now_london, MIN(date - CAST(:now_london AS date))
+            FROM (
+                SELECT *,
+                    ((EXTRACT(EPOCH FROM (ending_time - starting_time)) / 60)::int + 1440) % 1440 AS duration_min,
+                    CASE WHEN price ~ '^[£ ]*[0-9]+([.][0-9]+)?[ ]*$'
+                         THEN regexp_replace(price, '[£ ]', '', 'g')::numeric END AS quote
+                FROM public.{sport}
+                WHERE last_refreshed >= :refreshed_since AND spaces > 0
+                  AND date > CAST(:now_london AS date)
+                  AND date <= CAST(:now_london AS date) + 7
+            ) quotes
+            WHERE quote >= 0 AND duration_min > 0
+            GROUP BY composite_key, dow, starting_time, duration_min
+            ON CONFLICT (sport, composite_key, observed_on, dow, starting_time, duration_min)
+            DO UPDATE SET price_per_hour = EXCLUDED.price_per_hour,
+                          observed_at = EXCLUDED.observed_at, days_ahead = EXCLUDED.days_ahead
+        """), dict(sport=sport, now_london=now_london, refreshed_since=refreshed_since))
+        session.execute(text(
+            "DELETE FROM public.daily_price_snapshot WHERE sport = :sport AND observed_on < :cutoff"
+        ), dict(sport=sport, cutoff=now_london.date() - timedelta(days=PRICE_HISTORY_RETENTION_DAYS)))
+        result = session.execute(
+            statement,
+            dict(sport=sport, now_london=now_london, refreshed_since=refreshed_since),
+        )
+        session.execute(
+            retention,
+            dict(sport=sport, cutoff=now_london - timedelta(days=SLOT_HISTORY_RETENTION_DAYS)),
+        )
+        session.commit()
+    logging.success(f"Snapshotted {result.rowcount} {sport} slots into slot_history")
 
 
 def delete_past_slots(TableForLoading: sqlmodel.main.SQLModelMetaclass) -> int:

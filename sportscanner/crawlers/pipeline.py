@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 import itertools
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, List, Optional, Tuple, Union
 
 from sportscanner.logger import logging
@@ -85,6 +85,15 @@ from sportscanner.crawlers.parsers.padelmates.padel.scraper import (
 from sportscanner.crawlers.parsers.stratfordpadel.padel.scraper import (
     coroutines as StratfordPadelScraperCoroutines,
 )
+from sportscanner.crawlers.parsers.matchpoint.padel.scraper import (
+    coroutines as MatchpointPadelScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.gladstonego.padel.scraper import (
+    coroutines as GladstoneGoPadelScraperCoroutines,
+)
+from sportscanner.crawlers.parsers.clubspark.padel.scraper import (
+    coroutines as ClubSparkPadelScraperCoroutines,
+)
 
 from sportscanner.crawlers.parsers.clubspark.tennis.scraper import (
     coroutines as ClubSparkTennisScraperCoroutines,
@@ -111,6 +120,7 @@ from sportscanner.storage.postgres.database import (
     insert_records_to_table,
     truncate_by_composite_key_and_reload,
     delete_past_slots,
+    snapshot_slot_history,
 )
 from sportscanner.storage.postgres.tables import (
     BadmintonMasterTable,
@@ -121,6 +131,15 @@ from sportscanner.storage.postgres.tables import (
 )
 from sportscanner.utils import timeit
 from sportscanner.variables import settings
+
+
+def record_slot_history(TableForLoading, run_started: datetime) -> None:
+    """Feeds the market insights. Best-effort: a history failure must never fail
+    the crawl that keeps search results fresh."""
+    try:
+        snapshot_slot_history(TableForLoading, refreshed_since=run_started)
+    except Exception as exc:
+        logging.error(f"slot_history snapshot failed for {TableForLoading.__tablename__}: {exc!r}")
 
 
 def flatten_responses(responses_from_all_sources) -> List[UnifiedParserSchema]:
@@ -207,6 +226,7 @@ def fill_estimated_prices(
 @timeit
 def badminton_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    run_started = datetime.now()
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
@@ -266,6 +286,7 @@ def badminton_scraping_pipeline():
         truncate_by_composite_key_and_reload(
             flattened_responses_for_reload, BadmintonMasterTable
         )
+        record_slot_history(BadmintonMasterTable, run_started)
         return True
     else:
         logging.warning(
@@ -277,6 +298,7 @@ def badminton_scraping_pipeline():
 @timeit
 def squash_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    run_started = datetime.now()
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(15)]
     logging.info(f"Finding slots for dates: {dates}")
@@ -301,6 +323,7 @@ def squash_scraping_pipeline():
             f"Upserting all data to master table: {SquashMasterTable.__tablename__}"
         )
         insert_records_to_table(all_slots, SquashMasterTable)
+        record_slot_history(SquashMasterTable, run_started)
         return True
     else:
         logging.warning(
@@ -312,6 +335,7 @@ def squash_scraping_pipeline():
 @timeit
 def pickleball_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    run_started = datetime.now()
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(15)]
     logging.info(f"Finding slots for dates: {dates}")
@@ -339,6 +363,7 @@ def pickleball_scraping_pipeline():
             f"Upserting all data to master table: {PickleballMasterTable.__tablename__}"
         )
         insert_records_to_table(all_slots, PickleballMasterTable)
+        record_slot_history(PickleballMasterTable, run_started)
         return True
     else:
         logging.warning(
@@ -350,6 +375,7 @@ def pickleball_scraping_pipeline():
 @timeit
 def padel_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    run_started = datetime.now()
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
@@ -359,6 +385,9 @@ def padel_scraping_pipeline():
             PlaytomicPadelScraperCoroutines(dates),
             PadelMatesPadelScraperCoroutines(dates),
             StratfordPadelScraperCoroutines(dates),
+            MatchpointPadelScraperCoroutines(dates),
+            GladstoneGoPadelScraperCoroutines(dates),
+            ClubSparkPadelScraperCoroutines(dates),
         )
     )
     all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
@@ -372,6 +401,7 @@ def padel_scraping_pipeline():
             f"Upserting all data to master table: {PadelMasterTable.__tablename__}"
         )
         insert_records_to_table(all_slots, PadelMasterTable)
+        record_slot_history(PadelMasterTable, run_started)
         return True
     else:
         logging.warning(
@@ -383,6 +413,7 @@ def padel_scraping_pipeline():
 @timeit
 def tennis_scraping_pipeline():
     logging.warning(f"Running data refresh for environment: `{settings.ENV}`")
+    run_started = datetime.now()
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
@@ -405,6 +436,7 @@ def tennis_scraping_pipeline():
             f"Upserting all data to master table: {TennisMasterTable.__tablename__}"
         )
         insert_records_to_table(all_slots, TennisMasterTable)
+        record_slot_history(TennisMasterTable, run_started)
         return True
     else:
         logging.warning(

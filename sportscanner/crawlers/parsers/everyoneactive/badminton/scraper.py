@@ -8,6 +8,10 @@ from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
     BaseCrawler,
 )
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from datetime import date, timedelta
 from typing import Any, Coroutine, List, Optional, Dict
 import asyncio
@@ -136,6 +140,11 @@ class EveryoneActiveCrawler(BaseCrawler):
                     )
                     continue
                 response.raise_for_status()
+                record_http_status(
+                    response.status_code,
+                    headers=response.headers,
+                    message=f"HTTP {response.status_code} for {request_details.url}",
+                )
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(
                     response, content_type, request_details.url
@@ -156,6 +165,13 @@ class EveryoneActiveCrawler(BaseCrawler):
                         f"EveryoneActive: impersonated fetch failed with HTTP {status} "
                         f"for {request_details.url}"
                     )
+                    if status is None:
+                        record_failure(
+                            f"EveryoneActive fetch failed for {request_details.url}",
+                            retryable=True,
+                        )
+                    else:
+                        record_http_status(status, headers=e.response.headers)
                     return []
                 last_status = status
                 logging.debug(
@@ -166,11 +182,20 @@ class EveryoneActiveCrawler(BaseCrawler):
                 logging.error(
                     f"EveryoneActive impersonated fetch failed for {request_details.url}: {type(e).__name__}: {e!r}"
                 )
+                record_failure(
+                    f"EveryoneActive fetch failed for {request_details.url}: {type(e).__name__}: {e!r}",
+                    retryable=True,
+                )
                 return []
         logging.warning(
             f"EveryoneActive: exhausted {self._MAX_RETRY_ATTEMPTS} TLS-impersonation retries "
             f"(last status {last_status}) for {request_details.url} - this run's IP is "
             f"likely blocklisted by the AWS WAF"
+        )
+        record_failure(
+            f"EveryoneActive exhausted retries for {request_details.url}",
+            status=last_status,
+            retryable=True,
         )
         return []
 

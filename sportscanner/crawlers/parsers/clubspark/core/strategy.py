@@ -15,6 +15,7 @@ endpoint before use — guessed slugs (e.g. from a park's common name) 404
 silently rather than falling back to anything useful.
 """
 
+import re
 from datetime import date, datetime, timedelta
 from typing import Any, Coroutine, List, Optional
 
@@ -37,6 +38,26 @@ from sportscanner.storage.postgres.tables import SportsVenue
 
 CLUBSPARK_ORGANISATION_WEBSITE = "https://clubspark.lta.org.uk"
 BOOKABLE_CATEGORY = 1000
+PADEL_CATEGORY = 13
+_PADEL_EXCLUDED_RE = re.compile(
+    r"equipment|locker|racket|racquet|ball machine|machine", re.I
+)
+
+
+def is_padel_resource(name: str, category: Optional[int]) -> bool:
+    """Whether a ClubSpark resource is a padel court.
+
+    Category 13 is the API's own Padel category. A handful of venues (notably
+    the LTA's dedicated PadelNTC account) file their padel courts under the
+    tennis category, so an explicit "padel" in the resource name is also
+    accepted -- but a resource merely called "Tennis Court" never is.
+    Equipment lockers are Category 13 on some sites and must be excluded.
+    """
+    if _PADEL_EXCLUDED_RE.search(name or ""):
+        return False
+    if category == PADEL_CATEGORY:
+        return True
+    return "padel" in (name or "").lower()
 
 HEADERS = {
     "accept": "application/json, text/plain, */*",
@@ -83,13 +104,15 @@ def booking_url_for_slug(slug: str) -> str:
     return f"{CLUBSPARK_ORGANISATION_WEBSITE}/{slug}/Booking/BookByDate"
 
 
-class ClubSparkTennisRequestStrategy(AbstractRequestStrategy):
-    """Stub — ClubSparkTennisCrawler overrides ScraperCoroutines and issues one
-    request per venue covering the whole requested date range (GetVenueSessions
-    takes a startDate/endDate window, not a single date), the same kind of
-    deviation Matchi/CitySport already make for their own API shapes. This
-    strategy only supplies the base URL + metadata; the date-range query
-    params are attached by the crawler itself."""
+class ClubSparkRequestStrategy(AbstractRequestStrategy):
+    """Stub -- the crawler overrides ScraperCoroutines and issues one request per
+    venue covering the whole requested date range (GetVenueSessions takes a
+    startDate/endDate window, not a single date), the same kind of deviation
+    Matchi/CitySport already make for their own API shapes. This strategy only
+    supplies the base URL + metadata; the date-range query params are attached
+    by the crawler itself."""
+
+    category = "Tennis"
 
     @override
     def generate_request_details(
@@ -103,7 +126,7 @@ class ClubSparkTennisRequestStrategy(AbstractRequestStrategy):
                 ),
                 headers=HEADERS,
                 metadata=AdditionalRequestMetadata(
-                    category="Tennis",
+                    category=self.category,
                     date=fetch_date,
                     booking_url=booking_url_for_slug(sports_venue.slug),
                     sportsCentre=sports_venue,
@@ -112,7 +135,19 @@ class ClubSparkTennisRequestStrategy(AbstractRequestStrategy):
         ]
 
 
-class ClubSparkTennisResponseParserStrategy(AbstractResponseParserStrategy):
+class ClubSparkTennisRequestStrategy(ClubSparkRequestStrategy):
+    category = "Tennis"
+
+
+class ClubSparkPadelRequestStrategy(ClubSparkRequestStrategy):
+    category = "Padel"
+
+
+class ClubSparkResponseParserStrategy(AbstractResponseParserStrategy):
+    category = "Tennis"
+    padel_only = False
+    infer_indoor = False
+
     @override
     def parse(self, raw_response: RawResponseData) -> List[UnifiedParserSchema]:
         try:
@@ -124,6 +159,11 @@ class ClubSparkTennisResponseParserStrategy(AbstractResponseParserStrategy):
         metadata = raw_response.requestMetadata.metadata
         results: List[UnifiedParserSchema] = []
         for resource in parsed.Resources:
+            if self.padel_only and not is_padel_resource(
+                resource.Name, resource.Category
+            ):
+                continue
+            indoor = resource.Location in (1, 2) if self.infer_indoor else False
             for day in resource.Days:
                 try:
                     slot_date = datetime.fromisoformat(day.Date).date()
@@ -145,7 +185,7 @@ class ClubSparkTennisResponseParserStrategy(AbstractResponseParserStrategy):
                     )
                     results.append(
                         UnifiedParserSchema(
-                            category="Tennis",
+                            category=self.category,
                             starting_time=starting_time,
                             ending_time=ending_time,
                             date=slot_date,
@@ -154,10 +194,17 @@ class ClubSparkTennisResponseParserStrategy(AbstractResponseParserStrategy):
                             composite_key=metadata.sportsCentre.composite_key,
                             last_refreshed=metadata.last_refreshed,
                             booking_url=metadata.booking_url,
-                            # Every ClubSpark venue we track is an LTA public
-                            # park install - outdoor by construction, not
-                            # something GetVenueSessions exposes a field for.
-                            indoor=False,
+                            indoor=indoor,
                         )
                     )
         return results
+
+
+class ClubSparkTennisResponseParserStrategy(ClubSparkResponseParserStrategy):
+    category = "Tennis"
+
+
+class ClubSparkPadelResponseParserStrategy(ClubSparkResponseParserStrategy):
+    category = "Padel"
+    padel_only = True
+    infer_indoor = True

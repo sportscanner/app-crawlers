@@ -16,6 +16,7 @@ from sportscanner.api.routers.users.endpoints import router as UsersRouter
 from sportscanner.api.routers.venues.endpoints import router as VenuesRouter
 from sportscanner.api.routers.games.endpoints import router as GamesRouter
 from sportscanner.api.routers.health.endpoints import router as HealthRouter
+from sportscanner.api.routers.insights.endpoints import router as InsightsRouter
 from sportscanner.api.routers.notifications.endpoints import (
     router as NotificationsRouter,
 )
@@ -118,6 +119,8 @@ app.include_router(router=SearchRouter, prefix="/search", tags=["Search"])
 app.include_router(router=VenuesRouter, prefix="/venues", tags=["Venues"])
 
 app.include_router(router=GamesRouter, prefix="/games", tags=["Games"])
+
+app.include_router(router=InsightsRouter, prefix="/insights", tags=["Insights"])
 
 app.include_router(
     router=GeolocationRouter, prefix="/geolocation", tags=["Geolocation"]

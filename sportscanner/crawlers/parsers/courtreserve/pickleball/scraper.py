@@ -33,6 +33,10 @@ from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import BaseCrawler
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from sportscanner.crawlers.parsers.core.schemas import UnifiedParserSchema
 from sportscanner.crawlers.parsers.courtreserve.core.strategy import (
     COURTRESERVE_CALENDAR_READ_URL,
@@ -82,6 +86,7 @@ class CourtReservePickleballCrawler(BaseCrawler):
                     headers={"X-Requested-With": "XMLHttpRequest"},
                 )
                 response.raise_for_status()
+                record_http_status(response.status_code, headers=response.headers)
                 return response.json().get("Data", [])
 
         async with httpxAsyncClient() as client:
@@ -95,6 +100,10 @@ class CourtReservePickleballCrawler(BaseCrawler):
             if isinstance(result, Exception):
                 logging.error(
                     f"CourtReserve: calendar read failed for {fetch_date}: {result}"
+                )
+                record_failure(
+                    f"CourtReserve calendar read failed for {fetch_date}: {result}",
+                    retryable=True,
                 )
                 continue
             slots = parse_calendar_events(result, slug_to_venue, category="Pickleball")

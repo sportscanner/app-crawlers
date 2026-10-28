@@ -7,6 +7,7 @@ import httpx
 
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.core.interfaces import BaseCrawler
+from sportscanner.crawlers.parsers.core.fetch_failures import record_failure
 from sportscanner.crawlers.parsers.core.schemas import (
     AdditionalRequestMetadata,
     RawResponseData,
@@ -103,6 +104,10 @@ class StratfordPadelCrawler(BaseCrawler):
                 logging.error(
                     f"Stratford Padel: grid handshake failed: {type(e).__name__}: {e!r}"
                 )
+                record_failure(
+                    f"Stratford Padel grid handshake failed: {type(e).__name__}: {e!r}",
+                    retryable=True,
+                )
                 return []
             if not session_key:
                 return []
@@ -130,6 +135,9 @@ class StratfordPadelCrawler(BaseCrawler):
         for r in results:
             if isinstance(r, Exception):
                 logging.error(f"Stratford Padel task raised: {r!r}")
+                record_failure(
+                    f"Stratford Padel task raised: {r!r}", retryable=True
+                )
             elif r:
                 all_slots.extend(r)
         return all_slots

@@ -20,6 +20,9 @@ class ClubSparkDay(BaseModel):
 class ClubSparkResource(BaseModel):
     ID: str
     Name: str
+    Category: Optional[int] = None
+    # 0 = outdoor, 1 = indoor, 2 = temporary indoor, 99 = other.
+    Location: Optional[int] = None
     Days: List[ClubSparkDay] = []
 
 

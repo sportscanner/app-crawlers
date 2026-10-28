@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS: int
     HTTPX_CLIENT_TIMEOUT: float
     CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER: int = 20
+    # Per-process database pool. The API keeps the default (5 total); parallel
+    # crawler containers override this to 1 + 1 so five sports plus the API stay
+    # under Aiven's 20-connection limit.
+    DB_POOL_SIZE: int = 3
+    DB_MAX_OVERFLOW: int = 2
     API_BASE_URL: Optional[str] = "http://localhost:8000/"
     CLOUD_FIRESTORE_CREDENTIALS_PATH: Optional[str]
     CLOUD_FIRESTORE_PROJECT_ID: Optional[str]

@@ -2,6 +2,10 @@ from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.parsers.core.schemas import RequestDetailsWithMetadata, AdditionalRequestMetadata, \
     RawResponseData
 from sportscanner.crawlers.parsers.core.interfaces import AbstractRequestStrategy, BaseCrawler
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from datetime import date
 from typing import Any, Coroutine, List, Optional
 import asyncio
@@ -100,6 +104,11 @@ class CitySportsCrawler(BaseCrawler):
                         timeout=30,
                     )
                 response.raise_for_status()
+                record_http_status(
+                    response.status_code,
+                    headers=response.headers,
+                    message=f"HTTP {response.status_code} for {request_details.url}",
+                )
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(response, content_type, request_details.url)
                 if not validated_response:
@@ -117,8 +126,14 @@ class CitySportsCrawler(BaseCrawler):
                     f"No data ({status}) for {request_details.url} — "
                     f"activity not offered for this window"
                 )
+                if status is not None:
+                    record_http_status(status, headers=e.response.headers)
             except Exception as e:
                 logging.error(f"CitySport fetch failed for {request_details.url}: {type(e).__name__}: {e!r}")
+                record_failure(
+                    f"CitySport fetch failed for {request_details.url}: {type(e).__name__}: {e!r}",
+                    retryable=True,
+                )
         return results
 
     @override

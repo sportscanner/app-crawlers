@@ -49,6 +49,20 @@ crawler-pipeline-container:
 		ghcr.io/sportscanner/app-crawlers:latest \
 		python sportscanner/crawlers/pipeline.py
 
+scheduler-enqueue:
+	@echo "Enqueue due crawler jobs (dormant queue; run alongside the existing pipeline)"
+	@python -m sportscanner.scheduler.enqueue
+
+scheduler-enqueue-dry-run:
+	@python -m sportscanner.scheduler.enqueue --dry-run
+
+scheduler-worker:
+	@echo "Run a provider-scoped crawl queue worker (dormant queue)"
+	@python -m sportscanner.scheduler.worker
+
+scheduler-worker-once:
+	@python -m sportscanner.scheduler.worker --once
+
 build-docker-image:
 	@echo "Starting image build with ID: $(LATEST_COMMIT_ID)"
 	@docker build --no-cache --platform=linux/amd64 \

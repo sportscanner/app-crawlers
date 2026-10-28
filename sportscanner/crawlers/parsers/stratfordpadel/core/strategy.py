@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 import httpx
 
 from sportscanner.crawlers.parsers.core.schemas import RawResponseData
+from sportscanner.crawlers.parsers.core.fetch_failures import record_http_status
 from sportscanner.crawlers.parsers.core.interfaces import AbstractResponseParserStrategy
 from sportscanner.crawlers.helpers import override
 
@@ -39,15 +40,17 @@ BROWSER_HEADERS = {
 
 
 async def fetch_session_key_and_cookies(
-    client: httpx.AsyncClient,
+    client: httpx.AsyncClient, grid_url: str = GRID_URL
 ) -> Optional[str]:
     """Phase 1 of the two-phase WebForms handshake: GET the grid page
     anonymously to establish the ASP.NET session cookie and harvest the
     per-page-load key that srvc.aspx page methods require. Returns None when
     the key cannot be found (page shape changed)."""
     response = await client.get(
-        GRID_URL, headers={**BROWSER_HEADERS, "Accept": "text/html"}
+        grid_url,
+        headers={**BROWSER_HEADERS, "Accept": "text/html", "Referer": grid_url},
     )
+    record_http_status(response.status_code, headers=response.headers)
     response.raise_for_status()
     match = SESSION_KEY_PATTERN.search(response.text)
     if not match:
@@ -60,20 +63,28 @@ async def fetch_session_key_and_cookies(
 
 
 async def fetch_cuadro_raw(
-    client: httpx.AsyncClient, session_key: str, fetch_date: date_cls
+    client: httpx.AsyncClient,
+    session_key: str,
+    fetch_date: date_cls,
+    obtener_cuadro_url: str = OBTENER_CUADRO_URL,
+    id_cuadro: int = ID_CUADRO,
+    referer: str = GRID_URL,
 ) -> dict:
     """Phase 2: POST ObtenerCuadro for one date. Dates use UK format dd/MM/yyyy
     (the centre's culture is es-ES with ShortDatePattern dd/MM/yyyy); ISO
     yyyy-MM-dd is silently ignored and returns an empty cuadro. ASP.NET page
     methods answer with a {"d": <payload>} envelope."""
     payload = {
-        "idCuadro": ID_CUADRO,
+        "idCuadro": id_cuadro,
         "fecha": fetch_date.strftime("%d/%m/%Y"),
         "key": session_key,
     }
     response = await client.post(
-        OBTENER_CUADRO_URL, json=payload, headers=BROWSER_HEADERS
+        obtener_cuadro_url,
+        json=payload,
+        headers={**BROWSER_HEADERS, "Referer": referer},
     )
+    record_http_status(response.status_code, headers=response.headers)
     response.raise_for_status()
     body = response.json()
     return body.get("d") or {}
