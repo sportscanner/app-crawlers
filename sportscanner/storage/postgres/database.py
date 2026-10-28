@@ -433,7 +433,6 @@ def truncate_by_composite_key_and_reload(slots_from_all_venues, TableForLoading:
 
 SLOT_HISTORY_RETENTION_DAYS = 120
 PRICE_HISTORY_RETENTION_DAYS = 400
-_slot_history_ready = False
 # Five sports may start in parallel on the first run after a deploy. Without a
 # lock, their CREATE TABLE IF NOT EXISTS statements can race in PostgreSQL.
 _INSIGHTS_SCHEMA_LOCK_KEY = 0x5C0A12
@@ -446,9 +445,6 @@ def ensure_slot_history_table(engine):
     the tables itself. Idempotent and safe when several sport containers start
     together: a session-level advisory lock serialises the first DDL.
     """
-    global _slot_history_ready
-    if _slot_history_ready:
-        return
     with engine.connect() as lock_conn:
         lock_conn.execute(
             text("SELECT pg_advisory_lock(:key)"),
@@ -472,7 +468,6 @@ def ensure_slot_history_table(engine):
                     "ON public.daily_supply_snapshot (sport, observed_on)"
                 ))
                 conn.commit()
-            _slot_history_ready = True
         finally:
             lock_conn.execute(
                 text("SELECT pg_advisory_unlock(:key)"),

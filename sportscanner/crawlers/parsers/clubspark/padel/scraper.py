@@ -22,7 +22,6 @@ from typing import Any, Coroutine, List
 from rich import print
 
 from sportscanner.crawlers.parsers.clubspark.core.strategy import (
-    CLUBSPARK_ORGANISATION_WEBSITE,
     ClubSparkPadelRequestStrategy,
     ClubSparkPadelResponseParserStrategy,
 )
