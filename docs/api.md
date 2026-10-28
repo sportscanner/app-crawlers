@@ -100,9 +100,13 @@ public market reports built from `slot_history`. Definitions live in
   competitors, local benchmarks and ONS London neighbourhood population/age
   estimates. Radius is in miles, from 0.5 to 20. Population uses 2021 LSOA
   population-weighted centroids and mid-2024 estimates bundled with the package.
-  Median age and mean income use the separate ONS small-area references in
-  `insights/data/london_lsoa_demographics.json`. Refresh both with
-  `python -m sportscanner.insights.refresh_demographics`.
+  Median age, mean income and the MHCLG English Indices of Deprivation 2025
+  decile use the separate small-area reference in
+  `insights/data/london_lsoa_demographics.json`. The response groups residents by
+  deprivation decile and by MSOA mean-income band, and carries the same figures
+  for all of London in `demographics.london` for comparison. Each `areas` row also
+  carries `mean_income` and `imd_decile` for map shading. Refresh both references
+  with `python -m sportscanner.insights.refresh_demographics`.
 - `GET /insights/{sport}/constraints?latitude=...&longitude=...`: public government
   Planning Data point intersections for green belt, flood risk, conservation areas
   and Article 4 directions. England coverage; external failures return 503.
