@@ -1,0 +1,140 @@
+{
+  "source": "ONS mid-year population estimates (Nomis dataset NM_2002_1), all ages, persons",
+  "source_url": "https://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=2013265927TYPE424&date=latest&gender=0&c_age=200&measures=20100",
+  "licence": "Open Government Licence v3.0",
+  "year": 2025,
+  "boroughs": {
+    "City of London": {
+      "code": "E09000001",
+      "population": 15631
+    },
+    "Barking and Dagenham": {
+      "code": "E09000002",
+      "population": 238295
+    },
+    "Barnet": {
+      "code": "E09000003",
+      "population": 408087
+    },
+    "Bexley": {
+      "code": "E09000004",
+      "population": 257103
+    },
+    "Brent": {
+      "code": "E09000005",
+      "population": 352201
+    },
+    "Bromley": {
+      "code": "E09000006",
+      "population": 336048
+    },
+    "Camden": {
+      "code": "E09000007",
+      "population": 216658
+    },
+    "Croydon": {
+      "code": "E09000008",
+      "population": 410085
+    },
+    "Ealing": {
+      "code": "E09000009",
+      "population": 387072
+    },
+    "Enfield": {
+      "code": "E09000010",
+      "population": 329400
+    },
+    "Greenwich": {
+      "code": "E09000011",
+      "population": 301225
+    },
+    "Hackney": {
+      "code": "E09000012",
+      "population": 266241
+    },
+    "Hammersmith and Fulham": {
+      "code": "E09000013",
+      "population": 190216
+    },
+    "Haringey": {
+      "code": "E09000014",
+      "population": 266218
+    },
+    "Harrow": {
+      "code": "E09000015",
+      "population": 272612
+    },
+    "Havering": {
+      "code": "E09000016",
+      "population": 280787
+    },
+    "Hillingdon": {
+      "code": "E09000017",
+      "population": 326671
+    },
+    "Hounslow": {
+      "code": "E09000018",
+      "population": 299486
+    },
+    "Islington": {
+      "code": "E09000019",
+      "population": 224551
+    },
+    "Kensington and Chelsea": {
+      "code": "E09000020",
+      "population": 145734
+    },
+    "Kingston upon Thames": {
+      "code": "E09000021",
+      "population": 172761
+    },
+    "Lambeth": {
+      "code": "E09000022",
+      "population": 314298
+    },
+    "Lewisham": {
+      "code": "E09000023",
+      "population": 301037
+    },
+    "Merton": {
+      "code": "E09000024",
+      "population": 218891
+    },
+    "Newham": {
+      "code": "E09000025",
+      "population": 376542
+    },
+    "Redbridge": {
+      "code": "E09000026",
+      "population": 321829
+    },
+    "Richmond upon Thames": {
+      "code": "E09000027",
+      "population": 196713
+    },
+    "Southwark": {
+      "code": "E09000028",
+      "population": 312366
+    },
+    "Sutton": {
+      "code": "E09000029",
+      "population": 213972
+    },
+    "Tower Hamlets": {
+      "code": "E09000030",
+      "population": 334240
+    },
+    "Waltham Forest": {
+      "code": "E09000031",
+      "population": 283713
+    },
+    "Wandsworth": {
+      "code": "E09000032",
+      "population": 339859
+    },
+    "Westminster": {
+      "code": "E09000033",
+      "population": 212367
+    }
+  }
+}
