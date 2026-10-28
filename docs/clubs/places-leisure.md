@@ -138,18 +138,46 @@ One caveat from a later verification run: after roughly 40 minutes of
 continuous testing against this provider from the same IP, 1s pacing started
 producing 429s on most first attempts even though the earlier short 1.0s run
 was clean. That points at a rolling-window score rather than a per-request
-limit, which is a second reason the production job keeps 3s and runs only
-every 2 hours.
+limit, which is a second reason the production job keeps a conservative
+starting pace.
+
+A follow-up experiment settled it. Five transports (httpx HTTP/1.1, httpx
+HTTP/2, curl_cffi chrome136, curl_cffi safari180, and a full browser header
+set) were interleaved 100 requests deep and produced byte-identical status
+sequences, each variant's first 429 landing on its own request 7. The 429s
+came in 10-request bursts exactly 60 seconds apart, and none occurred below
+31 requests in the trailing minute. So the limit is an IP-scoped sliding
+window of ~30 requests per 60 seconds, not a bot score. Consequences:
+
+- Transport changes are pointless here. Plain `httpx` HTTP/1.1 is fine.
+- HTML centre-page fetches do not consume the API budget. Pages returned 200
+  while API calls were still 429ing, so only availability calls need pacing.
+- The endpoint sends no `ETag`, `Last-Modified` or `Cache-Control`, so
+  conditional requests and 304 revalidation are not available.
+- 2.1s is the safe floor (28.6 req/min). 1.8s sustains 33/min, which trips the
+  window roughly once a minute.
+- There is no cheap bulk shape to find. No two `startDate` values returned
+  identical bodies, and although only 9 distinct court-status vectors appeared
+  across 40 sampled calls, the bodies differ by an embedded `bookableFrom`
+  timestamp.
+
+Given that, the crawler now adapts instead of guessing: `AdaptivePacer` starts
+at 3.0s, speeds up 5% after 20 clean requests down to a 2.1s floor, and backs
+off 1.5x on any 429 up to 8.0s. The settled interval is logged at the end of
+the run, so the first GitHub Actions execution will report that runner's real
+budget. Already-started sessions are skipped before any availability call
+(they were ~15% of a 3 day window when measured at midday), and half of the
+sampled slots at Chessington returned zero availability.
 
 **Current shape:** `python sportscanner/crawlers/pipeline.py --task placesleisure`
 runs both sports in one process (so they share the single `_paced_get` rate
 limiter) over a 3 day window, and
 `.github/workflows/places-leisure-pipeline.yml` triggers it every 2 hours with
 its own concurrency group and a 90 minute timeout. Three days is the freshness
-trade: it covers everything bookable this week while keeping a run around 45
-minutes. The job exits non-zero if either sport returns no slots. Verified
-end-to-end on 2026-10-28 with writes stubbed: 153 badminton and 89 pickleball
-slots for a single day, routed to their own master tables.
+trade: it covers everything bookable this week while keeping a run around 35
+to 45 minutes. The job exits non-zero if either sport returns no slots.
+Verified end-to-end on 2026-10-28 with writes stubbed: 153 badminton and 89
+pickleball slots for a single day, routed to their own master tables.
 
 **Current shape:** `python sportscanner/crawlers/pipeline.py --task placesleisure`
 runs both sports in one process (so they share the single `_paced_get` rate

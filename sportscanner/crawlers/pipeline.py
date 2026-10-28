@@ -67,6 +67,9 @@ from sportscanner.crawlers.parsers.decathlon.pickleball.scraper import (
 from sportscanner.crawlers.parsers.placesleisure.pickleball.scraper import (
     coroutines as PlacesLeisurePickleballScraperCoroutines,
 )
+from sportscanner.crawlers.parsers.placesleisure.core.strategy import (
+    pacing_summary as places_leisure_pacing_summary,
+)
 from sportscanner.crawlers.parsers.playtomic.pickleball.scraper import (
     coroutines as PlaytomicPickleballScraperCoroutines,
 )
@@ -476,11 +479,12 @@ def places_leisure_scraping_pipeline():
         )
 
     # One event loop for both sports. The provider's rate limiter
-    # (`_rate_limiter_lock` / `_last_request_at` in placesleisure/core/strategy.py)
+    # (`_rate_limiter_lock` / `_pacer` in placesleisure/core/strategy.py)
     # is a module-level asyncio primitive, so a second asyncio.run() in the same
     # process rebinds it to a new loop and every request fails with "bound to a
     # different event loop".
     responses = asyncio.run(_crawl_both())
+    logging.info(f"Places Leisure pacing settled at {places_leisure_pacing_summary()}")
 
     targets = (
         ("badminton", responses[0], BadmintonMasterTable),

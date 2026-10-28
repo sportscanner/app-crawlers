@@ -97,6 +97,49 @@ The 20-request minimum sample exists so a provider with only a handful of venues
 sample; a real outage that empties its entire batch still shows up in the per-provider
 health summary log line, just without tripping the breaker.
 
+## Diagnosing 429s: fingerprint block or IP budget?
+
+These need opposite fixes, so identify which one you have before touching
+anything. Transport-level work (HTTP/2, `curl_cffi` impersonation, browser
+header sets) only helps against a fingerprint block. Against an IP budget it
+buys exactly nothing.
+
+The reliable test is an **interleaved A/B**, not sequential blocks. Fire the
+same request through every candidate transport round-robin, one request per
+variant per round, with a fixed global gap. Sequential blocks are worthless
+here because the provider's window state drifts, so whichever block runs
+during a 429 burst looks like the guilty variant.
+
+Read the result two ways:
+
+- **Different 429 ratios per variant** means a fingerprint signal. Pick the
+  variant that survives and keep it.
+- **Identical status sequences and burst-aligned 429s** means an IP-scoped
+  rolling window. Nothing in the client matters; only the request count per
+  unit time does.
+
+Worked example, Places Leisure, 2026-10-28: five transports (httpx HTTP/1.1,
+httpx HTTP/2, curl_cffi chrome136, curl_cffi safari180, and a full browser
+header set) produced byte-identical sequences, `......44......44....`, with
+every variant's first 429 landing on its own request 7. The 429s arrived in
+10-request bursts 60 seconds apart, and no 429 ever occurred below 31
+requests in the trailing minute. That is a 30 request per 60 second IP
+budget, so the fix was request reduction and the transport was left alone.
+
+Two things worth checking once you suspect a budget:
+
+- **Which endpoints share it.** Places Leisure's HTML centre pages returned
+  200 while availability calls were still 429ing, so page fetches are free and
+  only the API calls need pacing.
+- **The exact ceiling, from bursts, not from a single slow run.** Ask for 30
+  requests at a candidate interval and step down until the success rate drops.
+  A run whose duration is under the window length will look perfect at an
+  interval that cannot actually be sustained.
+
+If a provider sends `ETag`, `Last-Modified` or `Cache-Control` on the polled
+endpoint, test conditional requests before writing any pacing logic. Places
+Leisure sends none, so 304 revalidation is not available there.
+
 ## Timeouts and pool sizing
 
 `HTTPX_CLIENT_TIMEOUT`, `HTTPX_CLIENT_MAX_CONNECTIONS`, and
