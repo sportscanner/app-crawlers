@@ -25,6 +25,9 @@ secrets.toml
 # Project specific files
 *.env
 *.json
+# Runtime data shipped with the package; the blanket *.json rule must not hide it.
+!sportscanner/venues.json
+!sportscanner/insights/data/*.json
 .flaskenv*
 !.env.project
 !.env.vault
