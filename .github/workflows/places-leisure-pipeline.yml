@@ -1,0 +1,54 @@
+name: Run Places Leisure Pipeline
+
+# Places Leisure runs outside the 15-minute matrix in crawler-pipeline.yml.
+# Its availability API is one request per scheduled timeslot (no bulk mode),
+# so a 3 day window across both sports is ~700 paced requests, roughly 45
+# minutes at the WAF-safe 3s interval. That cannot fit the fast pipeline's
+# budget, and putting it there previously stacked overlapping runs and took
+# down the production search API (2026-08-30). See
+# docs/clubs/places-leisure.md.
+#
+# Both sports run in one job on purpose: they share a single process-wide rate
+# limiter. Two parallel containers would each pace at 3s and double the real
+# request rate against the same egress IP.
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 2 hours. Replaces nothing: the fast pipeline deliberately does not
+    # crawl this provider.
+    - cron: "17 */2 * * *"
+
+jobs:
+  crawl:
+    name: "places leisure crawler"
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: crawler-placesleisure
+      # Never cancel a paced run halfway: the retry costs another full window
+      # and leaves partial rows in the master tables.
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker and log in to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GHCR }} | docker login ghcr.io -u yasir-khalid --password-stdin
+
+      - name: Write Firebase JSON secret to file
+        run: |
+          echo "${{ secrets.FIREBASE_ADMIN_SDK_JSON }}" > /tmp/sportscanner-firebase-adminsdk.json
+
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      - name: Run Places Leisure pipeline container
+        run: |
+          docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+            -e DB_POOL_SIZE=1 \
+            -e DB_MAX_OVERFLOW=1 \
+            -v /tmp/sportscanner-firebase-adminsdk.json:/app/sportscanner-firebase-adminsdk.json \
+            ghcr.io/sportscanner/app-crawlers:latest \
+            python sportscanner/crawlers/pipeline.py --task placesleisure

@@ -201,10 +201,21 @@ class PlacesLeisureSlotFetcher:
                     f"Places Leisure centre page fetch failed for {slug}: {exc}",
                     retryable=True,
                 )
-            return []
+            # Surface as a venue-level failure instead of returning []: an
+            # empty list is identical to "this venue has no sessions", which is
+            # how a whole-provider 503 can look like a clean run that simply
+            # collected nothing.
+            raise
 
         content = html_lib.unescape(resp.text)
         matches = self._session_pattern.findall(content)
+        if not matches:
+            logging.warning(
+                f"Places Leisure: centre page for {slug} returned "
+                f"{len(resp.text)} chars but no {self.activity_group} sessions - "
+                f"either the venue genuinely has none scheduled or the embedded "
+                f"schedule shape changed"
+            )
 
         # The same (start, activityId, locationId) can appear more than once in
         # the embedded schedule (once per bookable resource sharing the slot
