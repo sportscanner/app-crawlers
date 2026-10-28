@@ -155,6 +155,71 @@ plain timestamp column, so the same comparison is a direct range check.
   against this column; without a spatial index this sequential-scans as venue count
   grows.
 
+## slot_history: the insights time series
+
+The slot tables only hold today-forward rows, and once a slot starts its provider
+stops listing it, so the stale-marking UPDATE flips it to `spaces=0`. Read after
+the start time, every past slot would look fully booked. `slot_history` keeps the
+last observation taken *before* each slot started, which is what the market
+insights (`sportscanner/insights/`) compute occupancy and booking value from.
+
+- Written by `snapshot_slot_history()` at the end of every sport pipeline: one
+  `INSERT ... SELECT ... ON CONFLICT` per sport, nothing read back into Python.
+- Only rows refreshed during the current run are copied, so a provider that
+  failed (WAF 403s, outages) leaves its history untouched instead of re-stamping
+  stale availability as fresh. A realised slot only counts in insights if
+  `last_seen` is within 90 minutes of `starts_at`.
+- Keyed on the natural slot identity `(sport, composite_key, date, starting_time,
+  ending_time)`, not `uid`, because Tower Hamlets' reload path assigns random uids.
+- `max_spaces` is the most courts ever seen free for the slot; a venue's court
+  count is the max of that over the window.
+- Prices prefixed `~` were estimated by `fill_estimated_prices()` (sometimes from
+  a sport-wide default) and are stored with `price_gbp = NULL`, so they never
+  reach price or value figures.
+- `last_seen`/`first_seen` are Europe/London wall-clock times so they compare
+  directly with `starts_at`.
+- Retention is 120 days, pruned in the same transaction. One row per slot keeps
+  it small (roughly 10k new rows a day across all sports).
+- The pipeline creates the table on first use (`ensure_slot_history_table`),
+  because schema setup is not part of any deploy step. Snapshot failures are
+  logged and never fail the crawl.
+
+## Daily insights snapshots
+
+The same five sport pipelines write two observation-day tables alongside
+`slot_history`, in one transaction:
+
+- `daily_price_snapshot`: the last genuine available quote for each venue,
+  observation date, target weekday, start time and session duration. Samples use
+  sessions one to seven days ahead, are normalized to GBP per court-hour, and
+  record the observation timestamp and booking lead time. Estimated, missing and
+  stale quotes do not create observations. Previous days are never overwritten.
+- `daily_supply_snapshot`: the highest public court count seen at a venue on
+  each observation date. This measures observed supply, not opening dates.
+
+Both retain 400 days with sport/date indexes. Repeated crawls update the current
+day instead of retaining every identical 15-minute reading. The history API joins
+matching schedule samples to a baseline inside PostgreSQL, then transfers only
+per-venue daily aggregates to Python. It gives each venue equal weight and leaves
+calendar gaps empty. No separate warehouse or queue is required.
+
+## Crawl queue tables (dormant)
+
+`crawl_job` and `crawl_source_status` support the scheduler/worker described in
+`docs/crawler-scheduling.md`. Nothing in the API reads them and the existing
+pipeline path is unchanged; the tables are only used by the scheduler CLI.
+
+- `crawl_job`: one row per `(provider, composite_key, slot_date)` with `tier`,
+  `run_after`, claim fields, `attempts` and `last_error`. The partial index
+  `(provider, run_after) WHERE claimed_at IS NULL` serves the worker claim.
+- `crawl_source_status`: `last_success_at` per provider/venue/date, which is
+  what the scheduler uses to compute freshness. `last_attempt_at` is diagnostic
+  only and is never used to decide whether a job is due.
+
+The queue is unique on `(provider, composite_key, slot_date)`, so a venue that
+offers several sports under one provider stores them as a comma-separated
+`sport` value and the worker fetches each one for that date.
+
 ## Why Postgres, not a queue
 
 Crawling is a batch job: fetch, transform, upsert, on a schedule. There is no

@@ -11,6 +11,10 @@ from sqlmodel import col, select
 import sportscanner.storage.postgres.database as db
 import sportscanner.storage.postgres.tables
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from sportscanner.crawlers.parsers.core.schemas import (
     RawResponseData,
     RequestDetailsWithMetadata,
@@ -183,6 +187,11 @@ class BaseCrawler(ABC):
             try:
                 response = await client.get(attempt_url, headers=request_details.headers)
                 response.raise_for_status()
+                record_http_status(
+                    response.status_code,
+                    headers=response.headers,
+                    message=f"HTTP {response.status_code} for {attempt_url}",
+                )
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(response, content_type, attempt_url)
                 content = self._extract_content(validated_response)
@@ -214,6 +223,10 @@ class BaseCrawler(ABC):
                 # exception type + repr so these are actually diagnosable, and keep them at
                 # ERROR since an unreachable host is a real, actionable problem.
                 logging.error(f"Fetch failed for {attempt_url}: {type(e).__name__}: {e!r}")
+                record_failure(
+                    f"Fetch failed for {attempt_url}: {type(e).__name__}: {e!r}",
+                    retryable=True,
+                )
                 if breaker is not None:
                     breaker.record(failed=True)
                 return []
@@ -229,6 +242,12 @@ class BaseCrawler(ABC):
         #           Better's pickleball v2 during its mid-migration window). Does count
         #           against the circuit breaker.
         status = last_http_error.response.status_code if last_http_error is not None else None
+        if status is not None:
+            record_http_status(
+                status,
+                headers=last_http_error.response.headers if last_http_error else None,
+                message=f"HTTP {status} for {request_details.url}",
+            )
         if breaker is not None:
             breaker.record(failed=not saw_client_error)
         if saw_client_error:
@@ -305,6 +324,9 @@ class BaseCrawler(ABC):
                     exc = fut.exception()
                     if exc is not None:
                         logging.error(f"Task {completed_count} failed with error: {exc}")
+                        record_failure(
+                            f"Task failed with error: {exc}", retryable=True
+                        )
                     else:
                         successful_responses.append(fut.result())
                 if self._circuit_breaker.tripped and pending:

@@ -7,6 +7,10 @@ from curl_cffi.requests import AsyncSession
 from curl_cffi.requests.exceptions import HTTPError as CurlHTTPError
 
 from sportscanner.crawlers.anonymize.flaresolverr import get_via_flaresolverr
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from sportscanner.logger import logging
 from sportscanner.variables import settings
 
@@ -32,6 +36,7 @@ _impersonate_cycle = cycle(_IMPERSONATE_PROFILES)
 def next_impersonate_profile() -> str:
     """Returns the next browser TLS-impersonation profile in rotation."""
     return next(_impersonate_cycle)
+
 
 # The paid rotating-proxy integration (Webshare) was removed in August 2026:
 # the subscription's bandwidth cap was being burned on 403 retries that the
@@ -106,14 +111,29 @@ async def get_with_proxy_fallback_on_403(
     wrapper - all expose .json() / .text / .status_code), or `None` if every
     stage also failed with 403/429.
     """
+    last_headers = None
     try:
         resp = await client.get(url, params=params, headers=headers, timeout=timeout)
         resp.raise_for_status()
+        record_http_status(resp.status_code, headers=resp.headers)
         return resp
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code not in (403, 429):
+            record_http_status(
+                exc.response.status_code,
+                headers=exc.response.headers,
+                message=f"HTTP {exc.response.status_code} for {log_label or url}",
+            )
             raise
         last_status = exc.response.status_code
+        last_headers = exc.response.headers
+    except Exception as exc:
+        record_failure(
+            f"Direct fetch failed for {log_label or url}: "
+            f"{type(exc).__name__}: {exc!r}",
+            retryable=True,
+        )
+        raise
 
     # Free browser-TLS retry via curl_cffi, one attempt per rotation profile.
     total_attempts = len(_IMPERSONATE_PROFILES)
@@ -130,19 +150,34 @@ async def get_with_proxy_fallback_on_403(
                 )
             if resp.status_code in (403, 429):
                 last_status = resp.status_code
+                last_headers = resp.headers
                 logging.debug(
                     f"{log_label}: {last_status} via TLS impersonation ({profile}), "
                     f"attempt {attempt}/{total_attempts}"
                 )
                 continue
+            record_http_status(resp.status_code, headers=resp.headers)
             return resp
         except CurlHTTPError as exc_tls:
             status = (
                 exc_tls.response.status_code if exc_tls.response is not None else None
             )
             if status not in (403, 429):
+                if status is None:
+                    record_failure(
+                        f"TLS impersonation failed for {log_label or url}",
+                        retryable=True,
+                    )
+                else:
+                    record_http_status(
+                        status,
+                        message=f"TLS impersonation failed for {log_label or url}",
+                    )
                 raise
             last_status = status
+            last_headers = (
+                exc_tls.response.headers if exc_tls.response is not None else None
+            )
             logging.debug(
                 f"{log_label}: {last_status} via TLS impersonation ({profile}), "
                 f"attempt {attempt}/{total_attempts}"
@@ -154,13 +189,27 @@ async def get_with_proxy_fallback_on_403(
             )
 
     # Last resort: a real headless browser via FlareSolverr, only if configured.
-    flaresolverr_resp = await get_via_flaresolverr(url, params=params, log_label=log_label)
-    if flaresolverr_resp is not None and flaresolverr_resp.status_code not in (403, 429):
+    flaresolverr_resp = await get_via_flaresolverr(
+        url, params=params, log_label=log_label
+    )
+    if flaresolverr_resp is not None and flaresolverr_resp.status_code not in (
+        403,
+        429,
+    ):
+        record_http_status(
+            flaresolverr_resp.status_code,
+            headers=getattr(flaresolverr_resp, "headers", None),
+        )
         return flaresolverr_resp
 
     logging.warning(
         f"{log_label}: exhausted direct + TLS-impersonation"
         f"{' + FlareSolverr' if os.environ.get('FLARESOLVERR_URL') else ''} attempts "
         f"- this run's IP may be blocklisted for this target"
+    )
+    record_http_status(
+        last_status,
+        headers=last_headers,
+        message=f"{log_label or url}: exhausted 403/429 retries",
     )
     return None

@@ -8,6 +8,10 @@ from sportscanner.crawlers.parsers.core.interfaces import (
     AbstractRequestStrategy,
     BaseCrawler,
 )
+from sportscanner.crawlers.parsers.core.fetch_failures import (
+    record_failure,
+    record_http_status,
+)
 from datetime import date
 from typing import Any, Coroutine, List, Optional
 import asyncio
@@ -125,6 +129,11 @@ class UELSportsDockCrawler(BaseCrawler):
                     )
                     continue
                 response.raise_for_status()
+                record_http_status(
+                    response.status_code,
+                    headers=response.headers,
+                    message=f"HTTP {response.status_code} for {request_details.url}",
+                )
                 content_type = response.headers.get("content-type", "")
                 validated_response = validate_api_response(
                     response, content_type, request_details.url
@@ -145,6 +154,13 @@ class UELSportsDockCrawler(BaseCrawler):
                         f"UEL SportsDock: impersonated fetch failed with HTTP {status} "
                         f"for {request_details.url}"
                     )
+                    if status is None:
+                        record_failure(
+                            f"UEL SportsDock fetch failed for {request_details.url}",
+                            retryable=True,
+                        )
+                    else:
+                        record_http_status(status, headers=e.response.headers)
                     return []
                 logging.debug(
                     f"UEL SportsDock: {status} via TLS impersonation ({profile}), "
@@ -155,9 +171,16 @@ class UELSportsDockCrawler(BaseCrawler):
                     f"UEL SportsDock: attempt {attempt}/{self._MAX_RETRY_ATTEMPTS} "
                     f"({profile}) failed for {request_details.url}: {type(e).__name__}: {e!r}"
                 )
+                record_failure(
+                    f"UEL SportsDock fetch failed for {request_details.url}: {type(e).__name__}: {e!r}",
+                    retryable=True,
+                )
         logging.warning(
             f"UEL SportsDock: exhausted {self._MAX_RETRY_ATTEMPTS} TLS-impersonation "
             f"retries for {request_details.url}"
+        )
+        record_failure(
+            f"UEL SportsDock exhausted retries for {request_details.url}", retryable=True
         )
         return []
 
