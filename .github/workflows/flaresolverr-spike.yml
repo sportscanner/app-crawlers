@@ -1,0 +1,40 @@
+name: FlareSolverr spike
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - spike/flaresolverr-runner
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      flaresolverr:
+        image: ghcr.io/flaresolverr/flaresolverr:latest
+        ports:
+          - 8191:8191
+        env:
+          LOG_LEVEL: info
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install httpx
+
+      - name: Wait for FlareSolverr
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8191/ >/dev/null; then echo ready; exit 0; fi
+            sleep 2
+          done
+          echo "FlareSolverr did not start"; exit 1
+
+      - name: Run spike
+        env:
+          FLARESOLVERR_URL: http://localhost:8191/v1
+        run: python spike_flaresolverr.py
