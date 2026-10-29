@@ -49,6 +49,14 @@ def main():
     print(f"direct ClubSpark: HTTP {r.status_code} in {time.time()-t:.1f}s body={r.text[:60]!r}")
     ok("direct ClubSpark", r.status_code == 200)
 
+    # 1b. solver sanity check on a neutral site
+    try:
+        payload = httpx.post(FS, json={"cmd": "request.get", "url": "https://example.com", "maxTimeout": 60000}, timeout=90).json()
+        sol = payload.get("solution") or {}
+        print(f"  solver example.com: payload={payload.get('status')} message={payload.get('message')!r} browser={sol.get('status')} bytes={len(sol.get('response',''))}")
+    except Exception as exc:
+        print("  solver example.com error:", repr(exc))
+
     # 2. solver session
     session = httpx.post(FS, json={"cmd": "sessions.create"}, timeout=60).json()["session"]
     good = 0
@@ -64,6 +72,8 @@ def main():
             ).json()
             sol = payload.get("solution") or {}
             status = sol.get("status", 0)
+            if status != 200:
+                print(f"    payload={payload.get('status')} message={payload.get('message')!r} body={sol.get('response','')[:160]!r}")
             try:
                 bookable = parse(sol.get("response", "")) if status == 200 else 0
             except Exception:
