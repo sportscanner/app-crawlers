@@ -116,6 +116,34 @@ def test_area_search_scopes_by_planning_authority():
     assert _area_search_params("padel", "Manchester")["search"] == "padel"
 
 
+def test_snapshot_serves_a_uk_site_without_calling_planit(monkeypatch):
+    from sportscanner.insights import planning
+
+    def fail(*args, **kwargs):
+        raise AssertionError("live PlanIt should not be called when a snapshot exists")
+
+    monkeypatch.setattr(planning, "_fetch_records", fail)
+    summary = planning.planning_summary("padel", 51.71, -0.06, 2.5)
+    assert summary is not None
+    assert summary["snapshot"] is True
+    assert summary["scope"] == "2.5 miles around the pin"
+    assert summary["total_applications"] > 0
+
+
+def test_snapshot_applications_have_dates_and_coordinates():
+    from sportscanner.insights.planning import _snapshot
+
+    snapshot = _snapshot("padel")
+    assert snapshot is not None
+    assert snapshot["applications"]
+    for application in snapshot["applications"]:
+        assert application["latitude"] is not None
+        assert application["longitude"] is not None
+        assert application["submitted"] is None or hasattr(
+            application["submitted"], "year"
+        )
+
+
 def test_summary_marks_a_truncated_uk_scope():
     summary = summarise(
         [], "padel", scope="5 miles around the pin", total_available=12000
