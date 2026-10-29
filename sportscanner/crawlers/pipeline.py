@@ -378,16 +378,22 @@ def padel_scraping_pipeline():
     today = date.today()
     dates = [today + timedelta(days=i) for i in range(10)]
     logging.info(f"Finding slots for dates: {dates}")
-    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
-        SportscannerCrawlerBot(
-            MatchiPadelScraperCoroutines(dates),
-            PlaytomicPadelScraperCoroutines(dates),
-            PadelMatesPadelScraperCoroutines(dates),
-            StratfordPadelScraperCoroutines(dates),
-            MatchpointPadelScraperCoroutines(dates),
-            GladstoneGoPadelScraperCoroutines(dates),
-            ClubSparkPadelScraperCoroutines(dates),
+    padel_sources = [
+        MatchiPadelScraperCoroutines(dates),
+        PadelMatesPadelScraperCoroutines(dates),
+        StratfordPadelScraperCoroutines(dates),
+        MatchpointPadelScraperCoroutines(dates),
+        GladstoneGoPadelScraperCoroutines(dates),
+        ClubSparkPadelScraperCoroutines(dates),
+    ]
+    if settings.PLAYTOMIC_PADEL_ENABLED:
+        padel_sources.insert(1, PlaytomicPadelScraperCoroutines(dates))
+    else:
+        logging.warning(
+            "Playtomic padel scraping is disabled (PLAYTOMIC_PADEL_ENABLED)"
         )
+    responses_from_all_sources: List[UnifiedParserSchema] = asyncio.run(
+        SportscannerCrawlerBot(*padel_sources)
     )
     all_slots: List[UnifiedParserSchema] = fill_estimated_prices(
         flatten_responses(responses_from_all_sources)

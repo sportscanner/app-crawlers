@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     HTTPX_CLIENT_MAX_KEEPALIVE_CONNECTIONS: int
     HTTPX_CLIENT_TIMEOUT: float
     CRAWLER_MAX_CONCURRENT_REQUESTS_PER_PROVIDER: int = 20
+    # Playtomic padel is switched off: the many Playtomic venues added recently
+    # make the padel crawl so slow that it stalls and drags down the other
+    # padel providers. Set PLAYTOMIC_PADEL_ENABLED=true to bring it back.
+    PLAYTOMIC_PADEL_ENABLED: bool = False
     # Per-process database pool. The API keeps the default (5 total); parallel
     # crawler containers override this to 1 + 1 so five sports plus the API stay
     # under Aiven's 20-connection limit.
@@ -61,7 +65,9 @@ class Settings(BaseSettings):
     AGENT_CHAT_MESSAGES_PER_HOUR: int = 40
     AGENT_CHAT_ANON_MESSAGES_PER_HOUR: int = 10
 
-    model_config = SettingsConfigDict(env_file=env_file, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=env_file, env_file_encoding="utf-8", extra="ignore"
+    )
 
 
 settings = Settings()
