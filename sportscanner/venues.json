@@ -2366,12 +2366,13 @@
         "venue_name": "Tennis England Club",
         "slug": "open-jan-2025-tennis-england-club",
         "location": {
-          "postcode": "SW15 5JQ",
-          "address": "National Tennis Centre, Priory Lane, Roehampton, London, SW15 5JQ",
-          "latitude": 51.4487,
-          "longitude": -0.2323
+          "postcode": "KT8 0BT",
+          "address": "Ember Lane, Molesey, KT8 0BT",
+          "latitude": 51.3906062,
+          "longitude": -0.3492347
         },
         "sports": [
+          "padel",
           "tennis"
         ]
       },
@@ -7911,6 +7912,45 @@
           "address": "Fridlington Farms Ltd, York, Y0611ee",
           "latitude": 54.0775797,
           "longitude": -1.0577773
+        },
+        "sports": [
+          "padel"
+        ]
+      },
+      {
+        "venue_name": "S3 Padel Finchley Road",
+        "slug": "s3-padel-finchley-road",
+        "location": {
+          "postcode": "NW3 6LU",
+          "address": "255 Finchley Road, West Hampstead, London, NW3 6LU",
+          "latitude": 51.54773852,
+          "longitude": -0.185993
+        },
+        "sports": [
+          "padel"
+        ]
+      },
+      {
+        "venue_name": "PADELHUB KT19 Epsom",
+        "slug": "padelhub-kt19-epsom",
+        "location": {
+          "postcode": "KT19 9BE",
+          "address": "7-8 Blenheim Road, Epsom, KT19 9BE",
+          "latitude": 51.34102166,
+          "longitude": -0.26425052
+        },
+        "sports": [
+          "padel"
+        ]
+      },
+      {
+        "venue_name": "Essendon Padel Club",
+        "slug": "essendon-padel-club",
+        "location": {
+          "postcode": "AL9 6HN",
+          "address": "Bedwell Park, Hatfield, AL9 6HN",
+          "latitude": 51.7595544,
+          "longitude": -0.1441714
         },
         "sports": [
           "padel"
