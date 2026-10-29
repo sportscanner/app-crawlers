@@ -10,10 +10,15 @@ registers change daily at most, and PlanIt is a small volunteer-run service
 with tight rate limits.
 """
 
+import gzip
+import json
+import math
 import re
 import time
 from collections import Counter, defaultdict
 from datetime import date
+from functools import lru_cache
+from pathlib import Path
 from statistics import median
 from threading import Lock
 from typing import Dict, List, Optional, Tuple
@@ -107,6 +112,10 @@ _COURT_QUALIFIERS = r"(?:(?:new|additional|indoor|outdoor|covered|external|inter
 
 _cache: Dict[str, Tuple[float, dict]] = {}
 _authority_cache: Dict[str, Tuple[float, List[str]]] = {}
+# Bundled snapshots let the public API answer instantly and keep working when
+# PlanIt rate-limits or blocks the production egress IP. Refresh them with
+# `python -m sportscanner.insights.refresh_planning`.
+_SNAPSHOT_DIR = Path(__file__).parent / "data" / "planning"
 
 
 def courts_proposed(description: str, topic: str) -> Optional[int]:
@@ -358,7 +367,24 @@ def summarise(
             }
         )
     applications.sort(key=lambda a: a["submitted"] or date.min, reverse=True)
+    return _summarise_applications(
+        applications,
+        topic,
+        scope=scope,
+        total_available=total_available,
+        authorities=authorities,
+        failed_authorities=failed_authorities,
+    )
 
+
+def _summarise_applications(
+    applications: List[dict],
+    topic: str,
+    scope: str = "London",
+    total_available: Optional[int] = None,
+    authorities: Optional[List[str]] = None,
+    failed_authorities: Optional[List[str]] = None,
+) -> dict:
     status_counts = Counter(a["status"] for a in applications)
     decided = [a for a in applications if a["status"] in DECIDED_STATES]
     approved = [a for a in decided if a["status"] in APPROVED_STATES]
@@ -453,7 +479,7 @@ def summarise(
             total_available if total_available is not None else len(applications)
         ),
         "truncated": bool(
-            total_available is not None and total_available > len(records)
+            total_available is not None and total_available > len(applications)
         ),
         "authorities": authorities or [],
         "failed_authorities": failed_authorities or [],
@@ -472,6 +498,96 @@ def _status_group(status: str) -> str:
     return "other"
 
 
+@lru_cache(maxsize=1)
+def _london_borough_names() -> set:
+    from sportscanner.insights.boroughs import borough_population
+
+    return set(borough_population()["boroughs"])
+
+
+def _in_london_borough(application: dict) -> bool:
+    borough = str(application.get("borough") or "")
+    if not borough:
+        return False
+    return any(
+        borough == name
+        or name.startswith(f"{borough} ")
+        or borough.startswith(f"{name} ")
+        for name in _london_borough_names()
+    )
+
+
+def _miles_between(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius = math.pi / 180
+    dlat = radius * (lat2 - lat1)
+    dlon = radius * (lon2 - lon1)
+    h = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(radius * lat1) * math.cos(radius * lat2) * math.sin(dlon / 2) ** 2
+    )
+    return 3958.8 * 2 * math.asin(math.sqrt(h))
+
+
+@lru_cache(maxsize=len(PLANNING_TOPICS))
+def _snapshot(topic: str) -> Optional[dict]:
+    """The bundled PlanIt snapshot for one sport, or None when absent."""
+    path = _SNAPSHOT_DIR / f"{topic}.json.gz"
+    if not path.exists():
+        return None
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    applications = payload.get("applications") or []
+    for application in applications:
+        application["submitted"] = _parse_date(application.get("submitted"))
+        application["decided"] = _parse_date(application.get("decided"))
+    return {
+        "generated_at": payload.get("generated_at"),
+        "applications": applications,
+    }
+
+
+def _snapshot_summary(
+    topic: str,
+    latitude: Optional[float],
+    longitude: Optional[float],
+    radius: Optional[float],
+    scope: str,
+) -> Optional[dict]:
+    snapshot = _snapshot(topic)
+    if snapshot is None:
+        return None
+    applications = snapshot["applications"]
+    if latitude is None:
+        selected = [a for a in applications if _in_london_borough(a)]
+        authorities = ["London"]
+    else:
+        miles = radius or 3.0
+        selected = [
+            a
+            for a in applications
+            if a.get("latitude") is not None
+            and a.get("longitude") is not None
+            and _miles_between(
+                latitude,
+                longitude,
+                float(a["latitude"]),
+                float(a["longitude"]),
+            )
+            <= miles
+        ]
+        authorities = sorted({str(a["borough"]) for a in selected if a.get("borough")})
+    summary = _summarise_applications(
+        selected,
+        topic,
+        scope=scope,
+        total_available=len(selected),
+        authorities=authorities,
+    )
+    summary["fetched_at"] = snapshot["generated_at"]
+    summary["snapshot"] = True
+    return summary
+
+
 def planning_summary(
     topic: str,
     latitude: Optional[float] = None,
@@ -480,7 +596,12 @@ def planning_summary(
 ) -> Optional[dict]:
     """Cached planning summary for `topic`. Without coordinates it covers
     London; with them it covers `radius` miles around the point, anywhere in
-    the UK. On a PlanIt outage, serves the last good copy if there is one."""
+    the UK.
+
+    The bundled snapshot is the primary source, so requests never depend on
+    PlanIt's per-IP rate limit. Live PlanIt is only used when a sport has no
+    snapshot, and a successful live result is cached in-process.
+    """
     if topic not in PLANNING_TOPICS:
         raise ValueError(f"Unsupported planning topic: {topic!r}")
     if (latitude is None) != (longitude is None):
@@ -501,6 +622,12 @@ def planning_summary(
         )
         if time.time() - cached[0] < ttl:
             return cached[1]
+    snapshot_summary = _snapshot_summary(topic, latitude, longitude, radius, scope)
+    if snapshot_summary is not None:
+        if len(_cache) >= _MAX_CACHE_ENTRIES:
+            _cache.pop(min(_cache, key=lambda k: _cache[k][0]), None)
+        _cache[key] = (time.time(), snapshot_summary)
+        return snapshot_summary
     try:
         records, total, authorities, failed = _fetch_records(
             topic, latitude, longitude, radius

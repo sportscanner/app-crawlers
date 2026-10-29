@@ -51,14 +51,19 @@ public market reports built from `slot_history`. Definitions live in
 - Boroughs come from postcodes.io bulk reverse geocoding (cached 24h);
   populations from `insights/data/london_borough_population.json` (ONS via Nomis,
   refresh yearly from the URL stored in the file).
-- `/insights/planning` reads PlanIt's anonymous API (description keyword
-  search). Without coordinates it searches the London authorities, matching the
-  London market reports. With `latitude`, `longitude` and `radius` it resolves
-  the planning authorities touching the radius through PlanIt's area endpoint
-  and searches each register by name, so a site anywhere in the UK gets local
-  applications. Results are deduplicated and cached for 12h per scope, serving
-  the last good copy if PlanIt is down. A multi-council scope sets `partial`
-  and `failed_authorities` when one register cannot be read.
+- `/insights/planning` serves bundled PlanIt snapshots
+  (`insights/data/planning/{sport}.json.gz`) rather than calling PlanIt on
+  every request. This keeps the public API independent of PlanIt's per-IP
+  limits, which block the production egress IP. Without coordinates the
+  snapshot is filtered to London boroughs, matching the London market reports.
+  With `latitude`, `longitude` and `radius` it is filtered by distance, so a
+  site anywhere in the UK gets local applications. Refresh the snapshots from
+  a network PlanIt accepts with
+  `python -m sportscanner.insights.refresh_planning` (optionally pass sport
+  names). Live PlanIt is only a fallback for a sport with no snapshot; a
+  multi-council live scope sets `partial` and `failed_authorities` when one
+  register cannot be read. Responses carry `snapshot` and `fetched_at` so the
+  UI can show the snapshot date.
 - Venue rows also carry `address`, `website` (the booking platform's site), `min_price_per_hour`/`max_price_per_hour` (listed range), `avg_booked_price` (listed price of the hours actually booked) and `est_yearly_value` (28-day run-rate x 365/28, not seasonally adjusted); the summary carries market `est_yearly_value` and `avg_booked_price`. Heatmap cells include `booking_value` (average per occurrence) and `avg_price`.
 - `/insights/planning` adds `top_agents`, `courts_by_setting`, `approved_courts_by_year`, and per application `documents_url`, `decided_by`, `agent` and `applicant`. Agent and applicant are only set when the register names an organisation (`_organisation()`); private individuals are dropped, never republished.
 - Market and catchment reports include `opportunity`, a 0-100 heuristic for
