@@ -87,6 +87,11 @@ public market reports built from `slot_history`. Definitions live in
 - Venue rows carry `est_monthly_value_per_court` and its alias `gbv_per_court`
   (the same computation), plus `est_monthly_value`, `revpah`, `occupancy` and
   `courts`; catchment rows add `distance_miles`.
+- Venue reports add `timeline` (availability first tracked plus the first
+  submitted and first approved planning application near the venue) and
+  `operator_timeline` (sites sharing the club-name prefix, each with a planning
+  approval or first-tracked date). Opening dates are not published by every
+  operator, so each event names its source rather than claiming an opening.
 - Catchment demographics add `median_age`, `median_age_year`,
   `median_age_source`, `median_age_source_url`, `median_age_licence`,
   `median_income`, `mean_income`, `income_year`, `income_period`, `income_measure`,

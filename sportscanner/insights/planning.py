@@ -588,6 +588,36 @@ def _snapshot_summary(
     return summary
 
 
+def applications_within(
+    topic: str,
+    latitude: float,
+    longitude: float,
+    radius_miles: float,
+) -> List[dict]:
+    """Snapshot applications within a radius, nearest first.
+
+    Used by the venue report to build a club timeline without another PlanIt
+    request. Applications without coordinates are skipped.
+    """
+    snapshot = _snapshot(topic)
+    if snapshot is None:
+        return []
+    nearby = []
+    for application in snapshot["applications"]:
+        lat = application.get("latitude")
+        lon = application.get("longitude")
+        if lat is None or lon is None:
+            continue
+        try:
+            distance = _miles_between(latitude, longitude, float(lat), float(lon))
+        except (TypeError, ValueError):
+            continue
+        if distance <= radius_miles:
+            nearby.append({**application, "distance_miles": round(distance, 3)})
+    nearby.sort(key=lambda a: a["distance_miles"])
+    return nearby
+
+
 def planning_summary(
     topic: str,
     latitude: Optional[float] = None,
