@@ -87,6 +87,20 @@ def main():
     ok("ClubSpark via solver", good >= 4)
 
 
+    # 3b. Playtomic through the solver
+    try:
+        payload = httpx.post(
+            FS,
+            json={"cmd": "request.get", "url": "https://playtomic.com/api/clubs/availability?tenant_id=113065cd-202c-46e7-9ef4-a2af650983cf&date=2026-11-01&sport_id=PADEL", "maxTimeout": 60000},
+            timeout=90,
+        ).json()
+        sol = payload.get("solution") or {}
+        print(f"Playtomic via solver: payload={payload.get('status')} message={payload.get('message')!r} browser={sol.get('status')} bytes={len(sol.get('response',''))}")
+        if sol.get("status") == 200:
+            print("  body:", sol.get("response", "")[:120].replace("\n", " "))
+    except Exception as exc:
+        print("Playtomic via solver error:", repr(exc))
+
     # 4. Playtomic direct
     t = time.time()
     r = httpx.get(
