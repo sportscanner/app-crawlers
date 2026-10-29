@@ -7,6 +7,7 @@ crawl, and the market report scans up to 35 days of slots.
 """
 
 import math
+import re
 import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
@@ -25,6 +26,7 @@ from sportscanner.insights.boroughs import (
     borough_name,
 )
 from sportscanner.insights.history import summarise_price_pairs
+from sportscanner.insights.planning import applications_within
 from sportscanner.insights.metrics import (
     Bucket,
     METRIC_DEFINITIONS,
@@ -70,7 +72,11 @@ def _cached(key: str, build):
     value = build()
     with _cache_lock:
         if len(_cache) >= 256:
-            expired = [k for k, (created, _) in _cache.items() if time.time() - created >= _CACHE_TTL_SECONDS]
+            expired = [
+                k
+                for k, (created, _) in _cache.items()
+                if time.time() - created >= _CACHE_TTL_SECONDS
+            ]
             for stale in expired:
                 _cache.pop(stale, None)
             if len(_cache) >= 256:
@@ -85,10 +91,14 @@ def _rows(sql: str, **params) -> list:
 
 
 def _history_exists() -> bool:
-    return bool(_rows("SELECT to_regclass('public.slot_history') IS NOT NULL AS ok")[0]["ok"])
+    return bool(
+        _rows("SELECT to_regclass('public.slot_history') IS NOT NULL AS ok")[0]["ok"]
+    )
 
 
-def _load_buckets(sport: str, now: datetime, composite_key: Optional[str] = None) -> Tuple[List[Bucket], Dict[str, int]]:
+def _load_buckets(
+    sport: str, now: datetime, composite_key: Optional[str] = None
+) -> Tuple[List[Bucket], Dict[str, int]]:
     window_start = now - timedelta(days=REALISED_WINDOW_DAYS)
     forward_end = now + timedelta(days=FORWARD_WINDOW_DAYS)
     venue_filter = "AND h.composite_key = :composite_key" if composite_key else ""
@@ -145,24 +155,38 @@ def _load_buckets(sport: str, now: datetime, composite_key: Optional[str] = None
     courts: Dict[str, int] = {}
     for r in rows:
         indoor = True if sport in _ALWAYS_INDOOR else r["indoor"]
-        buckets.append(Bucket(
-            composite_key=r["composite_key"], day=r["day"], dow=r["dow"], hour=r["hour"],
-            realised=r["realised"], free=r["free"], cap=r["cap"], pph=r["pph"], indoor=indoor,
-        ))
-        courts[r["composite_key"]] = max(courts.get(r["composite_key"], 0), int(r["cap"]))
+        buckets.append(
+            Bucket(
+                composite_key=r["composite_key"],
+                day=r["day"],
+                dow=r["dow"],
+                hour=r["hour"],
+                realised=r["realised"],
+                free=r["free"],
+                cap=r["cap"],
+                pph=r["pph"],
+                indoor=indoor,
+            )
+        )
+        courts[r["composite_key"]] = max(
+            courts.get(r["composite_key"], 0), int(r["cap"])
+        )
     return buckets, courts
 
 
 def _venues(sport: str) -> List[dict]:
-    return [dict(r) for r in _rows(
-        """
+    return [
+        dict(r)
+        for r in _rows(
+            """
         SELECT composite_key, venue_name, organisation, organisation_website, postcode,
                address, latitude, longitude
         FROM public.sportsvenue
         WHERE sports @> ARRAY[:sport]::varchar[]
         """,
-        sport=sport,
-    )]
+            sport=sport,
+        )
+    ]
 
 
 def _coverage(sport: str, now: datetime) -> Dict[str, dict]:
@@ -195,7 +219,9 @@ def _opportunity(
     reference_price_per_hour: Optional[float],
 ) -> dict:
     return opportunity_score(
-        courts_per_100k=courts / population * 100_000 if courts is not None and population else None,
+        courts_per_100k=(
+            courts / population * 100_000 if courts is not None and population else None
+        ),
         forward_booked=forward_booked,
         occupancy=occupancy,
         avg_price_per_hour=avg_price_per_hour,
@@ -204,7 +230,9 @@ def _opportunity(
     )
 
 
-def _venue_row(venue: dict, stats: Optional[VenueStats], borough: Optional[str], sport: str) -> dict:
+def _venue_row(
+    venue: dict, stats: Optional[VenueStats], borough: Optional[str], sport: str
+) -> dict:
     s = stats or VenueStats(venue["composite_key"], 0)
     indoor = True if sport in _ALWAYS_INDOOR else s.indoor
     monthly = s.realised.monthly_value
@@ -232,7 +260,11 @@ def _venue_row(venue: dict, stats: Optional[VenueStats], borough: Optional[str],
         "max_price_per_hour": _round(s.prices.price_max),
         "avg_booked_price": _round(s.realised.booked_price),
         "est_monthly_value": _round(monthly, 0),
-        "est_yearly_value": _round(monthly * YEAR_DAYS / RUN_RATE_DAYS, 0) if monthly is not None else None,
+        "est_yearly_value": (
+            _round(monthly * YEAR_DAYS / RUN_RATE_DAYS, 0)
+            if monthly is not None
+            else None
+        ),
         "est_monthly_value_per_court": _round(per_court, 0),
         "gbv_per_court": _round(per_court, 0),
         "revpah": _round(s.realised.revpah),
@@ -242,7 +274,9 @@ def _venue_row(venue: dict, stats: Optional[VenueStats], borough: Optional[str],
 
 
 def _rank(rows: List[dict], field: str, key: str) -> Optional[int]:
-    ranked = sorted((r for r in rows if r[field] is not None), key=lambda r: r[field], reverse=True)
+    ranked = sorted(
+        (r for r in rows if r[field] is not None), key=lambda r: r[field], reverse=True
+    )
     for i, r in enumerate(ranked, start=1):
         if r["composite_key"] == key:
             return i
@@ -269,7 +303,9 @@ def _summary(rows: List[dict], stats: Dict[str, VenueStats]) -> dict:
         forward.booked += s.forward.booked
     measured = [r for r in rows if r["measured"]]
     valued = [r for r in measured if r["est_monthly_value"] is not None]
-    monthly_values = [r["est_monthly_value"] for r in measured if r["est_monthly_value"] is not None]
+    monthly_values = [
+        r["est_monthly_value"] for r in measured if r["est_monthly_value"] is not None
+    ]
     courts = sum(r["courts"] or 0 for r in rows)
     return {
         "venues": len(rows),
@@ -277,52 +313,90 @@ def _summary(rows: List[dict], stats: Dict[str, VenueStats]) -> dict:
         "venues_measured": len(measured),
         "venues_valued": len(valued),
         "courts": courts,
-        "occupancy": _round(realised.booked / realised.offered, 4) if realised.offered else None,
-        "peak_occupancy": _round(mean_or_none(r["peak_occupancy"] for r in measured), 4),
-        "offpeak_occupancy": _round(mean_or_none(r["offpeak_occupancy"] for r in measured), 4),
-        "forward_booked": _round(forward.booked / forward.offered, 4) if forward.offered else None,
-        "avg_price_per_hour": _round(mean_or_none(r["avg_price_per_hour"] for r in rows)),
-        "median_price_per_hour": _round(median_or_none(r["avg_price_per_hour"] for r in rows)),
-        "peak_price_per_hour": _round(mean_or_none(r["peak_price_per_hour"] for r in rows)),
-        "offpeak_price_per_hour": _round(mean_or_none(r["offpeak_price_per_hour"] for r in rows)),
+        "occupancy": (
+            _round(realised.booked / realised.offered, 4) if realised.offered else None
+        ),
+        "peak_occupancy": _round(
+            mean_or_none(r["peak_occupancy"] for r in measured), 4
+        ),
+        "offpeak_occupancy": _round(
+            mean_or_none(r["offpeak_occupancy"] for r in measured), 4
+        ),
+        "forward_booked": (
+            _round(forward.booked / forward.offered, 4) if forward.offered else None
+        ),
+        "avg_price_per_hour": _round(
+            mean_or_none(r["avg_price_per_hour"] for r in rows)
+        ),
+        "median_price_per_hour": _round(
+            median_or_none(r["avg_price_per_hour"] for r in rows)
+        ),
+        "peak_price_per_hour": _round(
+            mean_or_none(r["peak_price_per_hour"] for r in rows)
+        ),
+        "offpeak_price_per_hour": _round(
+            mean_or_none(r["offpeak_price_per_hour"] for r in rows)
+        ),
         "est_monthly_value": _round(sum(monthly_values), 0) if monthly_values else None,
-        "est_yearly_value": _round(sum(monthly_values) * YEAR_DAYS / RUN_RATE_DAYS, 0) if monthly_values else None,
-        "avg_booked_price": _round(mean_or_none(r["avg_booked_price"] for r in measured)),
-        "est_monthly_value_per_court": _round(
-            sum(monthly_values) / sum(r["courts"] or 0 for r in valued), 0
-        ) if monthly_values and sum(r["courts"] or 0 for r in valued) else None,
-        "courts_per_100k": _round(courts / london_population() * 100_000, 2) if courts else None,
+        "est_yearly_value": (
+            _round(sum(monthly_values) * YEAR_DAYS / RUN_RATE_DAYS, 0)
+            if monthly_values
+            else None
+        ),
+        "avg_booked_price": _round(
+            mean_or_none(r["avg_booked_price"] for r in measured)
+        ),
+        "est_monthly_value_per_court": (
+            _round(sum(monthly_values) / sum(r["courts"] or 0 for r in valued), 0)
+            if monthly_values and sum(r["courts"] or 0 for r in valued)
+            else None
+        ),
+        "courts_per_100k": (
+            _round(courts / london_population() * 100_000, 2) if courts else None
+        ),
         "observed_days": len(realised.days),
     }
 
 
-def _group(rows: List[dict], field: str, population: Optional[dict] = None) -> List[dict]:
+def _group(
+    rows: List[dict], field: str, population: Optional[dict] = None
+) -> List[dict]:
     groups: Dict[str, List[dict]] = defaultdict(list)
     for r in rows:
         groups[r[field] or "Unknown"].append(r)
     out = []
     for name, members in groups.items():
         measured = [m for m in members if m["measured"]]
-        values = [m["est_monthly_value"] for m in measured if m["est_monthly_value"] is not None]
+        values = [
+            m["est_monthly_value"]
+            for m in measured
+            if m["est_monthly_value"] is not None
+        ]
         courts = sum(m["courts"] or 0 for m in members)
         entry = {
             field: name,
             "venues": len(members),
             "courts": courts,
-            "avg_price_per_hour": _round(mean_or_none(m["avg_price_per_hour"] for m in members)),
+            "avg_price_per_hour": _round(
+                mean_or_none(m["avg_price_per_hour"] for m in members)
+            ),
             "occupancy": _round(mean_or_none(m["occupancy"] for m in measured), 4),
             "est_monthly_value": _round(sum(values), 0) if values else None,
         }
         if population is not None:
             pop = population.get(name, {}).get("population")
             entry["population"] = pop
-            entry["courts_per_100k"] = _round(courts / pop * 100_000, 2) if pop and courts else None
+            entry["courts_per_100k"] = (
+                _round(courts / pop * 100_000, 2) if pop and courts else None
+            )
         out.append(entry)
     return sorted(out, key=lambda e: (e["courts"], e["venues"]), reverse=True)
 
 
 def _price_bands(rows: List[dict]) -> List[dict]:
-    prices = [r["avg_price_per_hour"] for r in rows if r["avg_price_per_hour"] is not None]
+    prices = [
+        r["avg_price_per_hour"] for r in rows if r["avg_price_per_hour"] is not None
+    ]
     if not prices:
         return []
     step = 5 if max(prices) <= 60 else 10
@@ -337,19 +411,29 @@ def _settings(rows: List[dict]) -> List[dict]:
         if not members:
             continue
         measured = [m for m in members if m["measured"]]
-        out.append({
-            "setting": setting or "unknown",
-            "venues": len(members),
-            "courts": sum(m["courts"] for m in members),
-            "occupancy": _round(mean_or_none(m["occupancy"] for m in measured), 4),
-            "avg_price_per_hour": _round(mean_or_none(m["avg_price_per_hour"] for m in members)),
-            "est_monthly_value_per_court": _round(mean_or_none(m["est_monthly_value_per_court"] for m in measured), 0),
-        })
+        out.append(
+            {
+                "setting": setting or "unknown",
+                "venues": len(members),
+                "courts": sum(m["courts"] for m in members),
+                "occupancy": _round(mean_or_none(m["occupancy"] for m in measured), 4),
+                "avg_price_per_hour": _round(
+                    mean_or_none(m["avg_price_per_hour"] for m in members)
+                ),
+                "est_monthly_value_per_court": _round(
+                    mean_or_none(m["est_monthly_value_per_court"] for m in measured), 0
+                ),
+            }
+        )
     return out
 
 
-def _coverage_by_provider(venues: List[dict], freshness: Dict[str, dict], now: datetime) -> List[dict]:
-    by_org: Dict[str, dict] = defaultdict(lambda: {"venues": 0, "live": 0, "last_seen": None})
+def _coverage_by_provider(
+    venues: List[dict], freshness: Dict[str, dict], now: datetime
+) -> List[dict]:
+    by_org: Dict[str, dict] = defaultdict(
+        lambda: {"venues": 0, "live": 0, "last_seen": None}
+    )
     for v in venues:
         entry = by_org[v["organisation"]]
         entry["venues"] += 1
@@ -370,7 +454,12 @@ def _empty_history_report(sport: str, venues: List[dict], now: datetime) -> dict
         "sport": sport,
         "generated_at": now,
         "history_started": None,
-        "summary": {"venues": len(venues), "venues_with_data": 0, "venues_measured": 0, "courts": 0},
+        "summary": {
+            "venues": len(venues),
+            "venues_with_data": 0,
+            "venues_measured": 0,
+            "courts": 0,
+        },
         "venues": [_venue_row(v, None, None, sport) for v in venues],
         "boroughs": [],
         "providers": [],
@@ -388,21 +477,31 @@ def market_report(sport: str, borough: Optional[str] = None) -> dict:
         raise ValueError(f"Unsupported sport: {sport!r}")
     if borough and not borough_name(borough):
         raise ValueError(f"Unknown borough: {borough!r}")
-    return _cached(f"market:{sport}:{borough}", lambda: _build_market_report(sport, borough))
+    return _cached(
+        f"market:{sport}:{borough}", lambda: _build_market_report(sport, borough)
+    )
 
 
 def _build_market_report(sport: str, borough: Optional[str] = None) -> dict:
     now = _now_london()
     venues = _venues(sport)
-    boroughs = resolve_boroughs((v["composite_key"], v["latitude"], v["longitude"]) for v in venues)
+    boroughs = resolve_boroughs(
+        (v["composite_key"], v["latitude"], v["longitude"]) for v in venues
+    )
     area_name = borough_name(borough) if borough else "London"
     if borough:
         venues = [v for v in venues if boroughs.get(v["composite_key"]) == area_name]
     if not _history_exists():
         report = _empty_history_report(sport, venues, now)
-        report["venues"] = [_venue_row(v, None, boroughs.get(v["composite_key"]), sport) for v in venues]
+        report["venues"] = [
+            _venue_row(v, None, boroughs.get(v["composite_key"]), sport) for v in venues
+        ]
         report["area"] = {"name": area_name, "slug": borough}
-        local_population = borough_population()["boroughs"][area_name]["population"] if borough else london_population()
+        local_population = (
+            borough_population()["boroughs"][area_name]["population"]
+            if borough
+            else london_population()
+        )
         report["capacity"] = capacity(None, local_population)
         report["opportunity"] = _opportunity(
             basis=f"{area_name} · all venues",
@@ -420,14 +519,23 @@ def _build_market_report(sport: str, borough: Optional[str] = None) -> dict:
     keys = {v["composite_key"] for v in venues}
     buckets = [b for b in buckets if b.composite_key in keys]
     stats = venue_stats(buckets, courts)
-    rows = [_venue_row(v, stats.get(v["composite_key"]), boroughs.get(v["composite_key"]), sport) for v in venues]
-    rows.sort(key=lambda r: (r["est_monthly_value"] or -1, r["courts"] or 0), reverse=True)
+    rows = [
+        _venue_row(
+            v, stats.get(v["composite_key"]), boroughs.get(v["composite_key"]), sport
+        )
+        for v in venues
+    ]
+    rows.sort(
+        key=lambda r: (r["est_monthly_value"] or -1, r["courts"] or 0), reverse=True
+    )
     freshness = _coverage(sport, now)
     first_seen = [f["first_seen"] for f in freshness.values() if f["first_seen"]]
 
     population = borough_population()["boroughs"]
     summary = _summary(rows, stats)
-    local_population = population[area_name]["population"] if borough else london_population()
+    local_population = (
+        population[area_name]["population"] if borough else london_population()
+    )
     density_courts = sum(r["courts"] or 0 for r in rows if r["borough"] in population)
     summary["courts_per_100k"] = _round(density_courts / local_population * 100_000)
     reference_price = (
@@ -459,12 +567,26 @@ def _build_market_report(sport: str, borough: Optional[str] = None) -> dict:
         "opportunity": opportunity,
         "capacity": capacity_payload,
         "metric_definitions": METRIC_DEFINITIONS,
-        "daily": [{"date": day, "occupancy": _round(t.booked / t.offered, 4),
-                   "booking_value": _round(t.value), "court_hours": _round(t.offered)}
-                  for day, t in sorted(daily.items()) if t.offered],
-        "club_sizes": [{"courts": str(n) if n < 10 else "10+", "venues": sizes[n]} for n in range(1, 11)],
+        "daily": [
+            {
+                "date": day,
+                "occupancy": _round(t.booked / t.offered, 4),
+                "booking_value": _round(t.value),
+                "court_hours": _round(t.offered),
+            }
+            for day, t in sorted(daily.items())
+            if t.offered
+        ],
+        "club_sizes": [
+            {"courts": str(n) if n < 10 else "10+", "venues": sizes[n]}
+            for n in range(1, 11)
+        ],
         "venues": rows,
-        "boroughs": [b for b in _group(rows, "borough", population) if b["borough"] != OUTSIDE_LONDON]
+        "boroughs": [
+            b
+            for b in _group(rows, "borough", population)
+            if b["borough"] != OUTSIDE_LONDON
+        ]
         + [b for b in _group(rows, "borough") if b["borough"] == OUTSIDE_LONDON],
         "providers": _group(rows, "organisation"),
         "settings": _settings(rows),
@@ -479,21 +601,44 @@ def _build_market_report(sport: str, borough: Optional[str] = None) -> dict:
     }
 
 
-def historical_report(sport: str, days: int = 90, borough: Optional[str] = None, composite_key: Optional[str] = None) -> dict:
+def historical_report(
+    sport: str,
+    days: int = 90,
+    borough: Optional[str] = None,
+    composite_key: Optional[str] = None,
+) -> dict:
     market = market_report(sport, borough)
-    venues = [v for v in market["venues"] if not composite_key or v["composite_key"] == composite_key]
+    venues = [
+        v
+        for v in market["venues"]
+        if not composite_key or v["composite_key"] == composite_key
+    ]
     keys = [v["composite_key"] for v in venues]
+
     def build():
         now = _now_london()
-        exists = _rows("SELECT to_regclass('public.daily_price_snapshot') IS NOT NULL AS ok")[0]["ok"]
-        params = dict(sport=sport, since=now.date() - timedelta(days=days - 1), keys=keys)
-        bounds = _rows("""
+        exists = _rows(
+            "SELECT to_regclass('public.daily_price_snapshot') IS NOT NULL AS ok"
+        )[0]["ok"]
+        params = dict(
+            sport=sport, since=now.date() - timedelta(days=days - 1), keys=keys
+        )
+        bounds = (
+            _rows(
+                """
             SELECT MIN(observed_on) AS first_day, MAX(observed_on) AS last_day,
                    COUNT(DISTINCT observed_on) AS observed_days
             FROM public.daily_price_snapshot
             WHERE sport=:sport AND observed_on >= :since AND composite_key=ANY(:keys)
-        """, **params)[0] if exists and keys else {"first_day": None, "last_day": None, "observed_days": 0}
-        pairs = _rows("""
+        """,
+                **params,
+            )[0]
+            if exists and keys
+            else {"first_day": None, "last_day": None, "observed_days": 0}
+        )
+        pairs = (
+            _rows(
+                """
             WITH baseline AS (
                 SELECT * FROM public.daily_price_snapshot
                 WHERE sport=:sport AND observed_on=:baseline AND composite_key=ANY(:keys)
@@ -507,19 +652,42 @@ def historical_report(sport: str, days: int = 90, borough: Optional[str] = None,
             JOIN baseline b USING (sport, composite_key, dow, starting_time, duration_min)
             WHERE p.sport=:sport AND p.observed_on >= :since AND p.composite_key=ANY(:keys)
             GROUP BY p.observed_on, p.composite_key
-        """, **params, baseline=bounds["first_day"]) if bounds["first_day"] else []
+        """,
+                **params,
+                baseline=bounds["first_day"],
+            )
+            if bounds["first_day"]
+            else []
+        )
         report = summarise_price_pairs(bounds, pairs)
         names = {v["composite_key"]: v["venue_name"] for v in venues}
         for v in report["venues"]:
             v["venue_name"] = names[v["composite_key"]]
-        supply_exists = _rows("SELECT to_regclass('public.daily_supply_snapshot') IS NOT NULL AS ok")[0]["ok"]
-        supply = _rows("""
+        supply_exists = _rows(
+            "SELECT to_regclass('public.daily_supply_snapshot') IS NOT NULL AS ok"
+        )[0]["ok"]
+        supply = (
+            _rows(
+                """
             SELECT observed_on AS date, COUNT(*) AS venues, SUM(courts) AS courts
             FROM public.daily_supply_snapshot
             WHERE sport = :sport AND observed_on >= :since AND composite_key = ANY(:keys)
             GROUP BY observed_on ORDER BY observed_on
-        """, sport=sport, since=now.date() - timedelta(days=days - 1), keys=keys) if supply_exists and keys else []
-        return {"sport": sport, "generated_at": now, "prices": report, "supply": [dict(r) for r in supply]}
+        """,
+                sport=sport,
+                since=now.date() - timedelta(days=days - 1),
+                keys=keys,
+            )
+            if supply_exists and keys
+            else []
+        )
+        return {
+            "sport": sport,
+            "generated_at": now,
+            "prices": report,
+            "supply": [dict(r) for r in supply],
+        }
+
     return _cached(f"history:{sport}:{days}:{borough}:{composite_key}", build)
 
 
@@ -527,29 +695,295 @@ def venue_report(sport: str, composite_key: str) -> Optional[dict]:
     if sport not in _SPORTS:
         raise ValueError(f"Unsupported sport: {sport!r}")
     market = market_report(sport)
-    venue = next((v for v in market["venues"] if v["composite_key"] == composite_key), None)
+    venue = next(
+        (v for v in market["venues"] if v["composite_key"] == composite_key), None
+    )
     if venue is None:
         return None
-    return _cached(f"venue:{sport}:{composite_key}", lambda: _build_venue_report(sport, venue, market))
+    return _cached(
+        f"venue:{sport}:{composite_key}",
+        lambda: _build_venue_report(sport, venue, market),
+    )
+
+
+_TIMELINE_STOP_WORDS = {
+    "the",
+    "and",
+    "ltd",
+    "limited",
+    "club",
+    "clubs",
+    "centre",
+    "center",
+    "sports",
+    "sport",
+    "leisure",
+    "venue",
+    "courts",
+    "court",
+    "padel",
+    "tennis",
+    "badminton",
+    "squash",
+    "pickleball",
+    "london",
+    "uk",
+    "gll",
+}
+
+
+def _name_tokens(*values) -> set:
+    tokens = set()
+    for value in values:
+        for word in re.findall(r"[a-z0-9]+", (value or "").lower()):
+            if len(word) >= 4 and word not in _TIMELINE_STOP_WORDS:
+                tokens.add(word)
+    return tokens
+
+
+def _first_tracked_dates(sport: str, keys: List[str]) -> Dict[str, object]:
+    """Earliest observation day per venue, from whichever history exists."""
+    keys = [key for key in keys if key]
+    if not keys:
+        return {}
+    first: Dict[str, object] = {}
+    if _history_exists():
+        rows = _rows(
+            """
+            SELECT composite_key, MIN(first_seen) AS first_seen
+            FROM public.slot_history
+            WHERE sport = :sport AND composite_key = ANY(:keys)
+            GROUP BY composite_key
+            """,
+            sport=sport,
+            keys=keys,
+        )
+        for row in rows:
+            if row["first_seen"]:
+                first[row["composite_key"]] = row["first_seen"].date()
+    supply_exists = _rows(
+        "SELECT to_regclass('public.daily_supply_snapshot') IS NOT NULL AS ok"
+    )[0]["ok"]
+    if supply_exists:
+        rows = _rows(
+            """
+            SELECT composite_key, MIN(observed_on) AS first_day
+            FROM public.daily_supply_snapshot
+            WHERE sport = :sport AND composite_key = ANY(:keys)
+            GROUP BY composite_key
+            """,
+            sport=sport,
+            keys=keys,
+        )
+        for row in rows:
+            day = row["first_day"]
+            key = row["composite_key"]
+            if day and (key not in first or day < first[key]):
+                first[key] = day
+    return first
+
+
+def _planning_matches(venue: dict, applications: List[dict]) -> List[dict]:
+    """Applications that plausibly belong to this venue.
+
+    A same-site distance is the strongest signal; a distinctive name token or
+    an exact postcode catches applications filed at a neighbouring address.
+    """
+    tokens = _name_tokens(venue.get("venue_name"), venue.get("organisation"))
+    postcode = re.sub(r"[^A-Z0-9]", "", (venue.get("postcode") or "").upper())
+    matches = []
+    for application in applications:
+        text = " ".join(
+            str(application.get(field) or "")
+            for field in ("description", "applicant", "agent", "borough")
+        )
+        application_postcode = re.sub(
+            r"[^A-Z0-9]", "", (application.get("postcode") or "").upper()
+        )
+        same_site = application["distance_miles"] <= 0.12
+        same_postcode = bool(postcode) and application_postcode == postcode
+        name_match = bool(tokens and tokens & _name_tokens(text))
+        if same_site or same_postcode or name_match:
+            # A distinctive name is the strongest signal, then an exact
+            # postcode, then merely being at the same site.
+            score = -3 if name_match else -2 if same_postcode else -1
+            matches.append((score, application))
+    matches.sort(key=lambda pair: (pair[0], pair[1]["distance_miles"]))
+    return [application for _, application in matches[:6]]
+
+
+def _planning_event(title: str, day, application: dict) -> dict:
+    return {
+        "kind": "planning",
+        "date": day.isoformat() if hasattr(day, "isoformat") else day,
+        "title": title,
+        "detail": application.get("description"),
+        "reference": application.get("reference"),
+        "url": application.get("url"),
+        "status": application.get("status"),
+        "courts": application.get("courts"),
+    }
+
+
+def _planning_events(applications: List[dict]) -> List[dict]:
+    """First submitted and first decided application, matching the club story."""
+    submitted = [a for a in applications if a.get("submitted")]
+    approved = [
+        a
+        for a in applications
+        if a.get("status") in ("Permitted", "Conditions") and a.get("decided")
+    ]
+    refused = [
+        a for a in applications if a.get("status") == "Rejected" and a.get("decided")
+    ]
+    events = []
+    if submitted:
+        # Prefer an application that actually proposes courts over a signage
+        # or advertisement consent filed at the same site.
+        with_courts = [a for a in submitted if a.get("courts")]
+        application = min(with_courts or submitted, key=lambda a: a["submitted"])
+        events.append(
+            _planning_event(
+                "First planning application submitted",
+                application["submitted"],
+                application,
+            )
+        )
+    if approved:
+        with_courts = [a for a in approved if a.get("courts")]
+        application = min(with_courts or approved, key=lambda a: a["decided"])
+        events.append(
+            _planning_event(
+                "First planning application approved",
+                application["decided"],
+                application,
+            )
+        )
+    elif refused:
+        with_courts = [a for a in refused if a.get("courts")]
+        application = min(with_courts or refused, key=lambda a: a["decided"])
+        events.append(
+            _planning_event(
+                "First planning application refused",
+                application["decided"],
+                application,
+            )
+        )
+    events.sort(key=lambda event: event["date"], reverse=True)
+    return events
+
+
+def _club_timeline(sport: str, venue: dict) -> List[dict]:
+    events = []
+    first = _first_tracked_dates(sport, [venue["composite_key"]]).get(
+        venue["composite_key"]
+    )
+    if first:
+        events.append(
+            {
+                "kind": "tracked",
+                "date": first.isoformat() if hasattr(first, "isoformat") else first,
+                "title": "Availability first tracked",
+                "detail": "First public court availability recorded by Sportscanner.",
+            }
+        )
+    if venue.get("latitude") is not None and venue.get("longitude") is not None:
+        nearby = applications_within(sport, venue["latitude"], venue["longitude"], 0.5)
+        events.extend(_planning_events(_planning_matches(venue, nearby)))
+    events.sort(key=lambda event: event["date"], reverse=True)
+    return events
+
+
+def _operator_key(name: str) -> str:
+    """A venue-name prefix that groups an operator's sites.
+
+    `organisation` is the booking platform (Padel Mates, Playtomic, Better),
+    not the club operator. "Padium Canary Wharf" and "Padium Cardiff" share
+    the distinctive first token; "Rocket Padel Ilford" and "Rocket Padel
+    Beckton" share "rocket".
+    """
+    for token in re.findall(r"[a-z0-9]+", (name or "").lower()):
+        if len(token) >= 4 and token not in _TIMELINE_STOP_WORDS:
+            return token
+    return (name or "").lower().strip()
+
+
+def _operator_timeline(sport: str, venue: dict, market: dict) -> List[dict]:
+    key = _operator_key(venue["venue_name"])
+    peers = [
+        peer for peer in market["venues"] if _operator_key(peer["venue_name"]) == key
+    ][:12]
+    first = _first_tracked_dates(sport, [peer["composite_key"] for peer in peers])
+    rows = []
+    for peer in peers:
+        kind = "tracked"
+        day = first.get(peer["composite_key"])
+        label = "Availability first tracked"
+        if peer.get("latitude") is not None and peer.get("longitude") is not None:
+            nearby = applications_within(
+                sport, peer["latitude"], peer["longitude"], 0.5
+            )
+            approved = [
+                application
+                for application in _planning_matches(peer, nearby)
+                if application.get("status") in ("Permitted", "Conditions")
+                and application.get("decided")
+                and application.get("courts")
+            ]
+            if approved:
+                application = min(approved, key=lambda a: a["decided"])
+                day = application["decided"]
+                kind = "planning"
+                label = "Planning approved"
+        rows.append(
+            {
+                "composite_key": peer["composite_key"],
+                "venue_name": peer["venue_name"],
+                "borough": peer.get("borough"),
+                "date": (day.isoformat() if hasattr(day, "isoformat") else day),
+                "kind": kind,
+                "label": label,
+            }
+        )
+    rows.sort(key=lambda row: row["date"] or "", reverse=True)
+    rows.sort(key=lambda row: row["date"] is None)
+    return rows[:8]
 
 
 def _build_venue_report(sport: str, venue: dict, market: dict) -> dict:
     now = _now_london()
-    buckets, _ = _load_buckets(sport, now, venue["composite_key"]) if _history_exists() else ([], {})
+    buckets, _ = (
+        _load_buckets(sport, now, venue["composite_key"])
+        if _history_exists()
+        else ([], {})
+    )
 
     nearby = []
     if venue["latitude"] is not None and venue["longitude"] is not None:
         for other in market["venues"]:
-            if other["composite_key"] == venue["composite_key"] or other["latitude"] is None or other["longitude"] is None:
+            if (
+                other["composite_key"] == venue["composite_key"]
+                or other["latitude"] is None
+                or other["longitude"] is None
+            ):
                 continue
-            miles = _haversine_miles(venue["latitude"], venue["longitude"], other["latitude"], other["longitude"])
+            miles = _haversine_miles(
+                venue["latitude"],
+                venue["longitude"],
+                other["latitude"],
+                other["longitude"],
+            )
             if miles <= NEARBY_RADIUS_MILES:
                 nearby.append({**other, "distance_miles": round(miles, 2)})
     nearby.sort(key=lambda o: o["distance_miles"])
 
     benchmark_fields = (
-        "avg_price_per_hour", "peak_price_per_hour", "offpeak_price_per_hour",
-        "occupancy", "forward_booked", "est_monthly_value_per_court",
+        "avg_price_per_hour",
+        "peak_price_per_hour",
+        "offpeak_price_per_hour",
+        "occupancy",
+        "forward_booked",
+        "est_monthly_value_per_court",
     )
     benchmarks = [
         {
@@ -581,18 +1015,29 @@ def _build_venue_report(sport: str, venue: dict, market: dict) -> dict:
         "venue": venue,
         "metric_definitions": METRIC_DEFINITIONS,
         "ranks": {
-            "est_monthly_value": _rank(market["venues"], "est_monthly_value", venue["composite_key"]),
+            "est_monthly_value": _rank(
+                market["venues"], "est_monthly_value", venue["composite_key"]
+            ),
             "occupancy": _rank(market["venues"], "occupancy", venue["composite_key"]),
-            "est_monthly_value_per_court": _rank(market["venues"], "est_monthly_value_per_court", venue["composite_key"]),
+            "est_monthly_value_per_court": _rank(
+                market["venues"], "est_monthly_value_per_court", venue["composite_key"]
+            ),
             "of": len(measured_peers),
             "occupancy_of": sum(v["occupancy"] is not None for v in market["venues"]),
         },
         "benchmarks": benchmarks,
         "nearby": nearby[:8],
         "nearby_count": len(nearby),
-        "daily": [{"date": day, "occupancy": _round(t.booked / t.offered, 4),
-                   "booking_value": _round(t.value), "court_hours": _round(t.offered)}
-                  for day, t in sorted(daily.items()) if t.offered],
+        "daily": [
+            {
+                "date": day,
+                "occupancy": _round(t.booked / t.offered, 4),
+                "booking_value": _round(t.value),
+                "court_hours": _round(t.offered),
+            }
+            for day, t in sorted(daily.items())
+            if t.offered
+        ],
         "hourly": hourly_profile(buckets),
         "price_by_hour": [
             {"day_type": day_type, "hour": hour, "price_per_hour": _round(t.avg_price)}
@@ -600,20 +1045,33 @@ def _build_venue_report(sport: str, venue: dict, market: dict) -> dict:
             if t.avg_price is not None
         ],
         "upcoming": [
-            {"date": day, "booked": _round(t.booked / t.offered, 4) if t.offered else None, "court_hours": round(t.offered, 1)}
+            {
+                "date": day,
+                "booked": _round(t.booked / t.offered, 4) if t.offered else None,
+                "court_hours": round(t.offered, 1),
+            }
             for day, t in sorted(upcoming.items())
         ],
+        "timeline": _club_timeline(sport, venue),
+        "operator_timeline": _operator_timeline(sport, venue, market),
         "peak_definition": "Weekdays 07:00-09:00 and 17:00-22:00, plus all weekend hours",
     }
 
 
 def overview() -> dict:
     """Cross-sport headline numbers for the insights landing page."""
+
     def build():
         sports = []
         for sport in _SPORTS:
             report = market_report(sport)
-            sports.append({"sport": sport, "history_started": report["history_started"], **report["summary"]})
+            sports.append(
+                {
+                    "sport": sport,
+                    "history_started": report["history_started"],
+                    **report["summary"],
+                }
+            )
         return {"generated_at": _now_london(), "sports": sports}
-    return _cached("overview", build)
 
+    return _cached("overview", build)
