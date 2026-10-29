@@ -29,22 +29,50 @@ def insights_overview(response: Response):
 def planning_applications(
     response: Response,
     topic: str = Query("padel", description=f"One of {', '.join(PLANNING_TOPICS)}"),
+    latitude: float = Query(
+        None, ge=49, le=61, description="Site latitude for a UK-wide local search"
+    ),
+    longitude: float = Query(
+        None, ge=-8, le=2, description="Site longitude for a UK-wide local search"
+    ),
+    radius: float = Query(
+        3, ge=0.5, le=20, description="Radius in miles around the site"
+    ),
 ):
-    """London planning applications mentioning the sport, via PlanIt."""
+    """UK planning applications mentioning the sport, via PlanIt.
+
+    Without coordinates the summary covers London planning authorities, which
+    is what the London market reports use. Supplying latitude and longitude
+    searches the same UK-wide registers around that point, so a site outside
+    London still gets nearby applications and constraints.
+    """
     if topic not in PLANNING_TOPICS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported planning topic: {topic!r}. Must be one of {list(PLANNING_TOPICS)}",
         )
-    summary = planning_summary(topic)
+    if (latitude is None) != (longitude is None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="latitude and longitude must be supplied together",
+        )
+    summary = planning_summary(topic, latitude, longitude, radius)
     if summary is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Planning data is temporarily unavailable")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Planning data is temporarily unavailable",
+            headers={"Retry-After": "60"},
+        )
     response.headers["Cache-Control"] = _CACHE_HEADER
     return summary
 
 
 @router.get("/{sport}")
-def market_report(response: Response, sport: SportscannerSupportedSports = Path(...), borough: str = Query(None, max_length=64)):
+def market_report(
+    response: Response,
+    sport: SportscannerSupportedSports = Path(...),
+    borough: str = Query(None, max_length=64),
+):
     """London market report for one sport."""
     response.headers["Cache-Control"] = _CACHE_HEADER
     if borough and not borough_name(borough):
@@ -90,7 +118,9 @@ def site_constraints(
     try:
         return planner.constraints(latitude, longitude)
     except Exception:
-        raise HTTPException(status_code=503, detail="Planning Data is temporarily unavailable")
+        raise HTTPException(
+            status_code=503, detail="Planning Data is temporarily unavailable"
+        )
 
 
 @router.get("/{sport}/venues/{composite_key}")
@@ -102,6 +132,9 @@ def venue_report(
     """Benchmarks, demand profile and local competition for one venue."""
     report = service.venue_report(sport.value, composite_key)
     if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Venue not found for this sport")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Venue not found for this sport",
+        )
     response.headers["Cache-Control"] = _CACHE_HEADER
     return report

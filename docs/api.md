@@ -51,9 +51,14 @@ public market reports built from `slot_history`. Definitions live in
 - Boroughs come from postcodes.io bulk reverse geocoding (cached 24h);
   populations from `insights/data/london_borough_population.json` (ONS via Nomis,
   refresh yearly from the URL stored in the file).
-- `/insights/planning` reads PlanIt's anonymous API (London authorities,
-  description keyword search), deduplicates double registrations and caches for
-  12h, serving the last good copy if PlanIt is down.
+- `/insights/planning` reads PlanIt's anonymous API (description keyword
+  search). Without coordinates it searches the London authorities, matching the
+  London market reports. With `latitude`, `longitude` and `radius` it resolves
+  the planning authorities touching the radius through PlanIt's area endpoint
+  and searches each register by name, so a site anywhere in the UK gets local
+  applications. Results are deduplicated and cached for 12h per scope, serving
+  the last good copy if PlanIt is down. A multi-council scope sets `partial`
+  and `failed_authorities` when one register cannot be read.
 - Venue rows also carry `address`, `website` (the booking platform's site), `min_price_per_hour`/`max_price_per_hour` (listed range), `avg_booked_price` (listed price of the hours actually booked) and `est_yearly_value` (28-day run-rate x 365/28, not seasonally adjusted); the summary carries market `est_yearly_value` and `avg_booked_price`. Heatmap cells include `booking_value` (average per occurrence) and `avg_price`.
 - `/insights/planning` adds `top_agents`, `courts_by_setting`, `approved_courts_by_year`, and per application `documents_url`, `decided_by`, `agent` and `applicant`. Agent and applicant are only set when the register names an organisation (`_organisation()`); private individuals are dropped, never republished.
 - Market and catchment reports include `opportunity`, a 0-100 heuristic for
@@ -64,8 +69,8 @@ public market reports built from `slot_history`. Definitions live in
   100 x (1 - area median price / London median price). The score is the
   weighted mean rounded to an integer. If any input is missing, `score` is
   null, `components` is empty and `reason` names what is missing. The market
-  basis is `{area} · all venues`; catchment uses `London · {radius} miles` and
-  medians across nearby venues.
+  basis is `{area} · all venues`; catchment uses `{radius} miles` and medians
+  across nearby venues.
 - Market and catchment reports include `capacity`, comparing observed public
   courts with a target of one court per 10,000 people (10 per 100k):
   `courts`, `target_courts`, `headroom_courts` (negative when observed supply
@@ -97,16 +102,18 @@ public market reports built from `slot_history`. Definitions live in
   validated from 7 to 400. The response has a Pydantic contract in
   `api/routers/insights/schemas.py`.
 - `GET /insights/{sport}/catchment?latitude=...&longitude=...&radius=3`: nearby
-  competitors, local benchmarks and ONS London neighbourhood population/age
-  estimates. Radius is in miles, from 0.5 to 20. Population uses 2021 LSOA
-  population-weighted centroids and mid-2024 estimates bundled with the package.
-  Median age, mean income and the MHCLG English Indices of Deprivation 2025
-  decile use the separate small-area reference in
-  `insights/data/london_lsoa_demographics.json`. The response groups residents by
+  competitors, local benchmarks and ONS England and Wales neighbourhood
+  population/age estimates. Radius is in miles, from 0.5 to 20. Population uses
+  2021 LSOA population-weighted centroids and mid-2024 estimates bundled with the
+  package. Median age, mean income and the MHCLG English Indices of Deprivation
+  2025 decile use the separate small-area reference in
+  `insights/data/ew_lsoa_demographics.json`. The response groups residents by
   deprivation decile and by MSOA mean-income band, and carries the same figures
   for all of London in `demographics.london` for comparison. Each `areas` row also
-  carries `mean_income` and `imd_decile` for map shading. Refresh both references
-  with `python -m sportscanner.insights.refresh_demographics`.
+  carries `mean_income` and `imd_decile` for map shading. Scottish and Northern
+  Irish pins return no small areas and `demographics.coverage` says why.
+  Refresh both references with
+  `python -m sportscanner.insights.refresh_demographics`.
 - `GET /insights/{sport}/constraints?latitude=...&longitude=...`: public government
   Planning Data point intersections for green belt, flood risk, conservation areas
   and Article 4 directions. England coverage; external failures return 503.

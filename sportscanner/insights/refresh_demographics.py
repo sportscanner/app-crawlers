@@ -1,4 +1,4 @@
-"""Refresh bundled London LSOA population, median age and income references.
+"""Refresh bundled England and Wales LSOA population, median age and income references.
 
 Run from app-crawlers: python -m sportscanner.insights.refresh_demographics
 
@@ -39,9 +39,19 @@ LOOKUP_URL = "https://open-geography-portalx-ons.hub.arcgis.com/api/download/v1/
 IMD_URL = "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv"
 LICENCE = "Open Government Licence v3.0"
 DATA_DIR = Path(__file__).resolve().parent / "data"
-POPULATION_TARGET = DATA_DIR / "london_lsoa_population.json"
-DEMOGRAPHICS_TARGET = DATA_DIR / "london_lsoa_demographics.json"
-AGE_GROUPS = {200: "population", 201: "age_0_15", 250: "age_16_24", 207: "age_25_49", 208: "age_50_64", 209: "age_65_plus"}
+POPULATION_TARGET = DATA_DIR / "ew_lsoa_population.json"
+DEMOGRAPHICS_TARGET = DATA_DIR / "ew_lsoa_demographics.json"
+# Nomis caps anonymous responses at 25,000 rows, so page through the full
+# England and Wales LSOA set rather than relying on the London-sized default.
+_NOMIS_PAGE = 25_000
+AGE_GROUPS = {
+    200: "population",
+    201: "age_0_15",
+    250: "age_16_24",
+    207: "age_25_49",
+    208: "age_50_64",
+    209: "age_65_plus",
+}
 
 _XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _REL_NS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
@@ -63,7 +73,10 @@ def _xlsx_rows(data, sheet_name):
         shared = []
         if "xl/sharedStrings.xml" in workbook.namelist():
             root = ET.fromstring(workbook.read("xl/sharedStrings.xml"))
-            shared = ["".join(t.text or "" for t in si.iter(f"{_XLSX_NS}t")) for si in root.findall(f"{_XLSX_NS}si")]
+            shared = [
+                "".join(t.text or "" for t in si.iter(f"{_XLSX_NS}t"))
+                for si in root.findall(f"{_XLSX_NS}si")
+            ]
 
         book = ET.fromstring(workbook.read("xl/workbook.xml"))
         rels = ET.fromstring(workbook.read("xl/_rels/workbook.xml.rels"))
@@ -75,7 +88,11 @@ def _xlsx_rows(data, sheet_name):
                 break
         if target is None:
             raise KeyError(f"Worksheet not found: {sheet_name!r}")
-        path = target.lstrip("/") if target.startswith("/") else target if target.startswith("xl/") else f"xl/{target}"
+        path = (
+            target.lstrip("/")
+            if target.startswith("/")
+            else target if target.startswith("xl/") else f"xl/{target}"
+        )
         root = ET.fromstring(workbook.read(path))
 
         rows = []
@@ -91,7 +108,11 @@ def _xlsx_rows(data, sheet_name):
                     cells[index] = shared[int(value.text)]
                 elif kind == "inlineStr":
                     inline = cell.find(f"{_XLSX_NS}is")
-                    cells[index] = "".join(t.text or "" for t in inline.iter(f"{_XLSX_NS}t")) if inline is not None else None
+                    cells[index] = (
+                        "".join(t.text or "" for t in inline.iter(f"{_XLSX_NS}t"))
+                        if inline is not None
+                        else None
+                    )
                 else:
                     cells[index] = value.text if value is not None else None
             if cells:
@@ -106,7 +127,7 @@ def _column(rows, required, prefix=None):
     index = names.index(required)
     if prefix:
         index = next(i for i, name in enumerate(names) if name.startswith(prefix))
-    return rows[header_index + 1:], names, index
+    return rows[header_index + 1 :], names, index
 
 
 def _load_median_age(client):
@@ -114,7 +135,9 @@ def _load_median_age(client):
     response.raise_for_status()
     rows = _xlsx_rows(response.content, "Mid-2021 & 2022 LSOA")
     body, names, code_index = _column(rows, "LSOA21CD")
-    age_index = next(i for i, name in enumerate(names) if name.startswith("median aged 2022"))
+    age_index = next(
+        i for i, name in enumerate(names) if name.startswith("median aged 2022")
+    )
     return {
         str(row[code_index]).strip(): round(float(row[age_index]), 2)
         for row in body
@@ -128,13 +151,16 @@ def _load_income(client):
     rows = _xlsx_rows(response.content, "Net income before housing costs")
     body, names, code_index = _column(rows, "MSOA code")
     income_index = next(
-        i for i, name in enumerate(names)
+        i
+        for i, name in enumerate(names)
         if name.startswith("Disposable (net) annual income before housing costs")
     )
     return {
         str(row[code_index]).strip(): round(float(row[income_index]))
         for row in body
-        if len(row) > max(code_index, income_index) and row[code_index] and row[income_index]
+        if len(row) > max(code_index, income_index)
+        and row[code_index]
+        and row[income_index]
     }
 
 
@@ -151,8 +177,16 @@ def _load_imd(client):
     response = client.get(IMD_URL)
     response.raise_for_status()
     rows = csv.DictReader(io.StringIO(response.content.decode("utf-8-sig")))
-    decile = next(name for name in rows.fieldnames if name.startswith("Index of Multiple Deprivation (IMD) Decile"))
-    return {row["LSOA code (2021)"].strip(): int(row[decile]) for row in rows if row.get(decile)}
+    decile = next(
+        name
+        for name in rows.fieldnames
+        if name.startswith("Index of Multiple Deprivation (IMD) Decile")
+    )
+    return {
+        row["LSOA code (2021)"].strip(): int(row[decile])
+        for row in rows
+        if row.get(decile)
+    }
 
 
 DEPRIVATION_META = {
@@ -167,26 +201,73 @@ DEPRIVATION_META = {
 def main():
     people = {}
     with httpx.Client(timeout=120, follow_redirects=True) as client:
-        # Sequential requests respect Nomis concurrency guidance and keep every
-        # query below the anonymous cell limit.
+        # The London baseline is the LSOAs in the London geography hierarchy,
+        # kept separately so the comparison stays stable when the wider
+        # England and Wales reference is refreshed.
+        london_response = client.get(
+            POPULATION_URL,
+            params={
+                "geography": "2013265927TYPE151",
+                "date": "2024",
+                "gender": 0,
+                "c_age": 200,
+                "measures": 20100,
+                "select": "geography_code",
+                "RecordLimit": _NOMIS_PAGE,
+            },
+        )
+        london_response.raise_for_status()
+        london_codes = sorted(
+            row["GEOGRAPHY_CODE"]
+            for row in csv.DictReader(
+                io.StringIO(london_response.text.lstrip("\ufeff"))
+            )
+        )
+
+        # Sequential requests respect Nomis concurrency guidance. Typed
+        # geography (TYPE151) is every LSOA in England and Wales, not only the
+        # London subset the original reference used.
         for age, label in AGE_GROUPS.items():
-            response = client.get(POPULATION_URL, params={
-                "geography": "2013265927TYPE151", "date": "2024", "gender": 0,
-                "c_age": age, "measures": 20100,
-                "select": "geography_code,geography_name,obs_value,date_name",
-            })
-            response.raise_for_status()
-            for row in csv.DictReader(io.StringIO(response.text.lstrip("\ufeff"))):
-                entry = people.setdefault(row["GEOGRAPHY_CODE"], {"name": row["GEOGRAPHY_NAME"]})
-                entry[label] = int(float(row["OBS_VALUE"]))
+            offset = 0
+            while True:
+                response = client.get(
+                    POPULATION_URL,
+                    params={
+                        "geography": "TYPE151",
+                        "date": "2024",
+                        "gender": 0,
+                        "c_age": age,
+                        "measures": 20100,
+                        "select": "geography_code,geography_name,obs_value,date_name",
+                        "RecordOffset": offset,
+                        "RecordLimit": _NOMIS_PAGE,
+                    },
+                )
+                response.raise_for_status()
+                rows = list(csv.DictReader(io.StringIO(response.text.lstrip("\ufeff"))))
+                for row in rows:
+                    entry = people.setdefault(
+                        row["GEOGRAPHY_CODE"], {"name": row["GEOGRAPHY_NAME"]}
+                    )
+                    entry[label] = int(float(row["OBS_VALUE"]))
+                if len(rows) < _NOMIS_PAGE:
+                    break
+                offset += len(rows)
         offset = 0
         while True:
-            response = client.get(CENTROID_URL, params={
-                "where": "1=1", "geometry": "-0.65,51.25,0.35,51.75",
-                "geometryType": "esriGeometryEnvelope", "inSR": 4326, "outSR": 4326,
-                "outFields": "LSOA21CD", "f": "json", "resultOffset": offset,
-                "resultRecordCount": 2000, "orderByFields": "FID",
-            })
+            response = client.get(
+                CENTROID_URL,
+                params={
+                    "where": "1=1",
+                    "inSR": 4326,
+                    "outSR": 4326,
+                    "outFields": "LSOA21CD",
+                    "f": "json",
+                    "resultOffset": offset,
+                    "resultRecordCount": 2000,
+                    "orderByFields": "FID",
+                },
+            )
             response.raise_for_status()
             data = response.json()
             if "error" in data:
@@ -195,7 +276,10 @@ def main():
             for feature in features:
                 code = feature["attributes"]["LSOA21CD"]
                 if code in people:
-                    people[code].update(latitude=round(feature["geometry"]["y"], 6), longitude=round(feature["geometry"]["x"], 6))
+                    people[code].update(
+                        latitude=round(feature["geometry"]["y"], 6),
+                        longitude=round(feature["geometry"]["x"], 6),
+                    )
             if not data.get("exceededTransferLimit"):
                 break
             offset += len(features)
@@ -205,18 +289,34 @@ def main():
         lookup = _load_lsoa_msoa(client)
         imd = _load_imd(client)
 
-    missing = [code for code, row in people.items() if "latitude" not in row or any(g not in row for g in AGE_GROUPS.values())]
+    missing = [
+        code
+        for code, row in people.items()
+        if "latitude" not in row or any(g not in row for g in AGE_GROUPS.values())
+    ]
     if missing:
-        raise RuntimeError(f"Incomplete population reference: {len(missing)} missing centroids or age counts")
+        raise RuntimeError(
+            f"Incomplete population reference: {len(missing)} missing centroids or age counts"
+        )
     missing_demographics = [
-        code for code in people
-        if code not in median_age or lookup.get(code) not in incomes or code not in imd
+        code for code in people if code not in median_age or code not in lookup
     ]
     if missing_demographics:
-        raise RuntimeError(f"Incomplete demographics reference: {len(missing_demographics)} missing median ages, incomes or deprivation deciles")
+        raise RuntimeError(
+            f"Incomplete demographics reference: {len(missing_demographics)} missing median ages or MSOA links"
+        )
+    # Welsh LSOAs have no English IMD decile, and a handful of MSOAs suppress
+    # income. Keep those areas with null fields rather than dropping them.
+    missing_imd = [code for code in people if code not in imd]
+    if any(not code.startswith("W") for code in missing_imd):
+        raise RuntimeError(
+            f"Incomplete deprivation reference: {len(missing_imd)} LSOAs missing an IMD decile"
+        )
 
     population = {
-        "year": 2024, "geography": "London LSOAs (2021 boundaries)",
+        "year": 2024,
+        "geography": "England and Wales LSOAs (2021 boundaries)",
+        "london_codes": london_codes,
         "source": "ONS mid-2024 small area population estimates via Nomis NM_2014_1; ONS December 2021 population-weighted LSOA centroids V4",
         "source_urls": [POPULATION_URL, CENTROID_URL],
         "licence": "Contains National Statistics data and OS data, Crown copyright and database right. Open Government Licence v3.0.",
@@ -245,16 +345,22 @@ def main():
                 "code": code,
                 "msoa_code": lookup[code],
                 "median_age": median_age[code],
-                "mean_income": incomes[lookup[code]],
-                "imd_decile": imd[code],
+                "mean_income": incomes.get(lookup[code]),
+                "imd_decile": imd.get(code),
             }
             for code in sorted(people)
         ],
     }
     POPULATION_TARGET.write_text(json.dumps(population, separators=(",", ":")) + "\n")
-    DEMOGRAPHICS_TARGET.write_text(json.dumps(demographics, separators=(",", ":")) + "\n")
-    print(f"Wrote {len(people)} London LSOAs, population {sum(r['population'] for r in people.values()):,}")
-    print(f"Wrote median age, mean income and deprivation decile for {len(demographics['areas'])} LSOAs")
+    DEMOGRAPHICS_TARGET.write_text(
+        json.dumps(demographics, separators=(",", ":")) + "\n"
+    )
+    print(
+        f"Wrote {len(people)} England and Wales LSOAs, population {sum(r['population'] for r in people.values()):,}"
+    )
+    print(
+        f"Wrote median age, mean income and deprivation decile for {len(demographics['areas'])} LSOAs"
+    )
 
 
 if __name__ == "__main__":
