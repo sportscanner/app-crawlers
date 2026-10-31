@@ -134,10 +134,17 @@ class BetterLeisureResponseParserStrategy(AbstractResponseParserStrategy):
                             slot.ends_at.format_24_hour, "%H:%M"
                         ).time(),
                         date=raw_response.requestMetadata.metadata.date,
+                        # Better returns `price: null` (or a blank
+                        # `formatted_amount` for early-morning sessions at
+                        # some venues). That means "no price quoted", not
+                        # "free": fabricating £0.00 made the cheapest-first
+                        # search show "from £0.00". Leave it blank so
+                        # fill_estimated_prices() derives a venue/sport
+                        # estimate and marks it with "~" instead.
                         price=(
                             slot.price.formatted_amount
                             if (slot.price and slot.price.formatted_amount)
-                            else "£0.00"
+                            else ""
                         ),
                         spaces=slot.spaces,
                         composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
