@@ -183,8 +183,8 @@ SLUG_TO_TENANT_ID: Dict[str, str] = {
     "ezeepadel-weybridge": "1eb90d21-84ba-4f46-b523-61dffef0739f",
     # Epping Golf Course: 1 padel court, CM16.
     "epping-golf-course": "b4f2b7d2-b93d-4117-8483-4b6162b95302",
-    # UK-wide additions (October 2026): venues resolved from the
-    # UK public inventory. tenant_ids read from each venue's public
+    # UK-wide additions (October 2026): venues resolved from the public
+    # UK padel inventory. tenant_ids read from each venue's public
     # playtomic.com/clubs/{slug} page and verified anonymously against the
     # availability API for a live date (423/432 returned court resources).
     "22-padel": "1d36c4dc-4114-475a-921c-bb1da58a5074",

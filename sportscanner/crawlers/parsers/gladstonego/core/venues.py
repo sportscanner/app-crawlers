@@ -1,4 +1,4 @@
-"""Gladstone Go tenant registry for the padel venues added from the UK public inventory.
+"""Gladstone Go tenant registry for the padel venues added from the public padel inventory.
 
 Gladstone Go is the same booking engine as Mytime Active and Vision RCL, but
 each operator is a separate tenant host. A venue needs the tenant host, the
