@@ -32,7 +32,7 @@ jobs:
 
       - name: Set up Docker and log in to GitHub Container Registry
         run: |
-          echo ${{ secrets.GHCR }} | docker login ghcr.io -u yasir-khalid --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Write Firebase JSON secret to file
         run: |
@@ -58,4 +58,8 @@ jobs:
     steps:
       - name: Update heartbeat monitor
         run: |
-          curl ${{ secrets.CRAWLER_CRONJOB_HEARTBEAT }}
+          if [ -n "${{ secrets.CRAWLER_CRONJOB_HEARTBEAT }}" ]; then
+            curl -fsS "${{ secrets.CRAWLER_CRONJOB_HEARTBEAT }}"
+          else
+            echo "CRAWLER_CRONJOB_HEARTBEAT not set"
+          fi
