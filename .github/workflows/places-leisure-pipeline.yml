@@ -21,6 +21,9 @@ on:
 jobs:
   crawl:
     name: "places leisure crawler"
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     timeout-minutes: 90
     concurrency:

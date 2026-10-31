@@ -17,6 +17,9 @@ on:
 jobs:
   crawl:
     name: "${{ matrix.sport }} crawler"
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
