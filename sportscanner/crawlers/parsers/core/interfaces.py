@@ -123,6 +123,11 @@ class BaseCrawler(ABC):
         # carries state across runs).
         self._circuit_breaker: Optional[_CircuitBreaker] = None
 
+    # Providers whose origin intermittently 500s on an otherwise valid request
+    # (Gladstone Go tenants) can opt into a couple of retries. Default: none.
+    retry_5xx_attempts: int = 0
+    retry_5xx_backoff_seconds: float = 0.6
+
     # ------------------------------------------------------------------ hooks
     def _auth_token(self) -> Optional[str]:
         """Token threaded into `generate_request_details`. Default: none."""
@@ -143,6 +148,28 @@ class BaseCrawler(ABC):
         return []
 
     # -------------------------------------------------------------- fetch loop
+    async def _get_with_5xx_retry(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        headers,
+    ) -> httpx.Response:
+        """GET once, retrying only 5xx responses (opt-in per provider).
+
+        4xx responses are returned immediately so the existing fallback-url
+        handling still sees them. Connection-level errors are already retried
+        inside the httpx client.
+        """
+        attempts = max(1, self.retry_5xx_attempts + 1)
+        for attempt in range(attempts):
+            response = await client.get(url, headers=headers)
+            if 500 <= response.status_code < 600 and attempt < attempts - 1:
+                await asyncio.sleep(self.retry_5xx_backoff_seconds * (attempt + 1))
+                continue
+            response.raise_for_status()
+            return response
+        raise RuntimeError("unreachable")
+
     async def _fetch_and_transform(
             self,
             client: httpx.AsyncClient,
@@ -185,7 +212,9 @@ class BaseCrawler(ABC):
         saw_client_error = False
         for attempt_index, attempt_url in enumerate(urls_to_try):
             try:
-                response = await client.get(attempt_url, headers=request_details.headers)
+                response = await self._get_with_5xx_retry(
+                    client, attempt_url, request_details.headers
+                )
                 response.raise_for_status()
                 record_http_status(
                     response.status_code,

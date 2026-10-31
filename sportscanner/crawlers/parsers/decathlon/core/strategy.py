@@ -40,6 +40,7 @@ class DecathlonResponseParserStrategy(AbstractResponseParserStrategy):
                     date=activity.startDate.astimezone(uk_zone).date(),
                     price=f"£{activity.offers[0].price}" if activity.offers else "0.0",
                     spaces=activity.remainingAttendeeCapacity,
+                    spaces_unit="place",
                     composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
                     last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
                     booking_url=_booking_url

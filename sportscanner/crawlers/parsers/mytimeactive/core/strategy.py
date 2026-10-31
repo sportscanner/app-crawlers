@@ -41,7 +41,9 @@ BADMINTON_ACTIVITY_IDS: Dict[str, str] = {
 }
 
 SQUASH_ACTIVITY_IDS: Dict[str, str] = {
-    "WAL": "WALACT0009",
+    # WALACT0009 sits in Gladstone's "ZDONOTUSE" group and 500s on most
+    # dates. The live squash activity is WALACT0014 (group WALSQ).
+    "WAL": "WALACT0014",
 }
 
 USER_AGENT = (
@@ -261,6 +263,11 @@ class GladstoneGoResponseParserStrategy(AbstractResponseParserStrategy):
 
 class MytimeActiveCrawler(BaseCrawler):
     """Base crawler for Mytime Active venues managing the anonymous session JWT."""
+
+    # Gladstone Go intermittently 500s on a valid activity/date and succeeds on
+    # an immediate retry (confirmed 2026-10-30 on WALACT0014 and the Stapleford
+    # peak/off-peak activities).
+    retry_5xx_attempts = 2
 
     def __init__(
         self,

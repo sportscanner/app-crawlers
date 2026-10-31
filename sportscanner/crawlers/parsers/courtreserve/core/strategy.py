@@ -183,6 +183,7 @@ def parse_calendar_events(
                 date=start_local.date(),
                 price="N/A",
                 spaces=spaces_from_event(event),
+                spaces_unit="place",
                 capacity=event.MaxMembersOnEvent,
                 composite_key=venue.composite_key,
                 last_refreshed=datetime.now(),

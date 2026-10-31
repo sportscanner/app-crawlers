@@ -69,9 +69,12 @@ class MatchpointPadelCrawler(BaseCrawler):
             referer=grid_url,
         )
         if not isinstance(raw_payload, dict) or not raw_payload.get("Columnas"):
-            logging.warning(
-                f"Matchpoint({host}): empty cuadro for {fetch_date} - possibly "
-                f"outside the bookable window or session expired"
+            # Tenants expose different horizons (observed: Bromley 5 days from
+            # today, PadelStars 6, the rest 10+). Asking past the horizon returns
+            # an empty grid, which is expected rather than a failure.
+            logging.debug(
+                f"Matchpoint({host}): empty cuadro for {fetch_date} - outside "
+                f"the bookable window or no inventory"
             )
             return []
         request_details = RequestDetailsWithMetadata(

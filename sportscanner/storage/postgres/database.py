@@ -5,8 +5,8 @@ from zoneinfo import ZoneInfo
 
 import sqlmodel
 from sportscanner.logger import logging
-from sqlalchemy import Engine, text, func, update
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import Engine, String, bindparam, text, func
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 import hashlib
 
 import sportscanner.storage.postgres.tables
@@ -164,6 +164,9 @@ def truncate_and_reload_all(slots_from_all_venues, TableForLoading: sqlmodel.mai
 
 
 
+_UPSERT_CHUNK_SIZE = 5000
+
+
 @timeit
 def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.main.SQLModelMetaclass):
     """Bulk upsert slots into a table.
@@ -177,6 +180,12 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
     app-side read-modify-write on every pipeline run. Marking stale slots is now a
     single indexed UPDATE (WHERE composite_key/date match AND uid wasn't refreshed),
     so nothing is read back from the DB at all.
+
+    Large providers are written in bounded chunks inside one transaction. A national
+    Playtomic padel batch is ~130k rows; a single INSERT that size is a multi-megabyte
+    statement and Aiven drops the connection mid-flight (SSL SYSCALL EOF). The stale
+    UPDATE stages incoming uids in a temp table for the same reason: a NOT IN list of
+    130k values is the same failure mode.
     """
     if not slots_from_all_venues:
         logging.warning("No slots provided for insert; skipping.")
@@ -211,6 +220,7 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
             date=slots.date,
             price=slots.price,
             spaces=slots.spaces,
+            spaces_unit=slots.spaces_unit,
             last_refreshed=slots.last_refreshed,
             booking_url=slots.booking_url,
             starts_at=datetime.combine(slots.date, slots.starting_time),
@@ -229,25 +239,58 @@ def insert_records_to_table(slots_from_all_venues, TableForLoading: sqlmodel.mai
     incoming_uids = list(uid_to_slots.keys())
 
     with Session(engine) as session:
-        stmt = insert(TableForLoading).values(all_data)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=['uid'],
-            set_={c: stmt.excluded[c] for c in all_data[0] if c != 'uid'}
+        for start in range(0, len(all_data), _UPSERT_CHUNK_SIZE):
+            chunk = all_data[start : start + _UPSERT_CHUNK_SIZE]
+            stmt = insert(TableForLoading).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["uid"],
+                set_={c: stmt.excluded[c] for c in chunk[0] if c != "uid"},
+            )
+            session.exec(stmt)
+
+        # Stage the incoming uids so the stale-mark UPDATE does not carry a
+        # 130k-value NOT IN list.
+        session.execute(
+            text(
+                "CREATE TEMP TABLE IF NOT EXISTS incoming_uid "
+                "(uid text PRIMARY KEY) ON COMMIT DROP"
+            )
         )
-        session.exec(stmt)
+        session.execute(text("TRUNCATE incoming_uid"))
+        session.execute(
+            text("INSERT INTO incoming_uid (uid) SELECT unnest(:uids)").bindparams(
+                bindparam("uids", type_=ARRAY(String))
+            ),
+            {"uids": incoming_uids},
+        )
 
         # Any row already in the DB for these composite_keys/dates that wasn't just
         # refreshed above no longer appears in the source API response — mark it
         # unavailable rather than leaving stale availability showing.
-        mark_stale_stmt = (
-            update(TableForLoading)
-            .where(TableForLoading.composite_key.in_(composite_keys))
-            .where(TableForLoading.date.in_(dates))
-            .where(TableForLoading.spaces != 0)
-            .where(TableForLoading.uid.not_in(incoming_uids))
-            .values(spaces=0, last_refreshed=now)
+        mark_stale_stmt = text(
+            f"""
+            UPDATE {TableForLoading.__tablename__}
+            SET spaces = 0, last_refreshed = :now
+            WHERE composite_key IN :composite_keys
+              AND date IN :slot_dates
+              AND spaces != 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM incoming_uid i
+                  WHERE i.uid = {TableForLoading.__tablename__}.uid
+              )
+            """
+        ).bindparams(
+            bindparam("composite_keys", expanding=True),
+            bindparam("slot_dates", expanding=True),
         )
-        stale_result = session.exec(mark_stale_stmt)
+        stale_result = session.execute(
+            mark_stale_stmt,
+            {
+                "now": now,
+                "composite_keys": list(composite_keys),
+                "slot_dates": list(dates),
+            },
+        )
 
         session.commit()
         logging.success(
@@ -296,6 +339,18 @@ def create_db_and_tables(engine):
             CrawlSourceStatus.__table__,
         ]
     )
+
+    # create_all does not add columns to existing tables, so migrate the
+    # court/place discriminator explicitly for older databases.
+    with engine.connect() as conn:
+        for table in (
+            "badminton", "squash", "pickleball", "padel", "tennis", "slot_history",
+        ):
+            conn.execute(text(
+                f"ALTER TABLE public.{table} "
+                "ADD COLUMN IF NOT EXISTS spaces_unit varchar(8) NOT NULL DEFAULT 'court'"
+            ))
+        conn.commit()
 
     with engine.connect() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
@@ -456,6 +511,10 @@ def ensure_slot_history_table(engine):
             DailySupplySnapshot.__table__.create(bind=engine, checkfirst=True)
             with engine.connect() as conn:
                 conn.execute(text(
+                    "ALTER TABLE public.slot_history "
+                    "ADD COLUMN IF NOT EXISTS spaces_unit varchar(8) NOT NULL DEFAULT 'court'"
+                ))
+                conn.execute(text(
                     "CREATE INDEX IF NOT EXISTS ix_slot_history_sport_starts_at "
                     "ON public.slot_history (sport, starts_at)"
                 ))
@@ -498,7 +557,7 @@ def snapshot_slot_history(TableForLoading: sqlmodel.main.SQLModelMetaclass, refr
         INSERT INTO public.slot_history AS h (
             sport, composite_key, date, starting_time, ending_time, starts_at,
             duration_min, price, price_gbp, first_spaces, last_spaces, max_spaces,
-            capacity, indoor, first_seen, last_seen, observations
+            spaces_unit, capacity, indoor, first_seen, last_seen, observations
         )
         SELECT
             :sport, composite_key, date, starting_time, ending_time,
@@ -509,7 +568,8 @@ def snapshot_slot_history(TableForLoading: sqlmodel.main.SQLModelMetaclass, refr
             -- sometimes from a sport-wide default; keep it out of market figures.
             CASE WHEN price ~ '^[£ ]*[0-9]+([.][0-9]+)?[ ]*$'
                  THEN regexp_replace(price, '[£ ]', '', 'g')::numeric END,
-            spaces, spaces, spaces, capacity, {indoor_expr}, :now_london, :now_london, 1
+            spaces, spaces, spaces, spaces_unit, capacity, {indoor_expr},
+            :now_london, :now_london, 1
         FROM public.{sport}
         WHERE last_refreshed >= :refreshed_since
           AND (date + starting_time) > :now_london
@@ -522,6 +582,7 @@ def snapshot_slot_history(TableForLoading: sqlmodel.main.SQLModelMetaclass, refr
                          THEN EXCLUDED.price ELSE h.price END,
             price_gbp = CASE WHEN EXCLUDED.price_gbp > 0 OR (EXCLUDED.price_gbp = 0 AND EXCLUDED.last_spaces > 0)
                              THEN EXCLUDED.price_gbp ELSE h.price_gbp END,
+            spaces_unit = EXCLUDED.spaces_unit,
             capacity = COALESCE(EXCLUDED.capacity, h.capacity),
             indoor = COALESCE(EXCLUDED.indoor, h.indoor),
             last_seen = EXCLUDED.last_seen,
@@ -543,6 +604,7 @@ def snapshot_slot_history(TableForLoading: sqlmodel.main.SQLModelMetaclass, refr
             FROM public.{sport}
             WHERE last_refreshed >= :refreshed_since
               AND (date + starting_time) > :now_london
+              AND spaces_unit = 'court'
             GROUP BY composite_key
             ON CONFLICT (sport, composite_key, observed_on) DO UPDATE
             SET courts = GREATEST(s.courts, EXCLUDED.courts), observed_at = EXCLUDED.observed_at
@@ -565,6 +627,7 @@ def snapshot_slot_history(TableForLoading: sqlmodel.main.SQLModelMetaclass, refr
                          THEN regexp_replace(price, '[£ ]', '', 'g')::numeric END AS quote
                 FROM public.{sport}
                 WHERE last_refreshed >= :refreshed_since AND spaces > 0
+                  AND spaces_unit = 'court'
                   AND date > CAST(:now_london AS date)
                   AND date <= CAST(:now_london AS date) + 7
             ) quotes

@@ -1,6 +1,7 @@
 import re
+from collections import defaultdict
 from datetime import datetime, time as time_cls, date as date_cls
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 
@@ -151,7 +152,11 @@ class StratfordPadelResponseParserStrategy(AbstractResponseParserStrategy):
         if not cuadro.Columnas:
             return []
         slot_date: date_cls = raw_response.requestMetadata.metadata.date
-        unified_schema_output: List[UnifiedParserSchema] = []
+        # One ObtenerCuadro payload has one column per court. Emitting a row
+        # per court and letting the uid upsert dedupe would collapse every
+        # multi-court free interval to spaces=1. Aggregate the free intervals
+        # across courts instead, so spaces is the number of free courts.
+        groups: Dict[Tuple[time_cls, time_cls], int] = defaultdict(int)
         for court in cuadro.Columnas:
             busy: List[Tuple[time_cls, time_cls]] = []
             for ocupacion in court.Ocupaciones:
@@ -160,33 +165,26 @@ class StratfordPadelResponseParserStrategy(AbstractResponseParserStrategy):
                 if start is None or end is None or start >= end:
                     continue
                 busy.append((start, end))
-                unified_schema_output.append(
-                    UnifiedParserSchema(
-                        category=raw_response.requestMetadata.metadata.category,
-                        starting_time=start,
-                        ending_time=end,
-                        date=slot_date,
-                        price="",
-                        spaces=0,
-                        composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
-                        last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
-                        booking_url=raw_response.requestMetadata.metadata.booking_url,
-                    )
-                )
+                # Keep the busy row (spaces=0), but do not add to the count.
+                groups[(start, end)] += 0
             for start, end in _free_intervals_within_opening_hours(
                 _parse_hhmm(cuadro.StrHoraInicio), _parse_hhmm(cuadro.StrHoraFin), busy
             ):
-                unified_schema_output.append(
-                    UnifiedParserSchema(
-                        category=raw_response.requestMetadata.metadata.category,
-                        starting_time=start,
-                        ending_time=end,
-                        date=slot_date,
-                        price="",
-                        spaces=1,
-                        composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
-                        last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
-                        booking_url=raw_response.requestMetadata.metadata.booking_url,
-                    )
+                groups[(start, end)] += 1
+
+        unified_schema_output: List[UnifiedParserSchema] = []
+        for (start, end), spaces in sorted(groups.items()):
+            unified_schema_output.append(
+                UnifiedParserSchema(
+                    category=raw_response.requestMetadata.metadata.category,
+                    starting_time=start,
+                    ending_time=end,
+                    date=slot_date,
+                    price="",
+                    spaces=spaces,
+                    composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
+                    last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
+                    booking_url=raw_response.requestMetadata.metadata.booking_url,
                 )
+            )
         return unified_schema_output

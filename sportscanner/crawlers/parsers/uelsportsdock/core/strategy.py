@@ -61,6 +61,7 @@ class UELSportsDockResponseParserStrategy(AbstractResponseParserStrategy):
                         ).date(),
                         price="£" + str(slot.Price),
                         spaces=slot.AvailablePlaces,
+                        spaces_unit="place",
                         composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
                         last_refreshed=raw_response.requestMetadata.metadata.last_refreshed,
                         booking_url=raw_response.requestMetadata.metadata.booking_url,

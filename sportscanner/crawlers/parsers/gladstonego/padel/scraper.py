@@ -38,6 +38,9 @@ GLADSTONE_ORGANISATION_WEBSITE = "https://www.gladstonego.cloud"
 
 
 class GladstoneGoPadelCrawler(BaseCrawler):
+    # The Gladstone API intermittently 500s on a valid activity/date and
+    # succeeds on an immediate retry (confirmed 2026-10-30).
+    retry_5xx_attempts = 2
     def __init__(self):
         super().__init__(
             request_strategy=GladstoneGoPadelRequestStrategy(),

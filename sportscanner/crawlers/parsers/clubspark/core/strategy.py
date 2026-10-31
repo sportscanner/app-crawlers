@@ -16,8 +16,9 @@ silently rather than falling back to anything useful.
 """
 
 import re
+from collections import defaultdict
 from datetime import date, datetime, timedelta
-from typing import Any, Coroutine, List, Optional
+from typing import Any, Coroutine, Dict, List, Optional
 
 from sportscanner.crawlers.helpers import override
 from sportscanner.crawlers.parsers.clubspark.core.schema import (
@@ -157,7 +158,13 @@ class ClubSparkResponseParserStrategy(AbstractResponseParserStrategy):
             return []
 
         metadata = raw_response.requestMetadata.metadata
-        results: List[UnifiedParserSchema] = []
+        # GetVenueSessions returns one session block per court/resource. Emitting
+        # one row per resource and letting the uid upsert dedupe would collapse
+        # every multi-court slot to spaces=1. Aggregate by time/indoor instead,
+        # so spaces is the number of bookable courts at that time.
+        groups: Dict[tuple, dict] = defaultdict(
+            lambda: {"spaces": 0, "prices": []}
+        )
         for resource in parsed.Resources:
             if self.padel_only and not is_padel_resource(
                 resource.Name, resource.Category
@@ -178,25 +185,31 @@ class ClubSparkResponseParserStrategy(AbstractResponseParserStrategy):
                     ending_time = (
                         datetime.min + timedelta(minutes=session.EndTime)
                     ).time()
-                    price = (
-                        f"£{session.CourtCost:.2f}"
-                        if session.CourtCost is not None
-                        else "N/A"
-                    )
-                    results.append(
-                        UnifiedParserSchema(
-                            category=self.category,
-                            starting_time=starting_time,
-                            ending_time=ending_time,
-                            date=slot_date,
-                            price=price,
-                            spaces=1,
-                            composite_key=metadata.sportsCentre.composite_key,
-                            last_refreshed=metadata.last_refreshed,
-                            booking_url=metadata.booking_url,
-                            indoor=indoor,
-                        )
-                    )
+                    key = (slot_date, starting_time, ending_time, indoor)
+                    groups[key]["spaces"] += 1
+                    if session.CourtCost is not None:
+                        groups[key]["prices"].append(float(session.CourtCost))
+
+        results: List[UnifiedParserSchema] = []
+        for (slot_date, starting_time, ending_time, indoor), group in sorted(
+            groups.items()
+        ):
+            prices = group["prices"]
+            price = f"£{min(prices):.2f}" if prices else "N/A"
+            results.append(
+                UnifiedParserSchema(
+                    category=self.category,
+                    starting_time=starting_time,
+                    ending_time=ending_time,
+                    date=slot_date,
+                    price=price,
+                    spaces=group["spaces"],
+                    composite_key=metadata.sportsCentre.composite_key,
+                    last_refreshed=metadata.last_refreshed,
+                    booking_url=metadata.booking_url,
+                    indoor=indoor,
+                )
+            )
         return results
 
 

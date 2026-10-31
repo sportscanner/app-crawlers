@@ -107,7 +107,9 @@ def _load_buckets(
         WITH courts AS (
             SELECT composite_key, GREATEST(MAX(max_spaces), 1) AS courts
             FROM public.slot_history h
-            WHERE sport = :sport AND starts_at >= :window_start AND starts_at < :forward_end {venue_filter}
+            WHERE sport = :sport
+              AND h.spaces_unit = 'court'
+              AND starts_at >= :window_start AND starts_at < :forward_end {venue_filter}
             GROUP BY composite_key
         ),
         slots AS (
@@ -122,6 +124,7 @@ def _load_buckets(
             FROM public.slot_history h
             JOIN courts c USING (composite_key)
             WHERE h.sport = :sport
+              AND h.spaces_unit = 'court'
               AND h.starts_at >= :window_start AND h.starts_at < :forward_end
               {venue_filter}
               AND CASE WHEN h.starts_at <= :now

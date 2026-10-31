@@ -50,6 +50,10 @@ class UnifiedParserSchema(BaseModel):
     date: date
     price: str
     spaces: int
+    # What `spaces` counts: 'court' for court bookings, 'place' for
+    # participant/attendee places (CitySport, UEL, Decathlon, CourtReserve).
+    # Insights must only use 'court' rows for court counts.
+    spaces_unit: str = "court"
     composite_key: str
     last_refreshed: datetime
     booking_url: Optional[str]

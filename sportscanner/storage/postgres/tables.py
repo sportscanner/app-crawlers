@@ -45,6 +45,7 @@ class BadmintonMasterTable(SQLModel, table=True):
     date: date
     price: str
     spaces: int
+    spaces_unit: str = Field(default="court")
     last_refreshed: datetime
     booking_url: str | None
     # Precomputed date+starting_time, populated at write time (see insert_records_to_table).
@@ -73,6 +74,7 @@ class SquashMasterTable(SQLModel, table=True):
     date: date
     price: str
     spaces: int
+    spaces_unit: str = Field(default="court")
     last_refreshed: datetime
     booking_url: str | None
     # Precomputed date+starting_time, populated at write time (see insert_records_to_table).
@@ -101,6 +103,7 @@ class PickleballMasterTable(SQLModel, table=True):
     date: date
     price: str
     spaces: int
+    spaces_unit: str = Field(default="court")
     last_refreshed: datetime
     booking_url: str | None
     # Precomputed date+starting_time, populated at write time (see insert_records_to_table).
@@ -133,6 +136,7 @@ class PadelMasterTable(SQLModel, table=True):
     date: date
     price: str
     spaces: int
+    spaces_unit: str = Field(default="court")
     last_refreshed: datetime
     booking_url: str | None
     # Precomputed date+starting_time, populated at write time (see insert_records_to_table).
@@ -165,6 +169,7 @@ class TennisMasterTable(SQLModel, table=True):
     date: date
     price: str
     spaces: int
+    spaces_unit: str = Field(default="court")
     last_refreshed: datetime
     booking_url: str | None
     # Precomputed date+starting_time, populated at write time (see insert_records_to_table).
@@ -210,6 +215,7 @@ class SlotHistory(SQLModel, table=True):
     first_spaces: int
     last_spaces: int
     max_spaces: int
+    spaces_unit: str = Field(default="court")
     capacity: Optional[int] = None
     indoor: Optional[bool] = None
     # Europe/London wall-clock time of the first/last pipeline run that saw the

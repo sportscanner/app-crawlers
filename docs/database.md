@@ -173,6 +173,11 @@ insights (`sportscanner/insights/`) compute occupancy and booking value from.
   ending_time)`, not `uid`, because Tower Hamlets' reload path assigns random uids.
 - `max_spaces` is the most courts ever seen free for the slot; a venue's court
   count is the max of that over the window.
+- `spaces_unit` is `court` for court bookings and `place` for participant
+  places. CitySport, UEL, Decathlon and CourtReserve expose participant places,
+  not courts, so their rows are `place` and the insights court/occupancy metrics
+  exclude them. Never hard-code `spaces=1` for a multi-court provider; aggregate
+  the provider's resource/court rows in the parser instead.
 - Prices prefixed `~` were estimated by `fill_estimated_prices()` (sometimes from
   a sport-wide default) and are stored with `price_gbp = NULL`, so they never
   reach price or value figures.
