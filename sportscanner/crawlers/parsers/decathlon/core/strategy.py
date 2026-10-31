@@ -38,7 +38,10 @@ class DecathlonResponseParserStrategy(AbstractResponseParserStrategy):
                     starting_time=activity.startDate.astimezone(uk_zone).time(),
                     ending_time=activity.endDate.astimezone(uk_zone).time(),
                     date=activity.startDate.astimezone(uk_zone).date(),
-                    price=f"£{activity.offers[0].price}" if activity.offers else "0.0",
+                    # No offer means no price quoted; leave it blank for
+                    # fill_estimated_prices() rather than shipping "0.0",
+                    # which the UI renders as a free court.
+                    price=f"£{activity.offers[0].price}" if activity.offers else "",
                     spaces=activity.remainingAttendeeCapacity,
                     spaces_unit="place",
                     composite_key=raw_response.requestMetadata.metadata.sportsCentre.composite_key,
