@@ -28,6 +28,20 @@ from sportscanner.storage.postgres.dataset_transform import (
 router = APIRouter()
 
 
+def _price_sort_value(value: Optional[str]) -> float:
+    """Numeric sort key for a display price.
+
+    Prices can be plain ("£10.10") or pipeline estimates ("~£10.10"). The
+    estimate marker must be stripped too, otherwise sorting by price raises
+    ValueError and the whole search returns 500. Unknown/blank prices sort
+    last instead of failing the request.
+    """
+    try:
+        return float(str(value).replace("£", "").replace("~", "").strip())
+    except (TypeError, ValueError):
+        return float("inf")
+
+
 def find_query_table(sport: SportscannerSupportedSports):
     if sport == SportscannerSupportedSports.BADMINTON:
         return BadmintonMasterTable
@@ -116,7 +130,7 @@ async def search_courts(
         key=lambda x: (
             datetime.strptime(x["date"], "%a, %b %d"),  # Closest date
             (
-                float(x[filters.sortBy.name].replace("£", ""))
+                _price_sort_value(x[filters.sortBy.name])
                 if filters.sortBy == SortByOptions.price
                 else x[filters.sortBy.name]
             ),
