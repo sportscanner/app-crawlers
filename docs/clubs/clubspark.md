@@ -24,8 +24,10 @@ Discovery method: the venue booking HTML page is a thin client-rendered shell wi
   "Resources": [
     {"ID": "...", "Name": "Court 1", "Days": [
       {"Date": "2026-08-20T00:00:00", "Sessions": [
-        {"Category": 1000, "Name": "Booking", "StartTime": 450, "EndTime": 480,
-         "Interval": 30, "CourtCost": 3.80},
+        {"Category": 0, "Name": "Default", "StartTime": 450, "EndTime": 480,
+         "Interval": 30, "Capacity": 1, "CostFrom": 3.80, "CourtCost": 3.80},
+        {"Category": 1000, "Name": "Booking", "StartTime": 480, "EndTime": 540,
+         "Interval": 60, "Capacity": 0, "CourtCost": 22.80},
         {"Category": 8000, "Name": "Closed", ...},
         {"Category": 2000, "Name": "Adult Beginners (NTA)", ...}
       ]}
@@ -34,7 +36,16 @@ Discovery method: the venue booking HTML page is a thin client-rendered shell wi
 }
 ```
 
-`StartTime` and `EndTime` are minutes from midnight (converted to `time` in `ClubSparkTennisResponseParserStrategy.parse`). `Category` distinguishes real availability from noise: `1000` = genuinely bookable, `8000` = closed, `2000` = coaching/programmed session. Only `1000` rows are emitted as slots.
+`StartTime` and `EndTime` are minutes from midnight (converted to `time` in `ClubSparkTennisResponseParserStrategy.parse`). The session-level `Category` distinguishes real availability from noise:
+
+- `0` = genuinely available to book (confirmed live: `Capacity=1`, `CostFrom` populated, name is a schedule label/UUID)
+- `1000` = an existing booking (confirmed live: `Capacity=0`, name is `Booking`, a person, or an event/coaching block)
+- `2000` = coaching/programmed session
+- `8000` = closed
+
+Only `0` rows are emitted as slots. They are continuous availability windows, so the parser splits each by the response's `MinimumInterval` (e.g. Old Deer Park Court 1 free 06:00-14:30 with `MinimumInterval=30` becomes half-hour slots at £5.70, matching the public booking page). `Restrictions` such as `Administrator, NTC Front of House` mark role-only slots and are excluded even though `Category=0`. Booked `1000` rows must never be treated as availability — they previously produced fake "free" £0.00 slots and recurring block totals such as £820.80.
+
+Resource-level `Category` is the sport (`1` tennis, `2` mini tennis, `3` touch tennis, `13` padel, `14` pickleball, `33` walking tennis, etc.); the tennis parser admits tennis categories only and the padel parser uses `is_padel_resource()`.
 
 ## Why this bypasses BaseCrawler default fetch loop
 
