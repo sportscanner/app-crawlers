@@ -23,7 +23,7 @@ detail that sits underneath it.
 | Southwark Leisure | [southwark-leisure.md](southwark-leisure.md) | badminton, pickleball | 2 | healthy |
 | Decathlon | [decathlon.md](decathlon.md) | pickleball | 1 | healthy |
 | Matchi | [matchi.md](matchi.md) | padel, tennis | 22 padel + 3 tennis | healthy (2 padel venues genuinely unbookable): 12 new London/commuter padel venues added Aug 2026, tennis confirmed live with populated slots at Down Hall Hotel |
-| Playtomic | [playtomic.md](playtomic.md) | padel, tennis | 33 padel + 1 tennis | healthy; tennis added Aug 2026, verified end-to-end (318 real slots landed in `tennis` table on first full pipeline run), only 1 venue so far |
+| Playtomic | [playtomic.md](playtomic.md) | padel, tennis, pickleball | 74 London + national list | padel runs from the residential worker on a paced London-first rotation; tennis and pickleball stay on the shared pipeline. Deduplicated legacy venue slugs Oct 2026 |
 | South Croydon Sports Club | [south-croydon-sports-club.md](south-croydon-sports-club.md) | (none implemented) | 1 | **not implemented** |
 | UEL SportsDock | [uel-sportsdock.md](uel-sportsdock.md) | badminton | 1 | healthy (added July 2026) |
 | Places Leisure | [places-leisure.md](places-leisure.md) | badminton, pickleball | 8 | healthy (added July 2026); re-enabled Oct 2026 as its own 2-hourly job, not in the fast pipeline (per-timeslot API, ~1,500 requests for 10 days) |

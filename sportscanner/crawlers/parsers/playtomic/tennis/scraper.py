@@ -35,6 +35,7 @@ from sportscanner.crawlers.parsers.playtomic.core.strategy import (
     PlaytomicTennisRequestStrategy,
     PlaytomicResponseParserStrategy,
     PlaytomicAvailabilityFetcher,
+    PlaytomicBlockedError,
     PLAYTOMIC_ORGANISATION_WEBSITE,
     SLUG_TO_TENANT_ID,
     TENNIS_SPORT_ID,
@@ -97,11 +98,19 @@ class PlaytomicTennisCrawler(BaseCrawler):
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
         all_slots: List[UnifiedParserSchema] = []
+        blocked_dates = 0
         for r in results:
-            if isinstance(r, Exception):
+            if isinstance(r, PlaytomicBlockedError):
+                blocked_dates += 1
+            elif isinstance(r, Exception):
                 logging.error(f"Playtomic tennis availability task raised: {r}")
             elif r:
                 all_slots.extend(r)
+        if blocked_dates:
+            logging.warning(
+                f"Playtomic: {blocked_dates} tennis request(s) blocked "
+                "during this crawl"
+            )
 
         return all_slots
 

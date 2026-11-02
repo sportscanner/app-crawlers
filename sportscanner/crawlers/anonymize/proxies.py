@@ -78,6 +78,7 @@ async def get_with_proxy_fallback_on_403(
     headers: Optional[Dict[str, Any]] = None,
     timeout: float = 30,
     log_label: str = "",
+    tls_attempts: int = len(_IMPERSONATE_PROFILES),
 ) -> Optional[Any]:
     """GET `url` via `client` first; on HTTP 403 or 429 (bot challenge / rate limit),
     retry via curl_cffi with a rotating browser TLS fingerprint before giving up.
@@ -101,6 +102,10 @@ async def get_with_proxy_fallback_on_403(
        requests TLS impersonation alone cannot. No-op with zero extra latency
        when the env var isn't set, so this is safe in every environment that
        hasn't opted in.
+
+    `tls_attempts` caps the curl_cffi fingerprint stage. It defaults to one
+    attempt per profile; a rate-limited caller can pass 1 so a 403 does not
+    turn into four more requests against the same rate-limit window.
 
     A 403 or 429 through a direct connection can mean this host's IP is blocklisted or
     rate-limited by Cloudflare / WAF for this specific target.
@@ -136,7 +141,7 @@ async def get_with_proxy_fallback_on_403(
         raise
 
     # Free browser-TLS retry via curl_cffi, one attempt per rotation profile.
-    total_attempts = len(_IMPERSONATE_PROFILES)
+    total_attempts = max(1, tls_attempts)
     for attempt in range(1, total_attempts + 1):
         profile = next_impersonate_profile()
         try:

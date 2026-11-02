@@ -1,7 +1,7 @@
 # Playtomic
 
-48 London and Greater London venues: padel, tennis, pickleball.
-`https://playtomic.com`.
+London and Greater London venues plus a national Playtomic inventory: padel,
+tennis and pickleball. `https://playtomic.com`.
 Code: `sportscanner/crawlers/parsers/playtomic/`.
 
 ## API shape
@@ -21,6 +21,28 @@ Booking URLs need a separate slug: the API's `tenant_id`/slug (stored as `venue.
 Playtomic availability API uses CloudFront WAF rate limiting and TLS fingerprint validation. Requests carry browser headers (`_HEADERS` in `playtomic/core/strategy.py`). On HTTP 403 or 429 status codes, `fetch_venue_date()` retries through `get_with_proxy_fallback_on_403()` in `crawlers/anonymize/proxies.py`, which retries direct httpx first, then curl_cffi, cycling through `next_impersonate_profile()`'s rotation (`chrome136`, `safari180`, `firefox135`, `chrome124`) once per remaining attempt. This is what usually rescues GitHub Actions runs (Python's ssl handshake is an automatic WAF fail from datacenter IPs).
 
 A small number of specific venues/tenants (confirmed live: Kensington Tennis Club venues, Tennis England Club, on some runs) still exhaust every rotation profile and get 403 on every date in a run, even though other Playtomic venues succeed in the same run from the same runner IP. That points at a per-tenant WAF rule (rate-based or bot-score) rather than a purely IP- or fingerprint-based block — TLS impersonation can't fix a rule that specifically penalizes traffic to that URL/tenant_id combination regardless of handshake. If this keeps recurring for the same venues, the next lever to pull is request pacing/concurrency for just those tenant_ids, not more fingerprint variety.
+
+## Residential padel refresh
+
+Playtomic padel is disabled in the shared pipeline (`PLAYTOMIC_PADEL_ENABLED=False`) because the national venue list made the padel job slow enough to stall. It runs from `sportscanner/crawlers/local_residential.py` on the laptop, via `uk.co.sportscanner.residential-crawl-playtomic` every 30 minutes.
+
+The worker does not sweep every venue every run. It selects a paced rotation:
+
+- London and Greater London venues first, national venues fill the remaining slots.
+- Per-venue attempt timestamps in `~/Library/Logs/sportscanner/residential-crawl-state.json` advance the rotation even when a venue returns no slots. The old query selected the 131 venues with no padel rows on every run, which starved everything else.
+- Today and tomorrow are fetched for every selected venue. The mid-week and far date tiers are fetched for the first `PLAYTOMIC_EXTENDED_VENUES` in each batch when those tiers are due.
+- Requests are globally paced (`PLAYTOMIC_MIN_REQUEST_INTERVAL_SECONDS`, default 2s), and the TLS retry stage is capped at one attempt (`PLAYTOMIC_TLS_ATTEMPTS=1`) so a 403 does not turn into four more requests against the same rate-limit window.
+- Each request is capped at 10s and each venue at 120s (`PLAYTOMIC_REQUEST_TIMEOUT_SECONDS`, `PLAYTOMIC_VENUE_TIMEOUT_SECONDS`), so a stalled connection cannot hold the whole run.
+- An empty HTTP 200 advances the rotation and does not set a cooldown. Only consecutive 403/429 responses stop the run and set a 30-minute `blocked_until`.
+- Indoor/outdoor metadata is cached on disk at `~/.cache/sportscanner/playtomic-indoor.json` for 7 days, and is only fetched when the availability response contains courts. A cold run therefore spends far fewer requests on club pages.
+
+## Duplicate venue cleanup
+
+Nine venues were stored twice: once under the API tenant_uid slug (trailing dashes, triple dashes, or an `@`) and once under the public website slug. Both rows point at the same Playtomic tenant, so the crawler fetched the same availability twice and the search API rendered two cards for one venue, often with different `last_refreshed` values.
+
+`scripts/dedupe_playtomic_venues.py` deletes the legacy slot rows and empties the legacy `sports` array. The `sportsvenue` row is kept so an existing favourite's `composite_key` still resolves on the venue page, but it no longer appears in sport-scoped search queries. `venues.json` contains only the canonical slugs, and `SLUG_TO_TENANT_ID` no longer maps the legacy ones.
+
+The same script also renamed three rows that had been seeded under synthetic slugs which do not resolve on playtomic.com: `s3-padel-finchley-road` to `s3-finchley-rd`, `padelhub-kt19-epsom` to `the-padel-hub-kt19-epsom`, and `essendon-padel-club` to `essendon-country-club-uk`. Their tenant ids were confirmed from the public club pages.
 
 ## Tennis
 
@@ -81,11 +103,12 @@ Venue additions are saved to `app-crawlers/reports/venue-fragments/playtomic.jso
 
 ## Booking Slug Overrides
 
-Updated `_BOOKING_SLUG_OVERRIDES` in `strategy.py` with working public page slugs:
+Remaining `_BOOKING_SLUG_OVERRIDES` in `strategy.py` for API slugs that differ from the public club page:
 - `rocks-lane---barnes`: `rocks-lane-barnes-london`
 - `padel-4-everyone---noak-hill`: `padel4everyone-harold-hill-central-park`
 - `the-padel-hub-n20-ltd`: `the-padel-hub-n20-north-london`
 - `brent-x`: `social-sports-brent-cross`
-- `padel-waltham-abbey`: `padel-district-waltham-abbey`
 - `the-london-padel-club`: `padel-padel-eltham`
 - `wembley-padel`: `social-sports-wembley`
+
+The duplicate API/website slug pairs (Battersea, Padel People Wimbledon, Padel Social Club Earl's Court and The O2, Powerleague Mill Hill and Shoreditch, Rocks Lane Dyrham Park, Tour Padel Avery Hill, Padel District Waltham Abbey) now use only the canonical public slug, so they need no override.

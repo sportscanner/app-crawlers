@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import date, timedelta
-from typing import Any, Coroutine, Dict, List
+from typing import Any, Coroutine, Dict, List, Optional, Sequence, Tuple
 
 from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.crawlers.anonymize.proxies import httpxAsyncClient
@@ -30,6 +30,7 @@ from sportscanner.crawlers.parsers.playtomic.core.strategy import (
     PlaytomicRequestStrategy,
     PlaytomicResponseParserStrategy,
     PlaytomicAvailabilityFetcher,
+    PlaytomicBlockedError,
     PLAYTOMIC_ORGANISATION_WEBSITE,
     SLUG_TO_TENANT_ID,
 )
@@ -40,13 +41,62 @@ from rich import print
 
 
 class PlaytomicPadelCrawler(BaseCrawler):
-    def __init__(self):
-        self._fetcher = PlaytomicAvailabilityFetcher()
+    def __init__(
+        self,
+        min_request_interval: float = 0.0,
+        tls_attempts: Optional[int] = None,
+        request_timeout: float = 30.0,
+    ):
+        self._fetcher = PlaytomicAvailabilityFetcher(
+            min_request_interval=min_request_interval,
+            tls_attempts=tls_attempts,
+            request_timeout=request_timeout,
+        )
+        self.blocked = False
         super().__init__(
             request_strategy=PlaytomicRequestStrategy(),
             response_parser_strategy=PlaytomicResponseParserStrategy(),
             organisation_website=PLAYTOMIC_ORGANISATION_WEBSITE,
         )
+
+    async def crawl_venue_dates(
+        self,
+        client: Any,
+        venue: SportsVenue,
+        tenant_id: str,
+        dates: Sequence[date],
+        semaphore: asyncio.Semaphore,
+    ) -> Tuple[List[UnifiedParserSchema], bool]:
+        """Fetch one venue across `dates`, returning (slots, blocked).
+
+        The paced refresh needs the block signal separately from the slots: an
+        empty result can mean either "no availability" or "Playtomic returned
+        403 for every retry". Only the latter should trigger a cooldown.
+        """
+        tasks = [
+            self._fetcher.fetch_venue_date(client, venue, tenant_id, d, semaphore)
+            for d in dates
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        slots: List[UnifiedParserSchema] = []
+        blocked_dates = 0
+        for result in results:
+            if isinstance(result, PlaytomicBlockedError):
+                blocked_dates += 1
+            elif isinstance(result, Exception):
+                logging.error(
+                    f"Playtomic: task raised for {venue.venue_name}: {result}"
+                )
+            elif result:
+                slots.extend(result)
+
+        if blocked_dates:
+            logging.warning(
+                f"Playtomic: {blocked_dates} date(s) blocked for " f"{venue.venue_name}"
+            )
+        self.blocked = blocked_dates > 0
+        return slots, self.blocked
 
     @async_timer
     async def _crawl_async(
@@ -58,6 +108,7 @@ class PlaytomicPadelCrawler(BaseCrawler):
             f"Playtomic: crawling {len(dates)} dates against "
             f"{len(sports_venues)} registered padel venues"
         )
+        self.blocked = False
 
         matched = [
             (venue, SLUG_TO_TENANT_ID[venue.slug])
@@ -97,11 +148,19 @@ class PlaytomicPadelCrawler(BaseCrawler):
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
         all_slots: List[UnifiedParserSchema] = []
+        blocked_dates = 0
         for r in results:
-            if isinstance(r, Exception):
+            if isinstance(r, PlaytomicBlockedError):
+                blocked_dates += 1
+            elif isinstance(r, Exception):
                 logging.error(f"Playtomic availability task raised: {r}")
             elif r:
                 all_slots.extend(r)
+        if blocked_dates:
+            self.blocked = True
+            logging.warning(
+                f"Playtomic: {blocked_dates} request(s) blocked in this crawl"
+            )
 
         return all_slots
 

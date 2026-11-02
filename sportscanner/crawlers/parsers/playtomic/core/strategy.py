@@ -21,9 +21,13 @@ the correct website slug; None means no working public page exists for that venu
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 import re
+import time as _time
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
@@ -62,23 +66,24 @@ TENNIS_SPORT_ID = "TENNIS"
 # priced slots (£28/hr) separate from that venue's PADEL/other-sport responses.
 PICKLEBALL_SPORT_ID = "PICKLEBALL"
 
+
+class PlaytomicBlockedError(RuntimeError):
+    """Every retry stage returned 403/429 for a Playtomic request.
+
+    Callers that pace requests need to distinguish a real block from a normal
+    empty availability response: an empty 200 means "no slots", while this
+    error means "stop and back off".
+    """
+
+
 # Where the API tenant_uid differs from the website URL slug, list the correct
 # website slug here.  None = no public booking page found for this venue.
 _BOOKING_SLUG_OVERRIDES: Dict[str, Optional[str]] = {
-    "powerleague-shoreditch-": "powerleague-shoreditch",
-    "battersea-park-millennium-arena-": "battersea-park-millennium-arena",
-    "padel-social-club---earls-court": "padel-social-club-earls-court",
-    "padel-social-club---the-o2": "padel-social-club-the-o2",
     "rocks-lane---chiswick": "rocks-lane-chiswick",
-    "padel-people---wimbledon": "padel-people-wimbledon",
-    "tour-padel---avery-hill-campus-": "tour-padel-avery-hill-campus",
-    "rocks-lane-@-dyrham-park-country-club": "rocks-lane-dyrham-park-country-club",
-    "powerleague-mill-hill-": "powerleague-mill-hill",
     "rocks-lane---barnes": "rocks-lane-barnes-london",
     "padel-4-everyone---noak-hill": "padel4everyone-harold-hill-central-park",
     "the-padel-hub-n20-ltd": "the-padel-hub-n20-north-london",
     "brent-x": "social-sports-brent-cross",
-    "padel-waltham-abbey": "padel-district-waltham-abbey",
     "the-london-padel-club": "padel-padel-eltham",
     "wembley-padel": "social-sports-wembley",
 }
@@ -115,16 +120,11 @@ _HEADERS = {
 # tenant_id never changes — add new venues here when they are added to venues.json.
 SLUG_TO_TENANT_ID: Dict[str, str] = {
     "the-hive-london": "4ab18f91-d6bb-440e-b890-4d5422a786fc",
-    "powerleague-shoreditch-": "2ab75436-9bb0-4e9c-9a6f-b12931a9ca4a",
-    "battersea-park-millennium-arena-": "0e86011b-7857-4bc9-b594-9334047316a4",
-    "padel-social-club---earls-court": "1c97a3d1-ded7-4c4b-808e-8c37bb1b2a1f",
     "padel-box-bermondsey": "a95b1ddd-ea5a-4516-86a8-cf3825ebe760",
     "georgians-padel": "7c3575d5-8285-4199-a9e1-961118269bfe",
     "rocks-lane---barnes": "e2ec82b3-3862-4e42-90bb-bb41f59e737d",
     "barn-elms-sports-centre": "6e1734ed-38bd-42bf-a336-e0e2aa74d0e2",
-    "padel-social-club---the-o2": "9e79c4f9-3c2e-4fb8-a01f-ae514dc7e351",
     "rocks-lane---chiswick": "9c95ac87-5273-47a9-bf67-342c566caf79",
-    "padel-people---wimbledon": "4256b5d8-8d35-45bb-8c6d-e425afe94692",
     "the-108": "67d29714-a14b-4c66-9eaf-aade676be071",
     "brent-x": "f76ac01f-b201-4f26-af36-5dc0d550a5c5",
     "padel-tree-finchley": "29e2d319-bea5-4957-9196-cda1b9bccb92",
@@ -133,18 +133,17 @@ SLUG_TO_TENANT_ID: Dict[str, str] = {
     "the-padel-hub-n20-ltd": "7a6f7a17-5a73-4468-9329-56c901f1ceba",
     "boxx-padel": "c95356d5-4ec5-4b24-bf61-2c7396174d66",
     "catford-padel-collective": "d690fb50-37bf-4e3f-bb13-294282bc3552",
-    "tour-padel---avery-hill-campus-": "df114d7a-6bf3-427d-8d7a-d4e88865efda",
-    "powerleague-mill-hill-": "12338c4b-e078-4b3a-a50e-5568293183b3",
     "padel-tree-brentford": "9b5b1052-d193-4b6f-a813-ca7a55dd9592",
     "cw-padel-club": "69777c06-4f64-4788-b62f-d235362abbe8",
     "padel-and-coffee": "95bc71fb-6a16-4004-b7a8-59d24cfaf4a6",
     "s3-padel-sutton": "82c2a7fc-e943-45ed-9752-1116d37a818b",
+    "s3-finchley-rd": "113065cd-202c-46e7-9ef4-a2af650983cf",
+    "the-padel-hub-kt19-epsom": "04dd6b80-e488-4af3-b740-78704af847ef",
+    "essendon-country-club-uk": "88f92dcc-342f-4852-b1b6-19b2276c3e0a",
     "padel-united-erith": "fbd1bfa1-a581-48fb-9592-7ec3ceac538c",
     "woodford-wells-club": "182340a7-6a14-4c18-b6e2-c47a9e8df267",
-    "padel-waltham-abbey": "5ccd5197-0083-411e-9e7f-de0a418c5b69",
     "powerleague-romford": "fa87d0cb-5c08-4249-bc61-71c6d408abf7",
     "padel-4-everyone---noak-hill": "48991fdc-d2d4-415a-b9ab-c3c911083d80",
-    "rocks-lane-@-dyrham-park-country-club": "e24d075d-b5a5-4a0d-a303-2c7e92d9e598",
     "padel-tree-arkley": "3b16a151-703d-45cd-b164-0f8422b56f03",
     "purley-sports-club": "3bfdd0e1-b304-4779-8574-5270ac0d74fa",
     # Tennis venue (confirmed live: 9 tennis courts + 4 padel courts, sport_id=TENNIS
@@ -690,11 +689,89 @@ _RESOURCE_FEATURES_PATTERN = re.compile(
 )
 
 # venue.slug -> {resource_id: indoor bool}, populated once per slug and
-# reused across every date that venue is crawled for (this is static
-# facility metadata, not availability - refetching it per date would be
-# hundreds of wasted requests per venue over a multi-week crawl window).
+# reused across every date that venue is crawled for. This is static facility
+# metadata, not availability, so refetching it per date would be hundreds of
+# wasted requests per venue over a multi-week crawl window. The in-memory map
+# is backed by a small JSON file because the residential padel worker starts a
+# fresh process every tick; without the disk cache every run re-fetched one
+# club page per venue, which was a material part of Playtomic's rate-limit
+# budget.
 _resource_indoor_cache: Dict[str, Dict[str, bool]] = {}
+_resource_indoor_cache_fetched_at: Dict[str, float] = {}
+_resource_indoor_cache_loaded = False
 _resource_indoor_cache_locks: Dict[str, asyncio.Lock] = {}
+_INDOOR_CACHE_TTL_SECONDS = int(
+    os.environ.get("PLAYTOMIC_INDOOR_CACHE_TTL_SECONDS", str(7 * 24 * 3600))
+)
+_INDOOR_REQUEST_INTERVAL_SECONDS = float(
+    os.environ.get("PLAYTOMIC_INDOOR_REQUEST_INTERVAL_SECONDS", "0")
+)
+_indoor_request_lock = asyncio.Lock()
+_indoor_last_request_at = 0.0
+
+
+async def _pace_indoor_request() -> None:
+    global _indoor_last_request_at
+    if _INDOOR_REQUEST_INTERVAL_SECONDS <= 0:
+        return
+    async with _indoor_request_lock:
+        wait = _INDOOR_REQUEST_INTERVAL_SECONDS - (
+            _time.monotonic() - _indoor_last_request_at
+        )
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _indoor_last_request_at = _time.monotonic()
+
+
+def _indoor_cache_path() -> Path:
+    configured = os.environ.get("PLAYTOMIC_INDOOR_CACHE_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    return Path.home() / ".cache" / "sportscanner" / "playtomic-indoor.json"
+
+
+def _load_resource_indoor_cache() -> None:
+    global _resource_indoor_cache_loaded
+    if _resource_indoor_cache_loaded:
+        return
+    _resource_indoor_cache_loaded = True
+    path = _indoor_cache_path()
+    try:
+        payload = json.loads(path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return
+    now = _time.time()
+    for slug, entry in payload.items():
+        if not isinstance(entry, dict):
+            continue
+        fetched_at = float(entry.get("fetched_at", 0))
+        if _INDOOR_CACHE_TTL_SECONDS and now - fetched_at > _INDOOR_CACHE_TTL_SECONDS:
+            continue
+        mapping = entry.get("map")
+        if isinstance(mapping, dict):
+            _resource_indoor_cache[slug] = {
+                key: bool(value) for key, value in mapping.items()
+            }
+            _resource_indoor_cache_fetched_at[slug] = fetched_at
+
+
+def _save_resource_indoor_cache() -> None:
+    path = _indoor_cache_path()
+    payload = {
+        slug: {
+            "fetched_at": _resource_indoor_cache_fetched_at.get(slug, 0),
+            "map": mapping,
+        }
+        for slug, mapping in _resource_indoor_cache.items()
+        if mapping
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+        os.replace(tmp_path, path)
+    except OSError as exc:
+        logging.warning(f"Playtomic: could not write indoor cache {path}: {exc}")
 
 
 async def _fetch_resource_indoor_map(slug: str) -> Dict[str, bool]:
@@ -704,6 +781,7 @@ async def _fetch_resource_indoor_map(slug: str) -> Dict[str, bool]:
     resource missing from the map as "indoor unknown" via .get(), so a failed
     fetch just means this run's availability rows have indoor=None for that
     venue rather than blocking the crawl."""
+    _load_resource_indoor_cache()
     if slug in _resource_indoor_cache:
         return _resource_indoor_cache[slug]
     lock = _resource_indoor_cache_locks.setdefault(slug, asyncio.Lock())
@@ -711,6 +789,7 @@ async def _fetch_resource_indoor_map(slug: str) -> Dict[str, bool]:
         if slug in _resource_indoor_cache:  # populated while we waited for the lock
             return _resource_indoor_cache[slug]
         try:
+            await _pace_indoor_request()
             async with CurlAsyncSession() as session:
                 resp = await session.get(
                     f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{slug}",
@@ -720,16 +799,23 @@ async def _fetch_resource_indoor_map(slug: str) -> Dict[str, bool]:
                 )
             content = resp.text.replace("\\", "")
             result = {}
-            for resource_id, features_raw in _RESOURCE_FEATURES_PATTERN.findall(content):
+            for resource_id, features_raw in _RESOURCE_FEATURES_PATTERN.findall(
+                content
+            ):
                 features = features_raw.lower()
                 if "indoor" in features:
                     result[resource_id] = True
                 elif "outdoor" in features:
                     result[resource_id] = False
             _resource_indoor_cache[slug] = result
+            _resource_indoor_cache_fetched_at[slug] = _time.time()
+            if result:
+                _save_resource_indoor_cache()
             return result
         except Exception as exc:
-            logging.warning(f"Playtomic: failed to fetch indoor/outdoor metadata for {slug}: {exc}")
+            logging.warning(
+                f"Playtomic: failed to fetch indoor/outdoor metadata for {slug}: {exc}"
+            )
             _resource_indoor_cache[slug] = {}
             return {}
 
@@ -831,9 +917,35 @@ class PlaytomicAvailabilityFetcher:
     carries no sport field either way — the value requested is the value you get).
     """
 
-    def __init__(self, sport_id: str = PADEL_SPORT_ID, category: str = "Padel"):
+    def __init__(
+        self,
+        sport_id: str = PADEL_SPORT_ID,
+        category: str = "Padel",
+        min_request_interval: float = 0.0,
+        tls_attempts: Optional[int] = None,
+        request_timeout: float = 30.0,
+    ):
         self.sport_id = sport_id
         self.category = category
+        # Global pacing for this fetcher instance. Zero keeps the existing
+        # pipeline behaviour; the residential padel worker passes a positive
+        # interval because Playtomic rate-limits repeated bursts.
+        self.min_request_interval = max(0.0, min_request_interval)
+        self.tls_attempts = tls_attempts
+        self.request_timeout = max(1.0, request_timeout)
+        self._request_lock = asyncio.Lock()
+        self._last_request_at = 0.0
+
+    async def _pace(self) -> None:
+        if self.min_request_interval <= 0:
+            return
+        async with self._request_lock:
+            wait = self.min_request_interval - (
+                _time.monotonic() - self._last_request_at
+            )
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._last_request_at = _time.monotonic()
 
     async def fetch_venue_date(
         self,
@@ -853,9 +965,16 @@ class PlaytomicAvailabilityFetcher:
         docs/clubs/playtomic.md). On 403, retry via the rotating proxy (a fresh
         connection is a fresh shot at a different exit IP) rather than treating
         it as "no slots".
+
+        Raises `PlaytomicBlockedError` when every retry stage was 403/429, so a
+        paced caller can tell a real block apart from a venue with no slots.
         """
         try:
             async with semaphore:
+                await self._pace()
+                retry_kwargs = {}
+                if self.tls_attempts is not None:
+                    retry_kwargs["tls_attempts"] = self.tls_attempts
                 resp = await get_with_proxy_fallback_on_403(
                     client,
                     _AVAILABILITY_API,
@@ -868,12 +987,21 @@ class PlaytomicAvailabilityFetcher:
                         **_HEADERS,
                         "referer": f"{PLAYTOMIC_ORGANISATION_WEBSITE}/clubs/{venue.slug}",
                     },
-                    timeout=30,
+                    timeout=self.request_timeout,
                     log_label=f"Playtomic {venue.venue_name} {fetch_date}",
+                    **retry_kwargs,
                 )
             if resp is None:
-                return []
+                raise PlaytomicBlockedError(
+                    f"Playtomic {venue.venue_name} {fetch_date}: "
+                    "every retry stage returned 403/429"
+                )
             resources = [PlaytomicResource(**r) for r in resp.json()]
+            if not resources:
+                # No courts listed, so there is nothing for the indoor map to
+                # annotate. Skipping the club-page request here removes a large
+                # number of wasted requests across a 457-venue rotation.
+                return []
             resource_indoor_map = await _fetch_resource_indoor_map(venue.slug)
             slots = _resources_to_unified(
                 resources,
@@ -886,6 +1014,8 @@ class PlaytomicAvailabilityFetcher:
                 f"Playtomic: {venue.venue_name} {fetch_date} → {len(slots)} slot groups"
             )
             return slots
+        except PlaytomicBlockedError:
+            raise
         except httpx.HTTPStatusError as exc:
             logging.warning(
                 f"Playtomic: HTTP {exc.response.status_code} for "

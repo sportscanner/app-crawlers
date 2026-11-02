@@ -1945,45 +1945,6 @@
         ]
       },
       {
-        "venue_name": "Powerleague Shoreditch",
-        "slug": "powerleague-shoreditch-",
-        "location": {
-          "postcode": "E1 6GJ",
-          "address": "Braithwaite Street, London, E1 6GJ",
-          "latitude": 51.52330045,
-          "longitude": -0.07527631
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "Battersea Park Millennium Arena",
-        "slug": "battersea-park-millennium-arena-",
-        "location": {
-          "postcode": "SW11 4NJ",
-          "address": "Carriage Dr E, Battersea, London, SW11 4NJ",
-          "latitude": 51.48133267,
-          "longitude": -0.15434524
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "Padel Social Club - Earl's Court",
-        "slug": "padel-social-club---earls-court",
-        "location": {
-          "postcode": "SW6 1TT",
-          "address": "Empress Place, London, SW6 1TT",
-          "latitude": 51.4869792,
-          "longitude": -0.1972922
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
         "venue_name": "Padel Box Bermondsey",
         "slug": "padel-box-bermondsey",
         "location": {
@@ -2037,19 +1998,6 @@
         ]
       },
       {
-        "venue_name": "Padel Social Club - The O2",
-        "slug": "padel-social-club---the-o2",
-        "location": {
-          "postcode": "SE10 0DX",
-          "address": "Peninsula Square, Greenwich, London, SE10 0DX",
-          "latitude": 51.50464446,
-          "longitude": 0.00298698
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
         "venue_name": "Rocks Lane - Chiswick",
         "slug": "rocks-lane---chiswick",
         "location": {
@@ -2057,19 +2005,6 @@
           "address": "60 Chiswick Common Rd, Chiswick, London, W4 1RZ",
           "latitude": 51.493989,
           "longitude": -0.2600909
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "Padel People - Wimbledon",
-        "slug": "padel-people---wimbledon",
-        "location": {
-          "postcode": "SW17 0BL",
-          "address": "Stadia 3, Plough Lane, London, SW17 0BL",
-          "latitude": 51.43038997,
-          "longitude": -0.18600884
         },
         "sports": [
           "padel"
@@ -2180,32 +2115,6 @@
         ]
       },
       {
-        "venue_name": "Tour Padel - Avery Hill Campus",
-        "slug": "tour-padel---avery-hill-campus-",
-        "location": {
-          "postcode": "SE9 2UG",
-          "address": "Avery Hill Campus, University of Greenwich, London, SE9 2UG",
-          "latitude": 51.44511281,
-          "longitude": 0.08107243
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "Powerleague Mill Hill",
-        "slug": "powerleague-mill-hill-",
-        "location": {
-          "postcode": "NW7 2BB",
-          "address": "31 Pursley Rd, Mill Hill, London, NW7 2BB",
-          "latitude": 51.6075363,
-          "longitude": -0.2267383
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
         "venue_name": "Padel Tree Brentford",
         "slug": "padel-tree-brentford",
         "location": {
@@ -2284,20 +2193,6 @@
         ]
       },
       {
-        "venue_name": "Padel District Waltham Abbey",
-        "slug": "padel-waltham-abbey",
-        "location": {
-          "postcode": "EN9 1JH",
-          "address": "Town Mead, Waltham Abbey, EN9 1JH",
-          "latitude": 51.6828804,
-          "longitude": -0.0056366
-        },
-        "sports": [
-          "padel",
-          "pickleball"
-        ]
-      },
-      {
         "venue_name": "Powerleague Romford",
         "slug": "powerleague-romford",
         "location": {
@@ -2318,19 +2213,6 @@
           "address": "Central Park Leisure Centre, Gooshays Drive, Harold Hill, RM3 9LB",
           "latitude": 51.607903,
           "longitude": 0.224402
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "Rocks Lane @ Dyrham Park Country Club",
-        "slug": "rocks-lane-@-dyrham-park-country-club",
-        "location": {
-          "postcode": "EN5 4RA",
-          "address": "Dyrham Park Country Club, Galley Lane, Barnet, EN5 4RA",
-          "latitude": 51.6657543,
-          "longitude": -0.231907
         },
         "sports": [
           "padel"
@@ -7497,7 +7379,8 @@
           "longitude": -0.0056366
         },
         "sports": [
-          "padel"
+          "padel",
+          "pickleball"
         ]
       },
       {
@@ -7911,6 +7794,45 @@
           "address": "Fridlington Farms Ltd, York, Y0611ee",
           "latitude": 54.0775797,
           "longitude": -1.0577773
+        },
+        "sports": [
+          "padel"
+        ]
+      },
+      {
+        "venue_name": "S3 Padel Finchley Road",
+        "slug": "s3-finchley-rd",
+        "location": {
+          "postcode": "NW3 6LU",
+          "address": "255 Finchley Road, West Hampstead, London, NW3 6LU",
+          "latitude": 51.54773852,
+          "longitude": -0.185993
+        },
+        "sports": [
+          "padel"
+        ]
+      },
+      {
+        "venue_name": "PADELHUB KT19 Epsom",
+        "slug": "the-padel-hub-kt19-epsom",
+        "location": {
+          "postcode": "KT19 9BE",
+          "address": "7-8 Blenheim Road, Epsom, KT19 9BE",
+          "latitude": 51.34102166,
+          "longitude": -0.26425052
+        },
+        "sports": [
+          "padel"
+        ]
+      },
+      {
+        "venue_name": "Essendon Padel Club",
+        "slug": "essendon-country-club-uk",
+        "location": {
+          "postcode": "AL9 6HN",
+          "address": "Bedwell Park, Hatfield, AL9 6HN",
+          "latitude": 51.7595544,
+          "longitude": -0.1441714
         },
         "sports": [
           "padel"
