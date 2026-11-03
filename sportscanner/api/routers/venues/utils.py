@@ -127,7 +127,8 @@ async def get_venues_near_postcode(postcode: str, distance: float = 10.0) -> Lis
         FROM
             sportsvenue
         WHERE
-            ST_DWithin(
+            cardinality(sports) > 0
+            AND ST_DWithin(
                 srid,
                 ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
                 :meters
