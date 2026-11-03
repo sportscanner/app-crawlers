@@ -1,0 +1,24 @@
+name: Dedupe Playtomic venues
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dedupe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GHCR }} | docker login ghcr.io -u yasir-khalid --password-stdin
+
+      - name: Create .env file from secret
+        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      - name: Run Playtomic dedupe
+        run: |
+          docker run --rm --platform=linux/amd64 --network=host --env-file .env \
+            -v "${{ github.workspace }}/scripts:/app/scripts:ro" \
+            ghcr.io/sportscanner/app-crawlers:latest \
+            python scripts/dedupe_playtomic_venues.py --apply
