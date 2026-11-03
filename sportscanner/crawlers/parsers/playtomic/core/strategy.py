@@ -79,12 +79,9 @@ class PlaytomicBlockedError(RuntimeError):
 # Where the API tenant_uid differs from the website URL slug, list the correct
 # website slug here.  None = no public booking page found for this venue.
 _BOOKING_SLUG_OVERRIDES: Dict[str, Optional[str]] = {
-    "rocks-lane---chiswick": "rocks-lane-chiswick",
-    "rocks-lane---barnes": "rocks-lane-barnes-london",
     "padel-4-everyone---noak-hill": "padel4everyone-harold-hill-central-park",
     "the-padel-hub-n20-ltd": "the-padel-hub-n20-north-london",
     "brent-x": "social-sports-brent-cross",
-    "the-london-padel-club": "padel-padel-eltham",
     "wembley-padel": "social-sports-wembley",
 }
 # Note: newly added venues whose API tenant_uids match their public club-page
@@ -122,14 +119,11 @@ SLUG_TO_TENANT_ID: Dict[str, str] = {
     "the-hive-london": "4ab18f91-d6bb-440e-b890-4d5422a786fc",
     "padel-box-bermondsey": "a95b1ddd-ea5a-4516-86a8-cf3825ebe760",
     "georgians-padel": "7c3575d5-8285-4199-a9e1-961118269bfe",
-    "rocks-lane---barnes": "e2ec82b3-3862-4e42-90bb-bb41f59e737d",
     "barn-elms-sports-centre": "6e1734ed-38bd-42bf-a336-e0e2aa74d0e2",
-    "rocks-lane---chiswick": "9c95ac87-5273-47a9-bf67-342c566caf79",
     "the-108": "67d29714-a14b-4c66-9eaf-aade676be071",
     "brent-x": "f76ac01f-b201-4f26-af36-5dc0d550a5c5",
     "padel-tree-finchley": "29e2d319-bea5-4957-9196-cda1b9bccb92",
     "wembley-padel": "c583d30b-3381-418d-8d4d-73c2460de8c7",
-    "the-london-padel-club": "60baf499-42ac-4dc6-8a55-4226a50697d2",
     "the-padel-hub-n20-ltd": "7a6f7a17-5a73-4468-9329-56c901f1ceba",
     "boxx-padel": "c95356d5-4ec5-4b24-bf61-2c7396174d66",
     "catford-padel-collective": "d690fb50-37bf-4e3f-bb13-294282bc3552",

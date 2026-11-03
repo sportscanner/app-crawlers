@@ -1,6 +1,6 @@
 """Remove legacy Playtomic venue duplicates and fix stale slugs in production.
 
-Nine Playtomic venues were stored twice: once under the API tenant_uid
+Twelve Playtomic venues were stored twice: once under the API tenant_uid
 (trailing dashes, triple dashes, or an "@" in the slug) and once under the
 public playtomic.com slug. Both rows map to the same Playtomic tenant, so the
 crawler fetched the same availability twice and the search API rendered two
@@ -55,6 +55,9 @@ LEGACY_TO_CANONICAL: Dict[str, str] = {
     "powerleague-shoreditch-": "powerleague-shoreditch",
     "rocks-lane-@-dyrham-park-country-club": "rocks-lane-dyrham-park-country-club",
     "tour-padel---avery-hill-campus-": "tour-padel-avery-hill-campus",
+    "rocks-lane---barnes": "rocks-lane-barnes-london",
+    "rocks-lane---chiswick": "rocks-lane-chiswick",
+    "the-london-padel-club": "padel-padel-eltham",
 }
 
 # DB slug -> (public playtomic.com slug, tenant_id). These three rows were

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +27,9 @@ LEGACY_SLUGS = {
     "powerleague-shoreditch-",
     "rocks-lane-@-dyrham-park-country-club",
     "tour-padel---avery-hill-campus-",
+    "rocks-lane---barnes",
+    "rocks-lane---chiswick",
+    "the-london-padel-club",
 }
 
 
@@ -213,6 +217,11 @@ def test_playtomic_venues_json_has_no_duplicate_names_or_legacy_slugs():
 
     assert len(slugs) == len(set(slugs))
     assert len(names) == len(set(names))
+    normalized_names = [
+        re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", name.lower())).strip()
+        for name in names
+    ]
+    assert len(normalized_names) == len(set(normalized_names))
     assert not LEGACY_SLUGS.intersection(slugs)
     assert not LEGACY_SLUGS.intersection(strategy.SLUG_TO_TENANT_ID)
     assert {

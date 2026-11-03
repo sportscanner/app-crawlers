@@ -1972,19 +1972,6 @@
         ]
       },
       {
-        "venue_name": "Rocks Lane - Barnes",
-        "slug": "rocks-lane---barnes",
-        "location": {
-          "postcode": "SW13 0BY",
-          "address": "opp. Ranelagh Avenue, Barnes, London, SW13 0BY",
-          "latitude": 51.4718141,
-          "longitude": -0.2379923
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
         "venue_name": "Barn Elms Sports Centre",
         "slug": "barn-elms-sports-centre",
         "location": {
@@ -1992,19 +1979,6 @@
           "address": "Queen Elizabeth Walk, Barnes, London, SW13 0DG",
           "latitude": 51.47581504,
           "longitude": -0.23159085
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "Rocks Lane - Chiswick",
-        "slug": "rocks-lane---chiswick",
-        "location": {
-          "postcode": "W4 1RZ",
-          "address": "60 Chiswick Common Rd, Chiswick, London, W4 1RZ",
-          "latitude": 51.493989,
-          "longitude": -0.2600909
         },
         "sports": [
           "padel"
@@ -2057,19 +2031,6 @@
           "address": "Wembley Park Blvd, Wembley, HA9 0TG",
           "latitude": 51.55627126,
           "longitude": -0.28253805
-        },
-        "sports": [
-          "padel"
-        ]
-      },
-      {
-        "venue_name": "PADEL PADEL - Eltham",
-        "slug": "the-london-padel-club",
-        "location": {
-          "postcode": "SE9 6SF",
-          "address": "20 Well Hall Road, Eltham, London, SE9 6SF",
-          "latitude": 51.4517868,
-          "longitude": 0.0527214
         },
         "sports": [
           "padel"

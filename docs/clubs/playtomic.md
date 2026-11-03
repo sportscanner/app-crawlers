@@ -38,7 +38,7 @@ The worker does not sweep every venue every run. It selects a paced rotation:
 
 ## Duplicate venue cleanup
 
-Nine venues were stored twice: once under the API tenant_uid slug (trailing dashes, triple dashes, or an `@`) and once under the public website slug. Both rows point at the same Playtomic tenant, so the crawler fetched the same availability twice and the search API rendered two cards for one venue, often with different `last_refreshed` values.
+Twelve venues were stored twice: once under the API tenant_uid slug (trailing dashes, triple dashes, or an `@`) and once under the public website slug. Both rows point at the same Playtomic tenant, so the crawler fetched the same availability twice and the search API rendered two cards for one venue, often with different `last_refreshed` values. The twelve are Battersea Park, Padel People Wimbledon, Padel Social Club Earl's Court and The O2, Powerleague Mill Hill and Shoreditch, Rocks Lane Dyrham Park, Rocks Lane Barnes, Rocks Lane Chiswick, Tour Padel Avery Hill, Padel District Waltham Abbey, and PADEL PADEL Eltham.
 
 `scripts/dedupe_playtomic_venues.py` deletes the legacy slot rows and empties the legacy `sports` array. The `sportsvenue` row is kept so an existing favourite's `composite_key` still resolves on the venue page, but it no longer appears in sport-scoped search queries. `venues.json` contains only the canonical slugs, and `SLUG_TO_TENANT_ID` no longer maps the legacy ones.
 
@@ -104,11 +104,9 @@ Venue additions are saved to `app-crawlers/reports/venue-fragments/playtomic.jso
 ## Booking Slug Overrides
 
 Remaining `_BOOKING_SLUG_OVERRIDES` in `strategy.py` for API slugs that differ from the public club page:
-- `rocks-lane---barnes`: `rocks-lane-barnes-london`
 - `padel-4-everyone---noak-hill`: `padel4everyone-harold-hill-central-park`
 - `the-padel-hub-n20-ltd`: `the-padel-hub-n20-north-london`
 - `brent-x`: `social-sports-brent-cross`
-- `the-london-padel-club`: `padel-padel-eltham`
 - `wembley-padel`: `social-sports-wembley`
 
-The duplicate API/website slug pairs (Battersea, Padel People Wimbledon, Padel Social Club Earl's Court and The O2, Powerleague Mill Hill and Shoreditch, Rocks Lane Dyrham Park, Tour Padel Avery Hill, Padel District Waltham Abbey) now use only the canonical public slug, so they need no override.
+The duplicate API/website slug pairs (Battersea, Padel People Wimbledon, Padel Social Club Earl's Court and The O2, Powerleague Mill Hill and Shoreditch, Rocks Lane Dyrham Park, Rocks Lane Barnes, Rocks Lane Chiswick, Tour Padel Avery Hill, Padel District Waltham Abbey, PADEL PADEL Eltham) now use only the canonical public slug, so they need no override.
