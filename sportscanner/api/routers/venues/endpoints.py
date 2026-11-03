@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("/") # /venues/?limit=10
-async def get_all_venues(
+def get_all_venues(
     limit: Optional[int] = Query(None, description="Limit the number of venues in the response"),
 ) -> List[SportVenueOutputModel]:
     """Get all Sports Venues"""
@@ -35,7 +35,7 @@ async def get_all_venues(
     return output
 
 @router.get("/sports/{sport}") # /venues/sports/{sport}?limit=10
-async def get_venues_offering_sport(
+def get_venues_offering_sport(
     sport: SportscannerSupportedSports = Path(..., description="Supported sport to filter venues"),
     limit: Optional[int] = Query(None, description="Optional paramter: Limits the number of venues in the response"),
 ) -> List[SportVenueOutputModel] :
@@ -73,7 +73,7 @@ async def venues_near_postcode_and_radius(
 
 
 @router.get("/{composite_key}") # /venues/{composite}
-async def get_venue_info(
+def get_venue_info(
     composite_key: str = Path(
         description="Composite key identifier to fetch venue information"
     ),

@@ -12,20 +12,53 @@ from rich import print
 
 import sportscanner.storage.postgres.database as db
 import sportscanner.storage.postgres.tables
+from sportscanner.cache import get_or_load_json as cache_get_or_load_json
 from sportscanner.crawlers.pipeline import *
+
+# Venue display metadata (name/address/organisation) is effectively static: it
+# only changes when a venue is added. Kept well below any crawler cadence so a
+# newly inserted venue appears without a deploy.
+VENUE_LOOKUP_CACHE_KEY = "venue_lookup:v1"
+VENUE_LOOKUP_TTL_SECONDS = 300
+
+
+def _load_venue_lookup() -> dict:
+    """Read venue display metadata once, without the geospatial columns.
+
+    The old lookup selected whole SportsVenue rows (including the `srid`
+    geometry) for every venue, on every request, purely to read three text
+    fields. Selecting only what the UI uses keeps the payload small.
+    """
+    rows = db.get_all_rows(
+        db.engine,
+        None,
+        db.select(
+            sportscanner.storage.postgres.tables.SportsVenue.composite_key,
+            sportscanner.storage.postgres.tables.SportsVenue.organisation,
+            sportscanner.storage.postgres.tables.SportsVenue.venue_name,
+            sportscanner.storage.postgres.tables.SportsVenue.address,
+        ),
+    )
+    return {
+        row.composite_key: {
+            "organisation": row.organisation,
+            "venue_name": row.venue_name,
+            "address": row.address,
+        }
+        for row in rows
+    }
 
 
 def generate_venue_lookup() -> dict:
-    venues: List[sportscanner.storage.postgres.tables.SportsVenue] = db.get_all_sports_venues(db.engine)
-    reference_dict = {
-        venue.composite_key: {
-            "organisation": venue.organisation,
-            "venue_name": venue.venue_name,
-            "address": venue.address,
-        }
-        for venue in venues
-    }
-    return reference_dict
+    """Venue metadata keyed by composite_key, cached across requests.
+
+    This is the near-static contents of `sportsvenue` (only changes when a venue
+    is added). Fetching it per request meant every search pulled the whole table
+    from Postgres and rebuilt ~760 ORM objects before doing any real work.
+    """
+    return cache_get_or_load_json(
+        VENUE_LOOKUP_CACHE_KEY, _load_venue_lookup, VENUE_LOOKUP_TTL_SECONDS
+    )
 
 
 def group_slots_by_attributes(slots, attributes):
@@ -50,14 +83,15 @@ def group_slots_by_attributes(slots, attributes):
 
 
 def sort_and_format_grouped_slots_for_ui(
-        grouped_slots, distance_from_venues_reference
+        grouped_slots, distance_from_venues_reference, venue_lookup=None
         ) -> List[dict]:
     processed_slots: List = []
     # Was called once per group inside the loop below: a full `SELECT * FROM
     # sportsvenue` re-run for every distinct (venue, date) result, dominating
     # search latency (29 groups -> 29 redundant full-table round trips). Venue
-    # metadata doesn't change per-group, so look it up once per call.
-    lookup_dict = generate_venue_lookup()
+    # metadata doesn't change per-group, so look it up once per call, and it is
+    # cached across calls, so callers can pass the already-loaded dict in.
+    lookup_dict = venue_lookup if venue_lookup is not None else generate_venue_lookup()
     for groups in grouped_slots:
         # Sort the groups based on 'date' and 'starting_time'
         sorted_slots_in_group = sorted(
@@ -95,8 +129,10 @@ def sort_and_format_grouped_slots_for_ui(
                 }
             )
 
-        # Populating metadata from venues into main availability items
-        lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key, None)
+        # Populating metadata from venues into main availability items. The
+        # fallback keeps a slot whose venue row is missing from erroring out the
+        # whole search.
+        lookup_data = lookup_dict.get(earliest_slot_in_group.composite_key) or {}
 
         now_uk = datetime.now(ZoneInfo("Europe/London"))
         last_refreshed = earliest_slot_in_group.last_refreshed

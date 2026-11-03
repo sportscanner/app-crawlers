@@ -94,6 +94,28 @@ class UnifiedParserSchema:
 4. Group slots by composite_key/date using `group_slots_by_attributes()`
 5. Format for UI using `sort_and_format_grouped_slots_for_ui()`
 
+#### Search latency invariants (do not regress these)
+`/search/{sport}` is the UI's hot path. Three rules keep it fast:
+
+1. **Never run a blocking query on the event loop.** The handler is `async def`
+   because the MCP tool awaits it, and uvicorn runs one event loop per worker.
+   A synchronous psycopg2 call inline froze the entire process: 0.6s for one
+   search, 4 to 8 seconds for eight in flight, `/health/` stalled 3s behind
+   them. Database work belongs in `run_in_threadpool` (`_build_search_response`),
+   or the handler should be a plain `def` so FastAPI offloads it. Same for the
+   synchronous Redis client in `cache.py`.
+2. **Do not re-read near-static tables per request.** Venue display metadata and
+   the social-games venue set are cached (`get_or_load_json`, 5 minute TTL) and
+   the venue read selects only the columns the UI uses, not `SELECT *` with the
+   `srid` geometry.
+3. **Full responses are cached for 30 seconds** (`SEARCH_CACHE_TTL_SECONDS`), so
+   any new filter must be added to `_search_cache_key` or two different searches
+   will share a body.
+
+`tests/test_search_latency.py` locks the response contract and the caching
+behaviour. It also asserts that a repeated identical search makes zero database
+queries.
+
 #### UI Formatting (`sportscanner/storage/postgres/dataset_transform.py`)
 - `group_slots_by_attributes()`: Groups slots by composite_key and date
 - `sort_and_format_grouped_slots_for_ui()`: Creates UI-ready JSON with venue metadata

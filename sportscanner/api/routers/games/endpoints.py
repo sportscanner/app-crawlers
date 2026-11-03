@@ -21,7 +21,7 @@ GAMES_ORGANISATIONS = {"Lemon Pickleball"}
 
 
 @router.get("")
-async def games(
+def games(
     sport: SportscannerSupportedSports = Query(
         description="Sport category to list games for"
     ),

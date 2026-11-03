@@ -14,16 +14,22 @@ sequenceDiagram
     participant DB as Postgres
 
     Client->>SearchAPI: POST postcode, radius, filters
-    SearchAPI->>Cache: geocode + venues-near lookup
-    alt cache hit
-        Cache-->>SearchAPI: cached venues
-    else cache miss
-        SearchAPI->>PostcodesIO: geocode postcode
-        SearchAPI->>DB: ST_DWithin venues query
-        SearchAPI->>Cache: store result (5 min TTL)
+    SearchAPI->>Cache: full response, 30s TTL
+    alt response cache hit
+        Cache-->>SearchAPI: formatted results
+        SearchAPI-->>Client: formatted results (0 database round trips)
+    else response cache miss
+        SearchAPI->>Cache: geocode + venues-near lookup
+        alt cache hit
+            Cache-->>SearchAPI: cached venues
+        else cache miss
+            SearchAPI->>PostcodesIO: geocode postcode
+            SearchAPI->>DB: ST_DWithin venues query
+            SearchAPI->>Cache: store result (5 min TTL)
+        end
+        SearchAPI->>DB: slots WHERE composite_key, date, spaces>0, starts_at>now
+        SearchAPI-->>Client: formatted, sorted results
     end
-    SearchAPI->>DB: slots WHERE composite_key, date, spaces>0, starts_at>now
-    SearchAPI-->>Client: formatted, sorted results
 ```
 
 `/search/{sport}` used to call its own `/venues/near` endpoint over HTTP to resolve
@@ -31,6 +37,31 @@ a postcode to nearby venues, an extra network hop to itself on every search requ
 for data that barely changes minute to minute. It now calls the same underlying
 function directly (`get_venues_near_postcode`), which `/venues/near` also calls; the
 route and the internal call share one implementation.
+
+## Search latency
+
+Three things dominated search latency, all fixed:
+
+- **Blocking database calls on the event loop.** The handler is `async def` (the
+  MCP search tool awaits it), but ran synchronous psycopg2 queries inline. A
+  single uvicorn worker has one event loop, so one search froze the whole
+  process: measured 0.6s for one search, 4 to 8 seconds for eight in flight, and
+  `/health/` stalled for 3s behind them. Every Postgres query and the
+  grouping/formatting pass now run in the worker thread via
+  `run_in_threadpool`. Keep new database work in that block, or make the
+  handler a plain `def` so FastAPI offloads it for you.
+- **Repeated full-table reads.** Each search re-read all of `sportsvenue` (760+
+  rows including the `srid` geometry) to get three text fields, and re-queried
+  the social-games venue set. Both are now cached for 5 minutes, and the venue
+  read selects only the columns the UI uses.
+- **No response cache.** Identical searches are common (the same postcode and
+  date, re-requested while the user changes sort, time or court type). Full
+  responses are cached for 30 seconds, which is well inside the 15 to 40 minute
+  crawl cadence, so the only realistic staleness is a slot that starts within
+  the cache window.
+
+Database round trips per search: 3 on a cold process, 1 once venue metadata is
+cached, 0 on a response cache hit.
 
 ## Insights
 
@@ -134,16 +165,23 @@ The report cache is bounded to 256 entries, including coordinate queries.
 
 ## Caching: Valkey
 
-Postcode to lat/lng (via postcodes.io) and venues within a radius (a PostGIS query)
-are both near-static: the same postcode and radius combination returns the same
-answer for long stretches of time, but was being recomputed and re-queried on every
-single search. Both are now cached in Valkey (Redis-protocol-compatible) with a
-5-minute TTL.
+Postcode to lat/lng (via postcodes.io), venues within a radius (a PostGIS query),
+the venue metadata table and the social-games venue set are all near-static: the
+same input returns the same answer for long stretches of time, but was being
+recomputed and re-queried on every single search. All are cached in Valkey
+(Redis-protocol-compatible) with a 5-minute TTL. The venue metadata and
+social-games entries are also memoised in the worker process, because they sit on
+the hot path and a Redis round trip per request is avoidable.
+
+Formatted search responses have their own shorter TTL (`SEARCH_CACHE_TTL_SECONDS`,
+default 30 seconds) and are cached in Valkey only, so a large response body is not
+duplicated in every worker's heap.
 
 Caching is best-effort by design: if `VALKEY_URL` is not configured, or the cache is
 unreachable, every cache function degrades silently to a cache miss and the request
 falls through to postcodes.io and Postgres as before. A cache outage never turns
-into an API error.
+into an API error. Redis calls from `async` handlers are wrapped in
+`run_in_threadpool` so a slow or hung cache cannot freeze the event loop.
 
 ## Security: parameterized queries
 

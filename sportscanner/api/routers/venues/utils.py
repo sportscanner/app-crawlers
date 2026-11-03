@@ -3,6 +3,7 @@ import re
 from typing import Annotated, List, Literal, Optional
 
 import httpx
+from starlette.concurrency import run_in_threadpool
 from sportscanner.logger import logging
 from pydantic import Field, ValidationError
 
@@ -77,14 +78,19 @@ def get_sports_venues_within_radius(
     return venues_within_defined_radius
 
 
-def _normalize_postcode_for_cache_key(postcode: str) -> str:
+def normalize_postcode_for_cache_key(postcode: str) -> str:
+    """Whitespace-stripped, upper-cased postcode, for use in cache keys."""
     return re.sub(r"\s+", "", postcode).upper()
+
+
+# Retained under the original private name for any caller still using it.
+_normalize_postcode_for_cache_key = normalize_postcode_for_cache_key
 
 
 async def geocode_postcode(postcode: str) -> "PostcodeAPIResponse":
     """Resolve a UK postcode to lat/lng via postcodes.io, cached (near-static data)."""
-    cache_key = f"geocode:{_normalize_postcode_for_cache_key(postcode)}"
-    cached = cache_get_json(cache_key)
+    cache_key = f"geocode:{normalize_postcode_for_cache_key(postcode)}"
+    cached = await run_in_threadpool(cache_get_json, cache_key)
     if cached is not None:
         return PostcodeAPIResponse(**cached)
 
@@ -92,7 +98,7 @@ async def geocode_postcode(postcode: str) -> "PostcodeAPIResponse":
         response = await client.get(f"https://api.postcodes.io/postcodes/{postcode}")
     payload = response.json()
     result = PostcodeAPIResponse(**payload)
-    cache_set_json(cache_key, payload)
+    await run_in_threadpool(cache_set_json, cache_key, payload)
     return result
 
 
@@ -102,8 +108,8 @@ async def get_venues_near_postcode(postcode: str, distance: float = 10.0) -> Lis
     on every search. Used directly by both GET /venues/near and POST /search/{sport} —
     search calls this in-process rather than looping back over HTTP to its own API.
     """
-    venues_cache_key = f"venues_near:{_normalize_postcode_for_cache_key(postcode)}:{distance}"
-    cached = cache_get_json(venues_cache_key)
+    venues_cache_key = f"venues_near:{normalize_postcode_for_cache_key(postcode)}:{distance}"
+    cached = await run_in_threadpool(cache_get_json, venues_cache_key)
     if cached is not None:
         return [VenueDistanceModel(**row) for row in cached]
 
@@ -143,7 +149,9 @@ async def get_venues_near_postcode(postcode: str, distance: float = 10.0) -> Lis
         lat=latitude,
         meters=distance * 1609.344,
     )
-    rows = db.get_all_rows(db.engine, SportsVenue, clause)
+    rows = await run_in_threadpool(
+        db.get_all_rows, db.engine, SportsVenue, clause
+    )
     results = [
         VenueDistanceModel(
             composite_key=row.composite_key,
@@ -156,5 +164,7 @@ async def get_venues_near_postcode(postcode: str, distance: float = 10.0) -> Lis
         )
         for row in rows
     ]
-    cache_set_json(venues_cache_key, [r.model_dump() for r in results])
+    await run_in_threadpool(
+        cache_set_json, venues_cache_key, [r.model_dump() for r in results]
+    )
     return results

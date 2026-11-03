@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     # geocoding, venues-within-radius). Optional — caching is skipped entirely if unset.
     VALKEY_URL: Optional[str] = None
     CACHE_TTL_SECONDS: int = 300
+    # Search responses are cached for much less time than the near-static venue
+    # lookups above: availability genuinely changes, just not faster than the
+    # 15-40 minute crawl cadence. Short enough that a slot starting mid-window
+    # is the only realistic form of staleness.
+    SEARCH_CACHE_TTL_SECONDS: int = 30
     # Public API origin used in discovery links (no /mcp suffix).
     # Retain the environment variable name for deployment compatibility.
     MCP_PUBLIC_BASE_URL: str = "https://api.sportscanner.co.uk"
