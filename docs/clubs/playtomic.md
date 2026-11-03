@@ -42,6 +42,8 @@ Twelve venues were stored twice: once under the API tenant_uid slug (trailing da
 
 `scripts/dedupe_playtomic_venues.py` deletes the legacy slot rows and empties the legacy `sports` array. The `sportsvenue` row is kept so an existing favourite's `composite_key` still resolves on the venue page, but it no longer appears in sport-scoped search queries. `venues.json` contains only the canonical slugs, and `SLUG_TO_TENANT_ID` no longer maps the legacy ones.
 
+The manual `Dedupe Playtomic venues` GitHub Actions workflow runs the same script from a GitHub runner, which is useful when the laptop's current IP is not on the Aiven allowlist.
+
 The same script also renamed three rows that had been seeded under synthetic slugs which do not resolve on playtomic.com: `s3-padel-finchley-road` to `s3-finchley-rd`, `padelhub-kt19-epsom` to `the-padel-hub-kt19-epsom`, and `essendon-padel-club` to `essendon-country-club-uk`. Their tenant ids were confirmed from the public club pages.
 
 ## Tennis

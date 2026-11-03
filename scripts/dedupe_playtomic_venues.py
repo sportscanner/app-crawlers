@@ -26,6 +26,10 @@ Run a dry run first:
 Then apply:
 
     ENV=prod python scripts/dedupe_playtomic_venues.py --apply
+
+When the laptop's current IP is not on the Aiven allowlist, run the manual
+`Dedupe Playtomic venues` GitHub Actions workflow instead. It uses the same
+script from a GitHub runner.
 """
 
 from __future__ import annotations
