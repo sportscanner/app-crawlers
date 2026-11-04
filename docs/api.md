@@ -188,6 +188,24 @@ serialised payload for 5 minutes and send `Cache-Control: public, max-age=300`, 
 repeat requests return in about 2ms instead of re-reading all 759 venues and
 rebuilding one Pydantic model each. The `limit` parameter slices the cached list.
 
+## Response compression
+
+Cloudflare compresses responses for the browser, but the origin to edge hop is
+uncompressed, and that is the leg the user waits on. A 450KB market report
+therefore spent about 0.35s in transit before the first byte reached the client.
+
+`api/responses.py` (`json_response`) serialises once, gzips when the caller sent
+`Accept-Encoding: gzip` and the body is at least 1KB, and sets `Vary:
+Accept-Encoding`. On the padel report that is 450KB to 58KB (7.8x), and it is
+faster than the old `jsonable_encoder` path because it skips the recursive
+encoder. `tests/test_api_responses.py` asserts the decompressed bytes are
+identical to what FastAPI produced before.
+
+It is applied to `/insights/`, `/insights/{sport}`, `/venues/` and
+`/venues/sports/{sport}`. Streaming endpoints (agent chat) deliberately do not
+use it.
+
+
 ## Caching: insights reports
 
 `/insights/*` reports are built by aggregating 35 days of `slot_history`. One

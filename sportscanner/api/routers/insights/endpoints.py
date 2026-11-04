@@ -1,9 +1,10 @@
 """Public market insights: occupancy, estimated booking value, pricing, supply
 and planning pipeline per sport. Read-only and anonymous, like search."""
 
-from fastapi import APIRouter, HTTPException, Path, Query, Response
+from fastapi import APIRouter, HTTPException, Path, Query, Request, Response
 from starlette import status
 
+from sportscanner.api.responses import json_response
 from sportscanner.api.routers.core.schemas import SportscannerSupportedSports
 from sportscanner.insights import service
 from sportscanner.insights.planning import PLANNING_TOPICS, planning_summary
@@ -19,10 +20,10 @@ _CACHE_HEADER = "public, max-age=300, stale-while-revalidate=600"
 
 
 @router.get("/")
-def insights_overview(response: Response):
+def insights_overview(request: Request, response: Response):
     """Headline numbers for every sport."""
     response.headers["Cache-Control"] = _CACHE_HEADER
-    return service.overview()
+    return json_response(service.overview(), request, _CACHE_HEADER)
 
 
 @router.get("/planning")
@@ -69,6 +70,7 @@ def planning_applications(
 
 @router.get("/{sport}")
 def market_report(
+    request: Request,
     response: Response,
     sport: SportscannerSupportedSports = Path(...),
     borough: str = Query(None, max_length=64),
@@ -77,7 +79,9 @@ def market_report(
     response.headers["Cache-Control"] = _CACHE_HEADER
     if borough and not borough_name(borough):
         raise HTTPException(status_code=404, detail="Unknown London borough")
-    return service.market_report(sport.value, borough)
+    return json_response(
+        service.market_report(sport.value, borough), request, _CACHE_HEADER
+    )
 
 
 @router.get("/{sport}/history", response_model=HistoricalReport)

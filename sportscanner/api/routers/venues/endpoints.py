@@ -2,13 +2,14 @@ from datetime import datetime
 from typing import List
 from rich import print
 from urllib.parse import urljoin
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException, Path, Query, Request
 from starlette import status
-from starlette.responses import JSONResponse
+from starlette.responses import Response
 
 from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
 from sportscanner.api.routers.geolocation.utils import *
 from sportscanner.api.routers.venues.utils import get_venues_near_postcode, get_venues_from_database, get_venue_by_composite_key
+from sportscanner.api.responses import json_response
 from sportscanner.cache import get_or_load_json
 from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.variables import *
@@ -38,13 +39,16 @@ def _venue_payload(venue: SportsVenue) -> dict:
     }
 
 
-def _venue_list_response(rows: List[dict], limit: Optional[int]) -> JSONResponse:
+def _venue_list_response(
+    rows: List[dict], limit: Optional[int], request: Request
+) -> Response:
     body = rows[:limit] if limit is not None else rows
-    return JSONResponse(body, headers={"Cache-Control": _VENUES_CACHE_HEADER})
+    return json_response(body, request, _VENUES_CACHE_HEADER)
 
 
 @router.get("/") # /venues/?limit=10
 def get_all_venues(
+    request: Request,
     limit: Optional[int] = Query(None, description="Limit the number of venues in the response"),
 ) -> List[SportVenueOutputModel]:
     """Get all Sports Venues"""
@@ -53,10 +57,11 @@ def get_all_venues(
         lambda: [_venue_payload(v) for v in get_venues_from_database(limit=None)],
         VENUES_LIST_TTL_SECONDS,
     )
-    return _venue_list_response(rows, limit)
+    return _venue_list_response(rows, limit, request)
 
 @router.get("/sports/{sport}") # /venues/sports/{sport}?limit=10
 def get_venues_offering_sport(
+    request: Request,
     sport: SportscannerSupportedSports = Path(..., description="Supported sport to filter venues"),
     limit: Optional[int] = Query(None, description="Optional paramter: Limits the number of venues in the response"),
 ) -> List[SportVenueOutputModel] :
@@ -69,7 +74,7 @@ def get_venues_offering_sport(
         ],
         VENUES_LIST_TTL_SECONDS,
     )
-    return _venue_list_response(rows, limit)
+    return _venue_list_response(rows, limit, request)
 
 
 @router.get("/near") # /venues/near?postcode=SE17TP&distance=5.0
