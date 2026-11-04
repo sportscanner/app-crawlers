@@ -28,6 +28,7 @@ def insights_overview(request: Request, response: Response):
 
 @router.get("/planning")
 def planning_applications(
+    request: Request,
     response: Response,
     topic: str = Query("padel", description=f"One of {', '.join(PLANNING_TOPICS)}"),
     latitude: float = Query(
@@ -65,7 +66,7 @@ def planning_applications(
             headers={"Retry-After": "60"},
         )
     response.headers["Cache-Control"] = _CACHE_HEADER
-    return summary
+    return json_response(summary, request, _CACHE_HEADER)
 
 
 @router.get("/{sport}")
@@ -103,6 +104,7 @@ def historical_report(
 
 @router.get("/{sport}/catchment")
 def catchment_report(
+    request: Request,
     response: Response,
     sport: SportscannerSupportedSports = Path(...),
     latitude: float = Query(..., ge=49, le=61),
@@ -110,7 +112,11 @@ def catchment_report(
     radius: float = Query(3, ge=0.5, le=20),
 ):
     response.headers["Cache-Control"] = _CACHE_HEADER
-    return planner.catchment(sport.value, latitude, longitude, radius)
+    return json_response(
+        planner.catchment(sport.value, latitude, longitude, radius),
+        request,
+        _CACHE_HEADER,
+    )
 
 
 @router.get("/{sport}/constraints")

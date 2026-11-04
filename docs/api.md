@@ -201,9 +201,9 @@ faster than the old `jsonable_encoder` path because it skips the recursive
 encoder. `tests/test_api_responses.py` asserts the decompressed bytes are
 identical to what FastAPI produced before.
 
-It is applied to `/insights/`, `/insights/{sport}`, `/venues/` and
-`/venues/sports/{sport}`. Streaming endpoints (agent chat) deliberately do not
-use it.
+It is applied to `/insights/`, `/insights/{sport}`, `/insights/planning`,
+`/insights/{sport}/catchment`, `/venues/` and `/venues/sports/{sport}`. Streaming
+endpoints (agent chat) deliberately do not use it.
 
 
 ## Caching: insights reports
