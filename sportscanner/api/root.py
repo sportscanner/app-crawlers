@@ -1,4 +1,7 @@
 import json
+import sys
+import threading
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List
 
@@ -61,6 +64,42 @@ You will be able to:
 * Read /agents.md for request examples, freshness guidance and MCP setup.
 """
 
+
+def _warm_insights_in_background() -> None:
+    """Prime the insights report cache so no visitor pays the aggregation.
+
+    Daemon thread, not a startup task: the reports take several seconds and an
+    external postcodes.io lookup, none of which should delay accepting traffic.
+    Skipped under pytest, where starting the app should not fire background
+    database work at whatever database the test run is pointed at.
+    """
+    if "pytest" in sys.modules:
+        return
+    try:
+        from sportscanner.insights import service as insights_service
+
+        threading.Thread(
+            target=insights_service.warm, name="insights-warm", daemon=True
+        ).start()
+    except Exception as exc:  # pragma: no cover - defensive
+        logging.warning(f"Insights warm-up not scheduled: {exc!r}")
+
+
+@asynccontextmanager
+async def _app_lifespan(app: FastAPI):
+    """Warm caches, then run FastMCP's lifespan if it is mounted.
+
+    FastAPI ignores `on_event("startup")` handlers when a custom lifespan is
+    supplied, so the warm-up is composed into the lifespan itself.
+    """
+    _warm_insights_in_background()
+    if _mcp_app is not None:
+        async with _mcp_app.lifespan(app):
+            yield
+    else:
+        yield
+
+
 app = FastAPI(
     title="Sportscanner",
     description=description,
@@ -78,7 +117,7 @@ app = FastAPI(
     },
     # FastMCP's streamable-HTTP app needs its lifespan to run so the session
     # manager is initialised; wiring it here lets us mount it below.
-    lifespan=_mcp_app.lifespan if _mcp_app is not None else None,
+    lifespan=_app_lifespan,
 )
 
 # ── A2A (Agent2Agent) Sportscanner Agent ─────────────────────────────────────

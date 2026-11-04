@@ -4,10 +4,12 @@ from rich import print
 from urllib.parse import urljoin
 from fastapi import APIRouter, HTTPException, Path, Query
 from starlette import status
+from starlette.responses import JSONResponse
 
 from sportscanner.api.routers.geolocation.schemas import PostcodesResponseModel
 from sportscanner.api.routers.geolocation.utils import *
 from sportscanner.api.routers.venues.utils import get_venues_near_postcode, get_venues_from_database, get_venue_by_composite_key
+from sportscanner.cache import get_or_load_json
 from sportscanner.storage.postgres.tables import SportsVenue
 from sportscanner.variables import *
 from sportscanner.api.routers.core.schemas import *
@@ -15,24 +17,43 @@ import sportscanner.storage.postgres.database as db
 
 router = APIRouter()
 
+# Venue metadata only changes when a venue is added, but these endpoints used to
+# re-read the whole table and rebuild one Pydantic model per venue on every
+# request (771 rows, about 1.5s cold). Cache the serialised list, and let
+# browsers and the CDN hold it briefly too.
+VENUES_LIST_CACHE_KEY = "venues_list:v1"
+VENUES_LIST_TTL_SECONDS = 300
+_VENUES_CACHE_HEADER = "public, max-age=300, stale-while-revalidate=600"
+
+
+def _venue_payload(venue: SportsVenue) -> dict:
+    """The exact shape of SportVenueOutputModel, as a plain dict."""
+    return {
+        "composite_key": venue.composite_key,
+        "venue_name": venue.venue_name,
+        "address": venue.address,
+        "sports": venue.sports,
+        "latitude": venue.latitude,
+        "longitude": venue.longitude,
+    }
+
+
+def _venue_list_response(rows: List[dict], limit: Optional[int]) -> JSONResponse:
+    body = rows[:limit] if limit is not None else rows
+    return JSONResponse(body, headers={"Cache-Control": _VENUES_CACHE_HEADER})
+
 
 @router.get("/") # /venues/?limit=10
 def get_all_venues(
     limit: Optional[int] = Query(None, description="Limit the number of venues in the response"),
 ) -> List[SportVenueOutputModel]:
     """Get all Sports Venues"""
-    sports_venues: List[SportsVenue] = get_venues_from_database(limit=limit)
-    output: List[SportVenueOutputModel] = [
-        SportVenueOutputModel(
-            composite_key=venue.composite_key,
-            venue_name=venue.venue_name,
-            address=venue.address,
-            sports=venue.sports,
-            latitude=venue.latitude,
-            longitude=venue.longitude,
-        ) for venue in sports_venues
-    ]
-    return output
+    rows = get_or_load_json(
+        f"{VENUES_LIST_CACHE_KEY}:all",
+        lambda: [_venue_payload(v) for v in get_venues_from_database(limit=None)],
+        VENUES_LIST_TTL_SECONDS,
+    )
+    return _venue_list_response(rows, limit)
 
 @router.get("/sports/{sport}") # /venues/sports/{sport}?limit=10
 def get_venues_offering_sport(
@@ -40,22 +61,15 @@ def get_venues_offering_sport(
     limit: Optional[int] = Query(None, description="Optional paramter: Limits the number of venues in the response"),
 ) -> List[SportVenueOutputModel] :
     """Get all Sports Venues offering a specific sport"""
-    sports_venues: List[SportsVenue] = get_venues_from_database(
-        sports=[sport.value],
-        limit=limit
+    rows = get_or_load_json(
+        f"{VENUES_LIST_CACHE_KEY}:{sport.value}",
+        lambda: [
+            _venue_payload(v)
+            for v in get_venues_from_database(sports=[sport.value], limit=None)
+        ],
+        VENUES_LIST_TTL_SECONDS,
     )
-
-    output: List[SportVenueOutputModel] = [
-        SportVenueOutputModel(
-            composite_key=venue.composite_key,
-            venue_name=venue.venue_name,
-            address=venue.address,
-            sports=venue.sports,
-            latitude=venue.latitude,
-            longitude=venue.longitude,
-        ) for venue in sports_venues
-    ]
-    return output
+    return _venue_list_response(rows, limit)
 
 
 @router.get("/near") # /venues/near?postcode=SE17TP&distance=5.0

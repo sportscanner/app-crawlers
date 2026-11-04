@@ -183,6 +183,38 @@ falls through to postcodes.io and Postgres as before. A cache outage never turns
 into an API error. Redis calls from `async` handlers are wrapped in
 `run_in_threadpool` so a slow or hung cache cannot freeze the event loop.
 
+The venue list endpoints (`/venues/`, `/venues/sports/{sport}`) cache their
+serialised payload for 5 minutes and send `Cache-Control: public, max-age=300`, so
+repeat requests return in about 2ms instead of re-reading all 759 venues and
+rebuilding one Pydantic model each. The `limit` parameter slices the cached list.
+
+## Caching: insights reports
+
+`/insights/*` reports are built by aggregating 35 days of `slot_history`. One
+market report costs 0.5 to 4 seconds, and `/insights/` builds all five, so a cold
+overview was taking 7.3 seconds.
+
+Reports are cached in-process for 10 minutes and rebuilt with
+**stale-while-revalidate**: once a report exists, an expired copy is returned
+immediately (about 0.2ms) and a single background thread rebuilds it. A report is
+only built synchronously if no copy exists, or if it is older than
+`_CACHE_STALE_SECONDS` (1 hour). This matters because the pages are
+low-traffic: before this, every visitor arriving more than 10 minutes after the
+previous one paid the full rebuild.
+
+Two supporting changes:
+
+- `overview()` builds the five sports in a thread pool, so a genuinely cold
+  overview costs the slowest sport rather than the sum.
+- `service.warm()` runs in a daemon thread at startup (`_app_lifespan` in
+  `api/root.py`), so a deploy does not serve a cold first visitor. FastAPI ignores
+  `on_event("startup")` when a custom lifespan is supplied, which is why the
+  warm-up is composed into the lifespan rather than registered as an event.
+- `resolve_boroughs()` is serialised with a lock. Reports for several sports build
+  in parallel, and without it each thread saw an empty venue-to-borough cache and
+  re-fired the same postcodes.io batches.
+
+
 ## Security: parameterized queries
 
 Two endpoints previously built SQL by interpolating request parameters directly

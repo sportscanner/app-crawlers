@@ -116,6 +116,17 @@ class UnifiedParserSchema:
 behaviour. It also asserts that a repeated identical search makes zero database
 queries.
 
+#### Insights caching (do not regress these)
+`/insights/*` reports aggregate 35 days of `slot_history`: one market report costs
+0.5 to 4 seconds and `/insights/` builds all five. `service._cached` therefore
+serves an expired report immediately and rebuilds it on a background thread
+(stale-while-revalidate, see `_CACHE_STALE_SECONDS`). Do not "fix" that by
+shortening the TTL or forcing a synchronous rebuild on expiry: the pages are
+low-traffic, so that reintroduces a multi-second stall for the next visitor.
+`service.warm()` primes the cache at startup from `_app_lifespan` in
+`api/root.py`. `tests/test_insights_cache.py` covers the refresh, failure and
+single-flight behaviour.
+
 #### UI Formatting (`sportscanner/storage/postgres/dataset_transform.py`)
 - `group_slots_by_attributes()`: Groups slots by composite_key and date
 - `sort_and_format_grouped_slots_for_ui()`: Creates UI-ready JSON with venue metadata

@@ -1,6 +1,7 @@
 """Borough reference data: ONS populations and venue-to-borough resolution."""
 
 import json
+import threading
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -28,6 +29,10 @@ def borough_name(slug: str) -> Optional[str]:
 # composite_key -> (borough or None, cached_at). Venues don't move, so a failed
 # lookup is retried on the next refresh rather than cached as "unknown" forever.
 _borough_cache: Dict[str, Tuple[Optional[str], float]] = {}
+# Serialises resolution. Reports for several sports are built in parallel, and
+# without this every thread would independently see an empty cache and fire the
+# same postcodes.io batches, turning one 6-request lookup into thirty.
+_borough_lock = threading.Lock()
 
 
 @lru_cache(maxsize=1)
@@ -57,6 +62,11 @@ def resolve_boroughs(venues: Iterable[Tuple[str, float, float]]) -> Dict[str, Op
     in venues.json. Unresolvable venues map to None and are grouped as unknown.
     """
     venues = list(venues)
+    with _borough_lock:
+        return _resolve_boroughs_locked(venues)
+
+
+def _resolve_boroughs_locked(venues) -> Dict[str, Optional[str]]:
     now = time.time()
     pending = [
         v for v in venues

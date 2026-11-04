@@ -8,8 +8,10 @@ crawl, and the market report scans up to 35 days of slots.
 
 import math
 import re
+import threading
 import time
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -18,6 +20,7 @@ from threading import RLock
 from sqlalchemy import text
 
 import sportscanner.storage.postgres.database as db
+from sportscanner.logger import logging
 from sportscanner.insights.boroughs import (
     OUTSIDE_LONDON,
     borough_population,
@@ -51,6 +54,12 @@ NEARBY_RADIUS_MILES = 3.0
 _MAX_STALENESS_BEFORE_START = timedelta(minutes=90)
 _FORWARD_FRESHNESS = timedelta(hours=3)
 _CACHE_TTL_SECONDS = 10 * 60
+# A report past its TTL is still served instantly while one background thread
+# rebuilds it. Building one costs 0.5 to 4 seconds of aggregation over 35 days
+# of slot_history, and before this the first visitor after any quiet spell paid
+# that in full: /insights/ took 7.3 seconds because it builds all five sports.
+# Past this age the value is treated as unusable and the request waits.
+_CACHE_STALE_SECONDS = 60 * 60
 
 _SPORTS = ("badminton", "squash", "pickleball", "padel", "tennis")
 # Sports played indoors by definition; their tables carry no indoor column.
@@ -58,6 +67,7 @@ _ALWAYS_INDOOR = ("badminton", "squash")
 
 _cache: Dict[str, Tuple[float, dict]] = {}
 _cache_lock = RLock()
+_cache_in_flight: set = set()
 
 
 def _now_london() -> datetime:
@@ -65,24 +75,60 @@ def _now_london() -> datetime:
 
 
 def _cached(key: str, build):
+    """Serve a cached report, rebuilding expired entries off the request path.
+
+    A stale entry within `_CACHE_STALE_SECONDS` is returned immediately and one
+    background thread rebuilds it, so a 4 second aggregation never blocks a
+    request. Only a genuinely absent entry is built synchronously.
+    """
+    now = time.time()
     with _cache_lock:
         hit = _cache.get(key)
-        if hit and time.time() - hit[0] < _CACHE_TTL_SECONDS:
+        if hit and now - hit[0] < _CACHE_TTL_SECONDS:
             return hit[1]
+        stale = hit[1] if hit and now - hit[0] < _CACHE_STALE_SECONDS else None
+
+    if stale is not None:
+        _refresh_in_background(key, build)
+        return stale
+
     value = build()
+    _store(key, value)
+    return value
+
+
+def _store(key: str, value) -> None:
     with _cache_lock:
-        if len(_cache) >= 256:
+        if len(_cache) >= 256 and key not in _cache:
             expired = [
                 k
                 for k, (created, _) in _cache.items()
-                if time.time() - created >= _CACHE_TTL_SECONDS
+                if time.time() - created >= _CACHE_STALE_SECONDS
             ]
-            for stale in expired:
-                _cache.pop(stale, None)
+            for stale_key in expired:
+                _cache.pop(stale_key, None)
             if len(_cache) >= 256:
                 _cache.pop(min(_cache, key=lambda k: _cache[k][0]), None)
         _cache[key] = (time.time(), value)
-    return value
+
+
+def _refresh_in_background(key: str, build) -> None:
+    """Rebuild one report off the request path. At most one per key at a time."""
+    with _cache_lock:
+        if key in _cache_in_flight:
+            return
+        _cache_in_flight.add(key)
+
+    def run():
+        try:
+            _store(key, build())
+        except Exception as exc:  # keep serving the previous body
+            logging.warning(f"Insights refresh failed for {key}: {exc!r}")
+        finally:
+            with _cache_lock:
+                _cache_in_flight.discard(key)
+
+    threading.Thread(target=run, name=f"insights-refresh:{key}", daemon=True).start()
 
 
 def _rows(sql: str, **params) -> list:
@@ -1065,16 +1111,38 @@ def overview() -> dict:
     """Cross-sport headline numbers for the insights landing page."""
 
     def build():
-        sports = []
-        for sport in _SPORTS:
-            report = market_report(sport)
-            sports.append(
+        # One independent aggregation per sport. Building them together makes a
+        # cold overview cost the slowest sport (padel, about 4s) instead of the
+        # sum of all five (about 8s).
+        with ThreadPoolExecutor(max_workers=len(_SPORTS)) as pool:
+            reports = list(pool.map(market_report, _SPORTS))
+        return {
+            "generated_at": _now_london(),
+            "sports": [
                 {
                     "sport": sport,
                     "history_started": report["history_started"],
                     **report["summary"],
                 }
-            )
-        return {"generated_at": _now_london(), "sports": sports}
+                for sport, report in zip(_SPORTS, reports)
+            ],
+        }
 
     return _cached("overview", build)
+
+
+def warm() -> None:
+    """Build every cached report once, off the request path.
+
+    Run in a daemon thread at startup so the first visitor after a deploy does
+    not pay the aggregation. Never raises: a warm-up failure must not stop the
+    API from serving, and the normal cold path still covers it.
+    """
+    started = time.perf_counter()
+    try:
+        with ThreadPoolExecutor(max_workers=len(_SPORTS)) as pool:
+            list(pool.map(market_report, _SPORTS))
+        overview()
+        logging.info(f"Insights cache warm in {time.perf_counter() - started:.1f}s")
+    except Exception as exc:
+        logging.warning(f"Insights warm-up failed: {exc!r}")
