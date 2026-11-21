@@ -22,6 +22,8 @@ Playtomic availability API uses CloudFront WAF rate limiting and TLS fingerprint
 
 A small number of specific venues/tenants (confirmed live: Kensington Tennis Club venues, Tennis England Club, on some runs) still exhaust every rotation profile and get 403 on every date in a run, even though other Playtomic venues succeed in the same run from the same runner IP. That points at a per-tenant WAF rule (rate-based or bot-score) rather than a purely IP- or fingerprint-based block — TLS impersonation can't fix a rule that specifically penalizes traffic to that URL/tenant_id combination regardless of handshake. If this keeps recurring for the same venues, the next lever to pull is request pacing/concurrency for just those tenant_ids, not more fingerprint variety.
 
+**Vercel egress is blocked as well.** A throwaway probe deployment (`playtomic-egress-probe`, region `iad1`, October 2026) called this endpoint from a Vercel Node function with browser headers and got a CloudFront 403 on every request: a 919-byte HTML error page with no `resource_id` in the body. Vercel functions are not a way around the datacenter-IP block, so an egress move to them is not worth testing again. The probe project was deleted once that was confirmed.
+
 ## Residential padel refresh
 
 Playtomic padel is disabled in the shared pipeline (`PLAYTOMIC_PADEL_ENABLED=False`) because the national venue list made the padel job slow enough to stall. It runs from `sportscanner/crawlers/local_residential.py` on the laptop, via `uk.co.sportscanner.residential-crawl-playtomic` every 30 minutes.
